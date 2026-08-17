@@ -2,20 +2,16 @@ import * as React from "react"
 import { useMemo, useState } from "react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
-import { Calendar, dateFnsLocalizer, Event as RBCEvent } from "react-big-calendar"
-import format from "date-fns/format"
-import parse from "date-fns/parse"
-import startOfWeek from "date-fns/startOfWeek"
-import getDay from "date-fns/getDay"
-import { addMonths, subMonths, addWeeks, subWeeks, startOfDay } from "date-fns"
-import enUS from "date-fns/locale/en-US"
+import type { Event as RBCEvent } from "react-big-calendar"
+import { Calendar, dateFnsLocalizer } from "react-big-calendar"
+import { format, parse, startOfWeek, getDay, addMonths, subMonths, addWeeks, subWeeks, startOfDay } from "date-fns"
+import { enUS } from "date-fns/locale"
 
 import { CustomToolbar } from "./CustomToolbar"
 import { CustomEvent } from "./CustomEvent"
 import { WeeklyScheduleView } from "./WeeklyScheduleView"
 import { CreateAppointmentModal } from "@/features/appointments/components/CreateAppointmentModal"
 import { AppointmentSidepeek } from "@/features/dashboard/components/AppointmentSidepeek"
-import { Calendar as CalendarIcon, CalendarOff } from "lucide-react"
 
 import "react-big-calendar/lib/css/react-big-calendar.css"
 
@@ -225,6 +221,7 @@ export function CalendarPage() {
             longPressThreshold={10}
             onSelectSlot={handleSelectSlot}
             onSelectEvent={handleSelectEvent}
+            titleAccessor={(event: AppEvent) => event.title || ""}
             dayPropGetter={dayPropGetter}
             components={{
               toolbar: () => null, // We render the toolbar outside

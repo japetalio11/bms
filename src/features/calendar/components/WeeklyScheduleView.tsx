@@ -1,6 +1,6 @@
 import * as React from "react"
-import { format, startOfWeek, addDays, isSameDay, isSameMonth } from "date-fns"
-import { AppEvent } from "./CalendarPage"
+import { format, startOfWeek, addDays, isSameDay } from "date-fns"
+import type { AppEvent } from "./CalendarPage"
 import { CustomEvent } from "./CustomEvent"
 import { CalendarOff, Calendar as CalendarIcon } from "lucide-react"
 
@@ -56,7 +56,7 @@ export function WeeklyScheduleView({ viewDate, selectedDate, events, isMobile, o
               const isActiveDay = isSameDay(day, selectedDate)
 
               // Filter events for this day
-              const dayEvents = events.filter(e => isSameDay(e.start, day))
+              const dayEvents = events.filter(e => e.start && isSameDay(e.start, day))
 
               // Badges Logic
               const isDay29 = day.getDate() === 29 && day.getMonth() === 5
@@ -110,8 +110,9 @@ export function WeeklyScheduleView({ viewDate, selectedDate, events, isMobile, o
 
                     {/* Absolute Events */}
                     {dayEvents.map(event => {
+                      if (!event.start) return null
                       const startHour = event.start.getHours() + event.start.getMinutes() / 60
-                      let endHour = event.end.getHours() + event.end.getMinutes() / 60
+                      let endHour = event.end ? (event.end.getHours() + event.end.getMinutes() / 60) : startHour + 1
                       if (endHour <= startHour) endHour = startHour + 1 // Fallback to 1 hour duration
 
                       // Clamp to grid
