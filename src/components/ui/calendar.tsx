@@ -12,24 +12,52 @@ import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react"
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
-  captionLayout = "label",
+  captionLayout = "dropdown",
   buttonVariant = "ghost",
   locale,
   formatters,
   components,
+  startMonth = new Date(1960, 0),
+  endMonth = new Date(new Date().getFullYear() + 10, 11),
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
   const defaultClassNames = getDefaultClassNames()
 
+  const selectedDate = (props as any).selected
+  const [currentMonth, setCurrentMonth] = React.useState<Date>(
+    (selectedDate instanceof Date ? selectedDate : null) ||
+      props.defaultMonth ||
+      new Date()
+  )
+
+  React.useEffect(() => {
+    if (selectedDate instanceof Date) {
+      setCurrentMonth(selectedDate)
+    }
+  }, [selectedDate])
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      month={props.month || currentMonth}
+      onMonthChange={(m) => {
+        setCurrentMonth(m)
+        props.onMonthChange?.(m)
+      }}
       className={cn(
         "group/calendar bg-background p-3 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(6)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
@@ -37,6 +65,8 @@ function Calendar({
         className
       )}
       captionLayout={captionLayout}
+      startMonth={startMonth}
+      endMonth={endMonth}
       locale={locale}
       formatters={{
         formatMonthDropdown: (date) =>
@@ -56,12 +86,12 @@ function Calendar({
         ),
         button_previous: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
+          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50 z-10",
           defaultClassNames.button_previous
         ),
         button_next: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
+          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50 z-10",
           defaultClassNames.button_next
         ),
         month_caption: cn(
@@ -69,16 +99,12 @@ function Calendar({
           defaultClassNames.month_caption
         ),
         dropdowns: cn(
-          "flex h-(--cell-size) w-full items-center justify-center gap-1.5 text-sm font-medium",
+          "flex h-(--cell-size) w-full items-center justify-center gap-1.5 text-xs font-medium z-20",
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
-          "relative rounded-(--cell-radius)",
+          "relative flex items-center justify-center",
           defaultClassNames.dropdown_root
-        ),
-        dropdown: cn(
-          "absolute inset-0 bg-popover opacity-0",
-          defaultClassNames.dropdown
         ),
         caption_label: cn(
           "font-medium select-none",
@@ -142,6 +168,40 @@ function Calendar({
               className={cn(className)}
               {...props}
             />
+          )
+        },
+        Dropdown: ({ value, onChange, options }: any) => {
+          const handleValueChange = (newVal: string) => {
+            if (onChange) {
+              const syntheticEvent = {
+                target: { value: newVal }
+              } as React.ChangeEvent<HTMLSelectElement>
+              onChange(syntheticEvent)
+            }
+          }
+
+          return (
+            <Select value={value?.toString()} onValueChange={handleValueChange}>
+              <SelectTrigger size="sm" className="h-7 border-sidebar-border bg-background dark:bg-[#111] dark:text-white dark:border-[#333] text-xs font-medium px-2 py-0 focus:ring-0 focus:ring-offset-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent
+                position="popper"
+                className="w-[95px] overflow-y-auto bg-popover text-popover-foreground border-sidebar-border z-[100] shadow-md rounded-lg p-1"
+                style={{ maxHeight: "160px" }}
+              >
+                {options?.map((option: any) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value.toString()}
+                    disabled={option.disabled}
+                    className="text-xs cursor-pointer hover:bg-accent focus:bg-accent py-1"
+                  >
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )
         },
         Chevron: ({ className, orientation, ...props }) => {

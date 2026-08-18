@@ -1,5 +1,4 @@
-import * as React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -9,7 +8,6 @@ import {
   MoreVertical,
   Activity,
   CheckCircle2,
-  Clock,
   ChevronDown,
   ChevronsLeft,
   ChevronLeft,
@@ -43,38 +41,66 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { RegisterMotherModal } from "./RegisterMotherModal"
 import { ExportMaternalDataModal } from "./ExportMaternalDataModal"
 
-const MOTHERS = [
-  {
-    id: "1",
-    name: "Maria Santos",
-    risk: "High Risk",
-    gestationalAge: "2nd Trimester (24 Weeks)",
-    edd: "June 21, 2026",
-    station: "San Vicente"
-  },
-  {
-    id: "2",
-    name: "Juana Dela Cruz",
-    risk: "Low Risk",
-    gestationalAge: "1st Trimester (10 Weeks)",
-    edd: "September 15, 2026",
-    station: "Bagumbayan Sur"
-  },
-  {
-    id: "3",
-    name: "Ana Reyes",
-    risk: "Moderate",
-    gestationalAge: "3rd Trimester (32 Weeks)",
-    edd: "April 30, 2026",
-    station: "Concepcion Pequeña"
-  }
-]
-
 export function MothersPage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState("all")
-  const [selectedMother, setSelectedMother] = useState<any>(null)
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
+  const [motherList, setMotherList] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchMothers = async () => {
+    setLoading(true)
+    const token = localStorage.getItem("token")
+    const userStr = localStorage.getItem("user")
+    const user = userStr ? JSON.parse(userStr) : null
+    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+
+    let endpoint = "/api/v1/mother/active"
+    if (user?.facility_id) {
+      endpoint = `/api/v1/mother/active/${user.facility_id}`
+    }
+
+    try {
+      const res = await fetch(`${baseUrl}${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      const data = await res.json()
+      if (res.ok && Array.isArray(data.result)) {
+        setMotherList(data.result)
+      }
+    } catch (err) {
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchMothers()
+  }, [])
+
+  const displayedMothers = motherList.map((m: any) => {
+    const name = [m.user?.first_name, m.user?.middle_name, m.user?.last_name].filter(Boolean).join(" ") || "Unknown"
+    const currentPregnancy = m.pregnancies?.[0]
+    const risk = currentPregnancy?.risk_flag || "Low Risk"
+    const gestationalAge = currentPregnancy?.gestational_age_weeks
+      ? `${currentPregnancy.gestational_age_weeks} Weeks`
+      : "N/A"
+    const edd = currentPregnancy?.edd
+      ? new Date(currentPregnancy.edd).toLocaleDateString()
+      : "N/A"
+    const station = m.user?.address || "N/A"
+
+    return {
+      id: m.mother_id || m.user_id,
+      name,
+      risk,
+      gestationalAge,
+      edd,
+      station
+    }
+  })
 
   const getRiskBadge = (risk: string) => {
     switch(risk) {
@@ -152,8 +178,8 @@ export function MothersPage() {
                   Export
                 </Button>
               </ExportMaternalDataModal>
-              <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-foreground dark:text-white dark:hover:text-foreground dark:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
-                <RefreshCw className="h-3.5 w-3.5" />
+              <Button onClick={fetchMothers} variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-foreground dark:text-white dark:hover:text-foreground dark:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
               <Button onClick={() => setRegisterModalOpen(true)} className="w-full md:w-auto h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
@@ -186,33 +212,39 @@ export function MothersPage() {
         <div className="flex flex-col gap-4 p-4 md:pt-0 pl-3 pr-4 pb-24 md:pb-4">
           {/* Mobile List View (Hidden on MD and up) */}
           <div className="flex md:hidden flex-col gap-4">
-            {MOTHERS.map((mother) => (
-              <div 
-                key={mother.id}
-                className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-black gap-4 cursor-pointer hover:border-foreground/20 transition-colors"
-                onClick={() => navigate(`/dashboard/mothers/${mother.id}`)}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-foreground dark:text-white">{mother.name}</h3>
-                  {getRiskBadge(mother.risk)}
-                </div>
-                
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Gestational Age</span>
-                    <span className="text-xs text-foreground dark:text-white font-medium">{mother.gestationalAge}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Estimated Due Date</span>
-                    <span className="text-xs text-foreground dark:text-white font-medium">{mother.edd}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Barangay Health Station</span>
-                    <span className="text-xs text-foreground dark:text-white font-medium">{mother.station}</span>
-                  </div>
-                </div>
+            {displayedMothers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center border border-sidebar-border rounded-xl bg-card dark:bg-black">
+                <p className="text-xs text-muted-foreground">No mothers found</p>
               </div>
-            ))}
+            ) : (
+              displayedMothers.map((mother: any) => (
+                <div 
+                  key={mother.id}
+                  className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-black gap-4 cursor-pointer hover:border-foreground/20 transition-colors"
+                  onClick={() => navigate(`/dashboard/mothers/${mother.id}`)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-foreground dark:text-white">{mother.name}</h3>
+                    {getRiskBadge(mother.risk)}
+                  </div>
+                  
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Gestational Age</span>
+                      <span className="text-xs text-foreground dark:text-white font-medium">{mother.gestationalAge}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Estimated Due Date</span>
+                      <span className="text-xs text-foreground dark:text-white font-medium">{mother.edd}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Barangay Health Station</span>
+                      <span className="text-xs text-foreground dark:text-white font-medium">{mother.station}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Desktop Data Table */}
@@ -233,37 +265,45 @@ export function MothersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {MOTHERS.map((mother) => (
-                    <TableRow 
-                      key={mother.id}
-                      className={`border-sidebar-border cursor-pointer transition-colors group ${selectedMother?.id === mother.id ? 'bg-accent dark:bg-white/10' : 'hover:bg-accent dark:hover:bg-white/5'}`}
-                      onClick={() => navigate(`/dashboard/mothers/${mother.id}`)}
-                    >
-                      <TableCell className="pl-4">
-                        <Checkbox className="border-sidebar-border data-[state=checked]:bg-primary dark:data-[state=checked]:bg-white data-[state=checked]:text-primary-foreground dark:data-[state=checked]:text-black" />
-                      </TableCell>
-                      <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">{mother.name}</TableCell>
-                      <TableCell>{getRiskBadge(mother.risk)}</TableCell>
-                      <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.gestationalAge}</TableCell>
-                      <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.edd}</TableCell>
-                      <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.station}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-foreground dark:text-white group-hover:text-foreground dark:text-foreground dark:text-white" onClick={(e) => e.stopPropagation()}>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
-                            <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-xs cursor-pointer rounded-md">View Profile</DropdownMenuItem>
-                            <DropdownMenuItem className="text-xs cursor-pointer rounded-md">Log Vitals</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                  {displayedMothers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-24 text-center text-xs text-muted-foreground">
+                        No mothers found
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    displayedMothers.map((mother: any) => (
+                      <TableRow 
+                        key={mother.id}
+                        className="border-sidebar-border cursor-pointer transition-colors group hover:bg-accent dark:hover:bg-white/5"
+                        onClick={() => navigate(`/dashboard/mothers/${mother.id}`)}
+                      >
+                        <TableCell className="pl-4">
+                          <Checkbox className="border-sidebar-border data-[state=checked]:bg-primary dark:data-[state=checked]:bg-white data-[state=checked]:text-primary-foreground dark:data-[state=checked]:text-black" />
+                        </TableCell>
+                        <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">{mother.name}</TableCell>
+                        <TableCell>{getRiskBadge(mother.risk)}</TableCell>
+                        <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.gestationalAge}</TableCell>
+                        <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.edd}</TableCell>
+                        <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.station}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-foreground dark:text-white group-hover:text-foreground dark:text-foreground dark:text-white" onClick={(e) => e.stopPropagation()}>
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                              <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-xs cursor-pointer rounded-md">View Profile</DropdownMenuItem>
+                              <DropdownMenuItem className="text-xs cursor-pointer rounded-md">Log Vitals</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -271,7 +311,7 @@ export function MothersPage() {
 
           {/* Desktop Pagination Footer */}
           <div className="hidden md:flex flex-row items-center justify-between text-xs text-muted-foreground gap-4 mt-2">
-            <div>0 of {MOTHERS.length} row(s) selected.</div>
+            <div>0 of {displayedMothers.length} row(s) selected.</div>
             
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
@@ -306,6 +346,7 @@ export function MothersPage() {
       <RegisterMotherModal 
         open={registerModalOpen} 
         onOpenChange={setRegisterModalOpen} 
+        onSuccess={fetchMothers}
       />
     </div>
   )
