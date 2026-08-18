@@ -133,7 +133,7 @@ export function AuthForm() {
           phone_number: phoneNumber,
           address : address,
           email,
-          facilityId : facilityId,
+          facility_id: facilityId,
           password,
           role,
           otp
@@ -377,6 +377,18 @@ export function AuthForm() {
                           className="h-8 text-sm"
                         />
                       </div>
+
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="facilityId">Facility ID (Optional)</Label>
+                        <Input
+                          id="facilityId"
+                          type="text"
+                          placeholder="13f00cdd-xxxx-xxxx"
+                          value={facilityId}
+                          onChange={(e) => setFacilityId(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
                     </>
                   )}
 
@@ -389,19 +401,6 @@ export function AuthForm() {
                       required={isLogin}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="facility">Facility ID</Label>
-                    <Input
-                      id="facility"
-                      type="facility"
-                      placeholder="13f00cdd-xxxx-xxxx"
-                      required={isLogin}
-                      value={facilityId}
-                      onChange={(e) => setFacilityId(e.target.value)}
                       className="h-8 text-sm"
                     />
                   </div>
