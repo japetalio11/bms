@@ -34,25 +34,37 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { clsx } from "clsx"
-import { Input } from "@/components/ui/input"
 import { EditMotherModal } from "./EditMotherModal"
 
-export function MotherProfilePage() {
+import axios from "axios";
+
+export function MotherProfilePage({motherId} : {motherId?: string}) {
   const navigate = useNavigate()
   const { id } = useParams()
+  const targetId = id || motherId
+  const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+
   const [activeTab, setActiveTab] = useState("pregnancy")
   const [motherData, setMotherData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [editModalOpen, setEditModalOpen] = useState(false)
 
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [pregnancy, setPregnancy] = useState<any>(null);
+  const [visitation, setVisitation] = useState<any>(null);
+  const [appointment, setAppointments] = useState<any>(null);
+  const [labRecords, setLabRecords] = useState<any>(null);
+  const [supplements, setSupplements] = useState<any>(null);
+
   const fetchMotherProfile = async () => {
-    if (!id) return
+    if (!targetId) return
     setLoading(true)
     const token = localStorage.getItem("token")
-    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+    
     try {
-      const res = await fetch(`${baseUrl}/api/v1/mother/search/${id}`, {
+      const res = await fetch(`${baseUrl}/api/v1/mother/search/${targetId}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -67,9 +79,118 @@ export function MotherProfilePage() {
     }
   }
 
+  const fetchPregnancy = async () => {
+    if (!targetId) return
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("token")
+      const response = await axios.get(`${baseUrl}/api/v1/pregnancy/mother/${targetId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      setPregnancy(response.data);
+      
+    } catch (err : any) {
+      setError(err.message || "Failed to load pregnancy")
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const fetchVisit = async () => {
+
+    try {
+      setLoading(true);
+
+      const token = localStorage.getItem("token")
+      const response = await axios.get(`${baseUrl}/api/v1/prenatal-visit/mother/${targetId}`, {
+        headers : {
+          Authorization : `Bearer ${token}`
+        }
+      })
+
+      setVisitation(response.data)
+
+    } catch (err : any) {
+      setError(err.message || "Failed to load Visitation")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const fetchAppointments = async () => {
+
+    try {
+      setIsLoading(true);
+
+      const token = localStorage.getItem("token")
+      const response = await axios.get(`${baseUrl}/api/v1/appointment/get/user/${targetId}`, {
+        headers : {
+          Authorization : `Bearer ${token}`
+        }
+      })
+
+      setAppointments(response.data)
+
+    } catch (err : any) {
+      setError(err.message || "Failed to load Appointments")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const fetchLabRecord = async () => {
+
+    try {
+
+      setIsLoading(true)
+      const token = localStorage.getItem("token")
+
+      const response = await axios.get(`${baseUrl}/api/v1/lab-screening/get/mother/${targetId}`, {
+        headers : {
+          Authorization : `Bearer ${token}`
+        }
+      })
+
+      setLabRecords(response.data)
+
+    } catch (err :any) {
+      setError(err.message || "Failed to load Laboratory Records")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const fetchSupplementRecord = async () => {
+    if (!targetId) return
+    try {
+      setIsLoading(true)
+      const token = localStorage.getItem("token")
+
+      const response = await axios.get(`${baseUrl}/api/v1/supplement/get/mother/${targetId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      setSupplements(response.data)
+    } catch (err: any) {
+      setError(err.message || "Failed to load Supplementation Records")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchMotherProfile()
-  }, [id])
+    fetchPregnancy()
+    fetchVisit()
+    fetchAppointments()
+    fetchLabRecord()
+    fetchSupplementRecord()
+  }, [id, motherId])
 
   const name = motherData ? [motherData.user?.first_name, motherData.user?.middle_name, motherData.user?.last_name].filter(Boolean).join(" ") : "Loading..."
   const currentPregnancy = motherData?.pregnancies?.[0]
@@ -79,8 +200,6 @@ export function MotherProfilePage() {
 
   const gestationalWeeks = currentPregnancy?.gestational_age_weeks || 0
   const progressPercent = Math.min(100, Math.max(0, Math.round((gestationalWeeks / 40) * 100)))
-
-  const visits = motherData?.pregnancies?.flatMap((p: any) => p.prenatalVisits || []) || []
 
   const mother = {
     id: motherData?.mother_id || id,
@@ -100,6 +219,16 @@ export function MotherProfilePage() {
     address: motherData?.user?.address || "N/A",
     fsn: motherData?.family_serial_no || "N/A"
   }
+
+  const pregnancyList = (Array.isArray(pregnancy) ? pregnancy : pregnancy?.data || pregnancy?.result) || motherData?.pregnancies || [];
+
+  const visitationList = (Array.isArray(visitation) ? visitation : visitation?.data || visitation?.result || motherData?.prenatalVisits || []);
+
+  const appointmentList = (Array.isArray(appointment) ? appointment : appointment?.data || appointment?.result || motherData?.appointments || []);
+
+  const labRecordList = (Array.isArray(labRecords) ? labRecords : labRecords?.data || labRecords?.result || motherData?.labRecords || []);
+
+  const supplementList = (Array.isArray(supplements) ? supplements : supplements?.data || supplements?.result || motherData?.supplementationRecords || []);
 
   const getRiskBadge = (riskStr: string) => {
     const isHigh = riskStr?.toLowerCase().includes("high")
@@ -318,14 +447,14 @@ export function MotherProfilePage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {!motherData?.pregnancies || motherData.pregnancies.length === 0 ? (
+                        {pregnancyList.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={9} className="h-24 text-center text-xs text-muted-foreground">
                               No pregnancy records found
                             </TableCell>
                           </TableRow>
                         ) : (
-                          motherData.pregnancies.map((p: any, i: number) => (
+                          pregnancyList.map((p: any, i: number) => (
                             <TableRow key={p.pregnancy_id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors">
                               <TableCell className="text-xs font-medium text-foreground dark:text-white pl-4 py-2">
                                 {p.date_of_registration ? new Date(p.date_of_registration).toLocaleDateString() : "N/A"}
@@ -391,14 +520,14 @@ export function MotherProfilePage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {visits.length === 0 ? (
+                        {visitationList.length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={8} className="h-24 text-center text-xs text-muted-foreground">
                               No encounters recorded
                             </TableCell>
                           </TableRow>
                         ) : (
-                          visits.map((visit: any, i: number) => (
+                          visitationList.map((visit: any, i: number) => (
                             <TableRow key={visit.visit_id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors">
                               <TableCell className="text-xs font-medium text-foreground dark:text-white pl-4 py-2">
                                 {visit.visit_date ? new Date(visit.visit_date).toLocaleDateString() : "N/A"}
@@ -436,17 +565,6 @@ export function MotherProfilePage() {
 
             {activeTab === "appointments" && (
               <div className="flex flex-col gap-4 mt-2">
-                <div className="w-full overflow-x-auto shrink-0 pb-2 -mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <Tabs defaultValue="all" className="w-full md:w-max">
-                    <TabsList className="bg-muted dark:bg-[#1e1e1e] border-none h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
-                      <TabsTrigger value="all" className={tabTriggerClass}>All Appointments</TabsTrigger>
-                      <TabsTrigger value="completed" className={tabTriggerClass}>Completed</TabsTrigger>
-                      <TabsTrigger value="scheduled" className={tabTriggerClass}>Scheduled</TabsTrigger>
-                      <TabsTrigger value="cancelled" className={tabTriggerClass}>Cancelled</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                
                 {/* Control Bar */}
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
@@ -485,19 +603,41 @@ export function MotherProfilePage() {
                     <Table>
                       <TableHeader className="bg-card dark:bg-[#111]">
                         <TableRow className="border-sidebar-border hover:bg-transparent">
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white pl-4">Date & Time</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white">Risk Flag</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white">Appointment Status</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white">Type</TableHead>
-                          <TableHead className="w-12"></TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white pl-4 py-2 h-9">Date & Time</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Type</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Reason</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Status</TableHead>
+                          <TableHead className="w-12 py-2 h-9"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        <TableRow>
-                          <TableCell colSpan={5} className="h-24 text-center text-xs text-muted-foreground">
-                            No appointments recorded
-                          </TableCell>
-                        </TableRow>
+                        {appointmentList.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center text-xs text-muted-foreground">
+                              No appointments recorded
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          appointmentList.map((p : any, i : number) => (
+                            <TableRow key={p.appointment_id || p._id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors">
+                              <TableCell className="pl-4 text-xs font-medium text-foreground dark:text-white py-2">
+                                {p.appointment_date ? `${new Date(p.appointment_date).toLocaleDateString()} ${p.appointment_time || ""}` : (p.appointmentDateTime ? new Date(p.appointmentDateTime).toLocaleString() : "N/A")}
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground dark:text-white py-2">{p.appointment_type || p.type || "Prenatal Visit"}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground py-2">{p.reason || "N/A"}</TableCell>
+                              <TableCell className="text-xs py-2">
+                                <Badge className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none bg-blue-500/10 text-blue-500 capitalize">
+                                  {p.status || p.appointmentStatus || "Scheduled"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="py-2 text-right">
+                                <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
+                                  View
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -507,17 +647,6 @@ export function MotherProfilePage() {
 
             {activeTab === "laboratory" && (
               <div className="flex flex-col gap-4 mt-2">
-                <div className="w-full overflow-x-auto shrink-0 pb-2 -mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <Tabs defaultValue="all" className="w-full md:w-max">
-                    <TabsList className="bg-muted dark:bg-[#1e1e1e] border-none h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
-                      <TabsTrigger value="all" className={tabTriggerClass}>All Records</TabsTrigger>
-                      <TabsTrigger value="incomplete" className={tabTriggerClass}>Incomplete</TabsTrigger>
-                      <TabsTrigger value="pending" className={tabTriggerClass}>Pending Review</TabsTrigger>
-                      <TabsTrigger value="missing" className={tabTriggerClass}>Missing</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                
                 {/* Control Bar */}
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
@@ -547,25 +676,43 @@ export function MotherProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center justify-center p-8 text-center border border-sidebar-border rounded-xl bg-card dark:bg-[#111]">
-                  <p className="text-xs text-muted-foreground">No laboratory records found</p>
-                </div>
+              {labRecordList.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-8 text-center border border-sidebar-border rounded-xl bg-card dark:bg-[#111]">
+                    <p className="text-xs text-muted-foreground">No laboratory records found</p>
+                  </div>
+              ) : (
+                  <div className="rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-[#0a0a0a]">
+                    <Table>
+                      <TableHeader className="bg-card dark:bg-[#111]">
+                        <TableRow className="border-sidebar-border hover:bg-transparent">
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white pl-4 py-2 h-9">Date of Screening</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Screening Type</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Result</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Remarks</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Sync Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {labRecordList.map((lab: any, i: number) => (
+                          <TableRow key={lab.screening_id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors">
+                            <TableCell className="text-xs font-medium text-foreground dark:text-white pl-4 py-2">
+                              {lab.date_of_screening ? new Date(lab.date_of_screening).toLocaleDateString() : "N/A"}
+                            </TableCell>
+                            <TableCell className="text-xs text-foreground dark:text-white py-2 font-semibold">{lab.screening_type || "N/A"}</TableCell>
+                            <TableCell className="text-xs text-foreground dark:text-white py-2">{lab.result || "N/A"}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground py-2">{lab.remarks || "None"}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground py-2 capitalize">{lab.sync_status || "synced"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+              )}
               </div>
             )}
 
             {activeTab === "prescriptions" && (
               <div className="flex flex-col gap-4 mt-2">
-                <div className="w-full overflow-x-auto shrink-0 pb-2 -mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <Tabs defaultValue="all" className="w-full md:w-max">
-                    <TabsList className="bg-muted dark:bg-[#1e1e1e] border-none h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
-                      <TabsTrigger value="all" className={tabTriggerClass}>All Prescriptions</TabsTrigger>
-                      <TabsTrigger value="active" className={tabTriggerClass}>Active</TabsTrigger>
-                      <TabsTrigger value="discontinued" className={tabTriggerClass}>Discontinued</TabsTrigger>
-                      <TabsTrigger value="supplements" className={tabTriggerClass}>Supplements</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                
                 {/* Control Bar */}
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
@@ -604,21 +751,37 @@ export function MotherProfilePage() {
                     <Table>
                       <TableHeader className="bg-card dark:bg-[#111]">
                         <TableRow className="border-sidebar-border hover:bg-transparent">
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white pl-4">Prescription Name</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white">Status</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white">Type</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white">Frequency</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white">Dosage</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white">Start Date</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white">Prescribed By</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white pl-4 py-2 h-9">Date Given</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Supplement Type</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Tablets Given</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Status</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Sync Status</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        <TableRow>
-                          <TableCell colSpan={7} className="h-24 text-center text-xs text-muted-foreground">
-                            No prescriptions recorded
-                          </TableCell>
-                        </TableRow>
+                        {supplementList.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center text-xs text-muted-foreground">
+                              No supplementation / medication records found
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          supplementList.map((sup: any, i: number) => (
+                            <TableRow key={sup.supplement_id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors">
+                              <TableCell className="text-xs font-medium text-foreground dark:text-white pl-4 py-2">
+                                {sup.date_given ? new Date(sup.date_given).toLocaleDateString() : "N/A"}
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground dark:text-white py-2 font-semibold">{sup.supplement_type || "N/A"}</TableCell>
+                              <TableCell className="text-xs text-foreground dark:text-white py-2">{sup.tablets_given_count ?? "N/A"} tabs</TableCell>
+                              <TableCell className="py-2">
+                                <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${sup.is_completed ? "bg-green-500/10 text-green-500" : "bg-yellow-500/10 text-yellow-500"}`}>
+                                  {sup.is_completed ? "Completed" : "In Progress"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground py-2 capitalize">{sup.sync_status || "synced"}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </div>
@@ -628,17 +791,6 @@ export function MotherProfilePage() {
 
             {activeTab === "allergies" && (
               <div className="flex flex-col gap-4 mt-2">
-                <div className="w-full overflow-x-auto shrink-0 pb-2 -mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <Tabs defaultValue="all" className="w-full md:w-max">
-                    <TabsList className="bg-muted dark:bg-[#1e1e1e] border-none h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
-                      <TabsTrigger value="all" className={tabTriggerClass}>All Allergies</TabsTrigger>
-                      <TabsTrigger value="severe" className={tabTriggerClass}>Severe</TabsTrigger>
-                      <TabsTrigger value="moderate" className={tabTriggerClass}>Moderate</TabsTrigger>
-                      <TabsTrigger value="mild" className={tabTriggerClass}>Mild</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                
                 {/* Control Bar */}
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
