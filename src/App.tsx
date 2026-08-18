@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { ThemeProvider } from "@/components/theme-provider"
-import { AuthForm } from "@/features/auth/components/AuthForm"
+import { AuthForm } from "@/components/auth-form"
 import { DashboardLayout } from "@/features/dashboard/components/DashboardLayout"
 import { DashboardPage } from "@/features/dashboard/components/DashboardPage"
 import { AppointmentListPage } from "@/features/appointments/components/AppointmentListPage"
@@ -19,8 +19,12 @@ export function App() {
     <ThemeProvider>
       <BrowserRouter>
         <Routes>
-          {/* Auth Route */}
+          {/* Auth Routes */}
           <Route path="/" element={<AuthForm />} />
+          <Route path="/login" element={<AuthForm />} />
+          <Route path="/register" element={<AuthForm />} />
+          <Route path="/sign-in" element={<AuthForm />} />
+          <Route path="/sign-up" element={<AuthForm />} />
           
           {/* Dashboard Routes */}
           <Route path="/dashboard" element={<DashboardLayout />}>
