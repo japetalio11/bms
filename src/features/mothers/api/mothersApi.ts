@@ -1,23 +1,24 @@
 import { apiClient } from "@/lib/apiClient"
 
 export const mothersApi = {
-  // --- Mother Profiles & Lists ---
+
   async getActiveMothers(facilityId?: string) {
+
     try {
       let endpoint = "/api/v1/mother/active"
+
       if (facilityId) {
         endpoint = `/api/v1/mother/active/${facilityId}`
       }
       const response = await apiClient.get(endpoint)
       const data = response.data
+      
       if (Array.isArray(data?.result) && data.result.length > 0) {
         return data.result
       }
     } catch (err) {
-      // Fallback below
     }
 
-    // Fallback to /all endpoint if /active returned empty or failed
     const fallbackRes = await apiClient.get("/api/v1/mother/all")
     return fallbackRes.data?.result || []
   },
@@ -29,7 +30,6 @@ export const mothersApi = {
         return response.data.result
       }
     } catch (err) {
-      // Fallback below
     }
 
     const fallbackRes = await apiClient.get(`/api/v1/mother/get/${targetId}`)
@@ -68,7 +68,6 @@ export const mothersApi = {
     return photoUrl
   },
 
-  // --- Pregnancy Records ---
   async getPregnancies(motherId: string) {
     const response = await apiClient.get(`/api/v1/pregnancy/mother/${motherId}`)
     return response.data
@@ -79,7 +78,6 @@ export const mothersApi = {
     return response.data
   },
 
-  // --- Prenatal Visits / Vitals ---
   async getPrenatalVisits(motherId: string) {
     const response = await apiClient.get(`/api/v1/prenatal-visit/mother/${motherId}`)
     return response.data
@@ -90,7 +88,6 @@ export const mothersApi = {
     return response.data
   },
 
-  // --- Appointments ---
   async getAppointmentsByUser(userId: string) {
     const response = await apiClient.get(`/api/v1/appointment/get/user/${userId}`)
     return response.data
@@ -101,7 +98,6 @@ export const mothersApi = {
     return response.data
   },
 
-  // --- Laboratory / Screenings ---
   async getLabRecords(motherId: string) {
     const response = await apiClient.get(`/api/v1/lab-screening/get/mother/${motherId}`)
     return response.data
@@ -121,7 +117,6 @@ export const mothersApi = {
     return response.data
   },
 
-  // --- Supplements ---
   async getSupplements(motherId: string) {
     const response = await apiClient.get(`/api/v1/supplement/get/mother/${motherId}`)
     return response.data
@@ -132,7 +127,6 @@ export const mothersApi = {
     return response.data
   },
 
-  // --- Generic Delete & Update Records ---
   async updateRecord(url: string, payload: any) {
     const response = await apiClient.put(url, payload)
     return response.data
