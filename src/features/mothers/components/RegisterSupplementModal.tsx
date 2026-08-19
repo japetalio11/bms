@@ -15,7 +15,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
-import axios from "axios"
+import { mothersApi } from "../api"
 
 export interface RegisterSupplementModalProps {
   open: boolean
@@ -88,16 +88,9 @@ export function RegisterSupplementModal({
         date_given: dateGiven.toISOString(),
       }
 
-      const response = await axios.post(`${baseUrl}/api/v1/supplement/register`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.status === 200 || response.status === 201) {
-        onSuccess?.()
-        onOpenChange(false)
-      }
+      await mothersApi.registerSupplement(payload)
+      onSuccess?.()
+      onOpenChange(false)
     } catch (err: any) {
       const errMsg = err.response?.data?.error || err.message || "Failed to log prescription/supplement record"
       setError(errMsg)

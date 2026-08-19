@@ -16,7 +16,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
-import axios from "axios"
+import { mothersApi } from "../api"
 
 export interface RegisterAppointmentModalProps {
   open: boolean
@@ -72,16 +72,9 @@ export function RegisterAppointmentModal({
         reason: reason || undefined,
       }
 
-      const response = await axios.post(`${baseUrl}/api/v1/appointment/register`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.status === 200 || response.status === 201) {
-        onSuccess?.()
-        onOpenChange(false)
-      }
+      await mothersApi.registerAppointment(payload)
+      onSuccess?.()
+      onOpenChange(false)
     } catch (err: any) {
       const errMsg = err.response?.data?.error || err.message || "Failed to schedule appointment"
       setError(errMsg)

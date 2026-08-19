@@ -28,8 +28,8 @@ import {
   Edit,
   ExternalLink,
 } from "lucide-react"
-import axios from "axios"
 import { EditRecordModal } from "./EditRecordModal"
+import { mothersApi } from "../api"
 
 export interface DetailSideSheetProps {
   open: boolean
@@ -59,27 +59,22 @@ export function DetailSideSheet({
     }
 
     setDeleting(true)
-    const token = localStorage.getItem("token")
-    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
-
-    let url = ""
+    let endpoint = ""
     if (type === "pregnancy") {
-      url = `${baseUrl}/api/v1/pregnancy/delete/${data.pregnancy_id}`
+      endpoint = `/api/v1/pregnancy/delete/${data.pregnancy_id}`
     } else if (type === "visitation") {
-      url = `${baseUrl}/api/v1/prenatal-visit/delete/${data.visit_id}`
+      endpoint = `/api/v1/prenatal-visit/delete/${data.visit_id}`
     } else if (type === "appointment") {
-      url = `${baseUrl}/api/v1/appointment/delete/${data.appointment_id || data._id}`
+      endpoint = `/api/v1/appointment/delete/${data.appointment_id || data._id}`
     } else if (type === "laboratory") {
-      url = `${baseUrl}/api/v1/lab-screening/delete/${data.screening_id}`
+      endpoint = `/api/v1/lab-screening/delete/${data.screening_id}`
     } else if (type === "prescription") {
-      url = `${baseUrl}/api/v1/supplement/delete/${data.supplement_id}`
+      endpoint = `/api/v1/supplement/delete/${data.supplement_id}`
     }
 
     try {
-      if (url) {
-        await axios.delete(url, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+      if (endpoint) {
+        await mothersApi.deleteRecord(endpoint)
       }
       onSuccess?.()
       onOpenChange(false)

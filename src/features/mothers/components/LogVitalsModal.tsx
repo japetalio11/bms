@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import axios from "axios"
+import { mothersApi } from "../api"
 
 export interface LogVitalsModalProps {
   open: boolean
@@ -134,16 +134,9 @@ export function LogVitalsModal({
         risk_level_assessed: riskLevel
       }
 
-      const response = await axios.post(`${baseUrl}/api/v1/prenatal-visit/register`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
-
-      if (response.status === 200 || response.status === 201) {
-        onSuccess?.()
-        onOpenChange(false)
-      }
+      await mothersApi.registerPrenatalVisit(payload)
+      onSuccess?.()
+      onOpenChange(false)
     } catch (err: any) {
       const errMsg = err.response?.data?.error || err.response?.data?.details?.[0] || err.message || "Failed to log vitals"
       setError(errMsg)

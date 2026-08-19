@@ -47,13 +47,12 @@ import { DetailSideSheet } from "./DetailSideSheet"
 import { formatDate } from "@/lib/utils"
 
 import { UploadAvatarModal } from "./UploadAvatarModal"
-import axios from "axios";
+import { mothersApi } from "../api"
 
 export function MotherProfilePage({motherId} : {motherId?: string}) {
   const navigate = useNavigate()
   const { id } = useParams()
   const targetId = id || motherId
-  const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
   const [activeTab, setActiveTab] = useState("pregnancy")
   const [motherData, setMotherData] = useState<any>(null)
@@ -89,29 +88,13 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
   const fetchMotherProfile = async () => {
     if (!targetId) return
     setLoading(true)
-    const token = localStorage.getItem("token")
-    
     try {
-      let res = await fetch(`${baseUrl}/api/v1/mother/search/${targetId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      let data = await res.json()
-
-      // Fallback to get/ endpoint if search/ returns 404
-      if (!res.ok || !data.result) {
-        res = await fetch(`${baseUrl}/api/v1/mother/get/${targetId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        data = await res.json()
-      }
-
-      if (res.ok && data.result) {
-        setMotherData(data.result)
-        const uId = data.result.user_id || data.result.user?.user_id
+      const data = await mothersApi.getMotherProfile(targetId)
+      if (data) {
+        setMotherData(data)
+        const uId = data.user_id || data.user?.user_id
         if (uId) {
-          axios.get(`${baseUrl}/api/v1/appointment/get/user/${uId}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          }).then(r => setAppointments(r.data)).catch(() => {})
+          mothersApi.getAppointmentsByUser(uId).then(r => setAppointments(r)).catch(() => {})
         }
       }
     } catch (err) {
@@ -123,38 +106,23 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
   const fetchPregnancy = async () => {
     if (!targetId) return
     try {
-      setIsLoading(true);
-      const token = localStorage.getItem("token")
-      const response = await axios.get(`${baseUrl}/api/v1/pregnancy/mother/${targetId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
-
-      setPregnancy(response.data);
-      
-    } catch (err : any) {
+      setIsLoading(true)
+      const data = await mothersApi.getPregnancies(targetId)
+      setPregnancy(data)
+    } catch (err: any) {
       setError(err.message || "Failed to load pregnancy")
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
   }
 
   const fetchVisit = async () => {
-
+    if (!targetId) return
     try {
-      setLoading(true);
-
-      const token = localStorage.getItem("token")
-      const response = await axios.get(`${baseUrl}/api/v1/prenatal-visit/mother/${targetId}`, {
-        headers : {
-          Authorization : `Bearer ${token}`
-        }
-      })
-
-      setVisitation(response.data)
-
-    } catch (err : any) {
+      setLoading(true)
+      const data = await mothersApi.getPrenatalVisits(targetId)
+      setVisitation(data)
+    } catch (err: any) {
       setError(err.message || "Failed to load Visitation")
     } finally {
       setIsLoading(false)
@@ -165,18 +133,10 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
     const userTargetId = motherData?.user_id || motherData?.user?.user_id || targetId
     if (!userTargetId) return
     try {
-      setIsLoading(true);
-
-      const token = localStorage.getItem("token")
-      const response = await axios.get(`${baseUrl}/api/v1/appointment/get/user/${userTargetId}`, {
-        headers : {
-          Authorization : `Bearer ${token}`
-        }
-      })
-
-      setAppointments(response.data)
-
-    } catch (err : any) {
+      setIsLoading(true)
+      const data = await mothersApi.getAppointmentsByUser(userTargetId)
+      setAppointments(data)
+    } catch (err: any) {
       setError(err.message || "Failed to load Appointments")
     } finally {
       setIsLoading(false)
@@ -184,21 +144,12 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
   }
 
   const fetchLabRecord = async () => {
-
+    if (!targetId) return
     try {
-
       setIsLoading(true)
-      const token = localStorage.getItem("token")
-
-      const response = await axios.get(`${baseUrl}/api/v1/lab-screening/get/mother/${targetId}`, {
-        headers : {
-          Authorization : `Bearer ${token}`
-        }
-      })
-
-      setLabRecords(response.data)
-
-    } catch (err :any) {
+      const data = await mothersApi.getLabRecords(targetId)
+      setLabRecords(data)
+    } catch (err: any) {
       setError(err.message || "Failed to load Laboratory Records")
     } finally {
       setIsLoading(false)
@@ -209,15 +160,8 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
     if (!targetId) return
     try {
       setIsLoading(true)
-      const token = localStorage.getItem("token")
-
-      const response = await axios.get(`${baseUrl}/api/v1/supplement/get/mother/${targetId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      })
-
-      setSupplements(response.data)
+      const data = await mothersApi.getSupplements(targetId)
+      setSupplements(data)
     } catch (err: any) {
       setError(err.message || "Failed to load Supplementation Records")
     } finally {

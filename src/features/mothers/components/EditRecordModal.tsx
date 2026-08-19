@@ -16,7 +16,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon, Upload, Check, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
-import axios from "axios"
+import { mothersApi } from "../api"
 
 export interface EditRecordModalProps {
   open: boolean
@@ -45,21 +45,11 @@ export function EditRecordModal({
 
     setUploading(true)
     setError(null)
-    const token = localStorage.getItem("token")
-    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
-
-    const payload = new FormData()
-    payload.append("file", file)
 
     try {
-      const res = await axios.post(`${baseUrl}/api/v1/lab-screening/upload`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      })
-      if (res.data?.file_url) {
-        handleChange("file_url", res.data.file_url)
+      const res = await mothersApi.uploadLabFile(file)
+      if (res?.file_url) {
+        handleChange("file_url", res.file_url)
       }
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || "Failed to upload file")
@@ -92,48 +82,44 @@ export function EditRecordModal({
     setFormData((prev: any) => ({ ...prev, [field]: val }))
   }
 
-  const handleSubmit = async () => {
-    setError(null)
+  const handleSave = async () => {
     setLoading(true)
-    const token = localStorage.getItem("token")
-    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+    setError(null)
 
-    let url = ""
-    let payload = { ...formData }
+    let endpoint = ""
+    let payload: any = { ...formData }
 
     if (type === "pregnancy") {
-      url = `${baseUrl}/api/v1/pregnancy/update/${data.pregnancy_id}`
+      endpoint = `/api/v1/pregnancy/update/${data.pregnancy_id}`
       if (dateVal) payload.lmp_date = dateVal.toISOString()
       if (payload.gravida) payload.gravida = Number(payload.gravida)
       if (payload.parity) payload.parity = Number(payload.parity)
     } else if (type === "visitation") {
-      url = `${baseUrl}/api/v1/prenatal-visit/update/${data.visit_id}`
+      endpoint = `/api/v1/prenatal-visit/update/${data.visit_id}`
       if (dateVal) payload.visit_date = dateVal.toISOString()
+      if (payload.pulse_rate_bpm) payload.pulse_rate_bpm = Number(payload.pulse_rate_bpm)
       if (payload.bp_systolic) payload.bp_systolic = Number(payload.bp_systolic)
       if (payload.bp_diastolic) payload.bp_diastolic = Number(payload.bp_diastolic)
-      if (payload.pulse_rate_bpm) payload.pulse_rate_bpm = Number(payload.pulse_rate_bpm)
       if (payload.weight_kg) payload.weight_kg = Number(payload.weight_kg)
       if (payload.temperature_celsius) payload.temperature_celsius = Number(payload.temperature_celsius)
       if (payload.fundic_height_cm) payload.fundic_height_cm = Number(payload.fundic_height_cm)
       if (payload.fetal_heart_tone_bpm) payload.fetal_heart_tone_bpm = Number(payload.fetal_heart_tone_bpm)
     } else if (type === "appointment") {
-      url = `${baseUrl}/api/v1/appointment/update/${data.appointment_id || data._id}`
+      endpoint = `/api/v1/appointment/update/${data.appointment_id || data._id}`
       if (dateVal) payload.appointment_date = dateVal.toISOString()
     } else if (type === "laboratory") {
-      url = `${baseUrl}/api/v1/lab-screening/update/${data.screening_id}`
+      endpoint = `/api/v1/lab-screening/update/${data.screening_id}`
       if (dateVal) payload.date_of_screening = dateVal.toISOString()
     } else if (type === "prescription") {
-      url = `${baseUrl}/api/v1/supplement/update`
+      endpoint = `/api/v1/supplement/update`
       payload.supplement_id = data.supplement_id
       if (dateVal) payload.date_given = dateVal.toISOString()
       if (payload.tablets_given_count) payload.tablets_given_count = Number(payload.tablets_given_count)
     }
 
     try {
-      if (url) {
-        await axios.put(url, payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+      if (endpoint) {
+        await mothersApi.updateRecord(endpoint, payload)
       }
       onSuccess?.()
       onOpenChange(false)
@@ -470,7 +456,7 @@ export function EditRecordModal({
             Cancel
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={handleSave}
             disabled={loading}
             className="h-8 text-xs bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 font-medium"
           >

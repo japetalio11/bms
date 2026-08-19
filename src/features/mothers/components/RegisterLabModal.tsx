@@ -16,7 +16,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon, Upload, Check, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
-import axios from "axios"
+import { mothersApi } from "../api"
 
 export interface RegisterLabModalProps {
   open: boolean
@@ -58,14 +58,9 @@ export function RegisterLabModal({
     formData.append("file", file)
 
     try {
-      const res = await axios.post(`${baseUrl}/api/v1/lab-screening/upload`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      })
-      if (res.data?.file_url) {
-        setFileUrl(res.data.file_url)
+      const res = await mothersApi.uploadLabFile(file)
+      if (res?.file_url) {
+        setFileUrl(res.file_url)
       }
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || "Failed to upload file")
@@ -109,8 +104,6 @@ export function RegisterLabModal({
     }
 
     setLoading(true)
-    const token = localStorage.getItem("token")
-    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
       const payload = {
@@ -123,16 +116,9 @@ export function RegisterLabModal({
         remarks: remarks || undefined,
       }
 
-      const response = await axios.post(`${baseUrl}/api/v1/lab-screening/register`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.status === 200 || response.status === 201) {
-        onSuccess?.()
-        onOpenChange(false)
-      }
+      await mothersApi.registerLabRecord(payload)
+      onSuccess?.()
+      onOpenChange(false)
     } catch (err: any) {
       const errMsg = err.response?.data?.error || err.message || "Failed to log lab screening"
       setError(errMsg)

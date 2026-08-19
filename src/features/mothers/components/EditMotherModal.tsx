@@ -17,6 +17,8 @@ import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 
+import { mothersApi } from "../api"
+
 export function EditMotherModal({
   open,
   onOpenChange,
@@ -67,40 +69,26 @@ export function EditMotherModal({
     setLoading(true)
     setError(null)
 
-    const token = localStorage.getItem("token")
-    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
     const motherId = motherData?.mother_id || motherData?.user_id
 
     try {
-      const response = await fetch(`${baseUrl}/api/v1/mother/update/${motherId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName,
-          middle_name: middleName,
-          address,
-          phone_number: phone,
-          email,
-          birth_date: dob.toISOString(),
-          civil_status: civilStatus,
-          blood_type: bloodType,
-          family_serial_no: familySerialNo
-        })
+      await mothersApi.updateMother(motherId, {
+        first_name: firstName,
+        last_name: lastName,
+        middle_name: middleName,
+        address,
+        phone_number: phone,
+        email,
+        birth_date: dob.toISOString(),
+        civil_status: civilStatus,
+        blood_type: bloodType,
+        family_serial_no: familySerialNo,
       })
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to update mother profile")
-      }
 
       onSuccess?.()
       onOpenChange?.(false)
     } catch (err: any) {
-      setError(err.message)
+      setError(err.response?.data?.error || err.message || "Failed to update mother profile")
     } finally {
       setLoading(false)
     }

@@ -3,7 +3,7 @@ import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Upload, Check, Loader2 } from "lucide-react"
-import axios from "axios"
+import { mothersApi } from "../api"
 
 export interface UploadAvatarModalProps {
   open: boolean
@@ -46,26 +46,13 @@ export function UploadAvatarModal({
 
     setUploading(true)
     setError(null)
-    const token = localStorage.getItem("token")
-    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
-
-    const formData = new FormData()
-    formData.append("file", selectedFile)
 
     try {
-      const uploadRes = await axios.post(`${baseUrl}/api/v1/lab-screening/upload`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      })
+      const uploadRes = await mothersApi.uploadLabFile(selectedFile)
+      const fileUrl = uploadRes?.file_url || uploadRes?.url
 
-      if (uploadRes.data?.file_url) {
-        await axios.put(
-          `${baseUrl}/api/v1/mother/update/${motherData.mother_id}`,
-          { profile_url: uploadRes.data.file_url },
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
+      if (fileUrl) {
+        await mothersApi.updateMother(motherData.mother_id, { profile_url: fileUrl })
         setSuccess(true)
         setTimeout(() => {
           onSuccess?.()

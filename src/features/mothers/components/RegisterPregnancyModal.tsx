@@ -16,7 +16,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
-import axios from "axios"
+import { mothersApi } from "../api"
 
 export interface RegisterPregnancyModalProps {
   open: boolean
@@ -77,16 +77,9 @@ export function RegisterPregnancyModal({
         pregnancy_status: pregnancyStatus,
       }
 
-      const response = await axios.post(`${baseUrl}/api/v1/pregnancy/register`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.status === 200 || response.status === 201) {
-        onSuccess?.()
-        onOpenChange(false)
-      }
+      await mothersApi.registerPregnancy(payload)
+      onSuccess?.()
+      onOpenChange(false)
     } catch (err: any) {
       const errMsg = err.response?.data?.error || err.message || "Failed to register pregnancy"
       setError(errMsg)

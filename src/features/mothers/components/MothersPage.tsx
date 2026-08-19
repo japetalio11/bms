@@ -42,6 +42,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { RegisterMotherModal } from "./RegisterMotherModal"
 import { ExportMaternalDataModal } from "./ExportMaternalDataModal"
 import { formatDate } from "@/lib/utils"
+import { mothersApi } from "../api"
 
 export function MothersPage() {
   const navigate = useNavigate()
@@ -55,34 +56,14 @@ export function MothersPage() {
 
   const fetchMothers = async () => {
     setLoading(true)
-    const token = localStorage.getItem("token")
     const userStr = localStorage.getItem("user")
     const user = userStr ? JSON.parse(userStr) : null
-    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
-      let endpoint = "/api/v1/mother/active"
-      if (user?.facility_id) {
-        endpoint = `/api/v1/mother/active/${user.facility_id}`
-      }
-
-      let res = await fetch(`${baseUrl}${endpoint}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      let data = await res.json()
-
-      // If active endpoint returns empty or fails, fallback to /api/v1/mother/all
-      if (!res.ok || !Array.isArray(data.result) || data.result.length === 0) {
-        res = await fetch(`${baseUrl}/api/v1/mother/all`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        data = await res.json()
-      }
-
-      if (res.ok && Array.isArray(data.result)) {
-        setMotherList(data.result)
-      }
+      const mothers = await mothersApi.getActiveMothers(user?.facility_id)
+      setMotherList(mothers)
     } catch (err) {
+      setMotherList([])
     } finally {
       setLoading(false)
     }
