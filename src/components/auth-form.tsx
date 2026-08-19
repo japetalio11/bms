@@ -84,7 +84,6 @@ export function AuthForm() {
         throw new Error(data.error || "Failed to send OTP")
       }
 
-      setOtpSent(true)
       setTimer(60)
       setOtpMessage(`Verification code sent to ${identifier}`)
       return true

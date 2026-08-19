@@ -180,7 +180,7 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <Drawer open={openMobile} onOpenChange={setOpenMobile} {...props}>
+      <Drawer open={openMobile} onOpenChange={setOpenMobile} {...(props as any)}>
         <DrawerContent
           dir={dir}
           data-sidebar="sidebar"

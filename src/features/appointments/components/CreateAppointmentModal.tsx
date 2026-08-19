@@ -85,7 +85,6 @@ export function CreateAppointmentModal({
                   mode="single"
                   selected={startDate}
                   onSelect={setStartDate}
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>

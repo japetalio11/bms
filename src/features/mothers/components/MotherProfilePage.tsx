@@ -13,12 +13,14 @@ import {
   MapPin,
   Hash,
   User,
-  Baby
+  Baby,
+  Search,
+  Pencil,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -36,7 +38,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { EditMotherModal } from "./EditMotherModal"
+import { LogVitalsModal } from "./LogVitalsModal"
+import { RegisterPregnancyModal } from "./RegisterPregnancyModal"
+import { RegisterAppointmentModal } from "./RegisterAppointmentModal"
+import { RegisterLabModal } from "./RegisterLabModal"
+import { RegisterSupplementModal } from "./RegisterSupplementModal"
+import { DetailSideSheet } from "./DetailSideSheet"
+import { formatDate } from "@/lib/utils"
 
+import { UploadAvatarModal } from "./UploadAvatarModal"
 import axios from "axios";
 
 export function MotherProfilePage({motherId} : {motherId?: string}) {
@@ -49,6 +59,23 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
   const [motherData, setMotherData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false)
+  const [logVitalsModalOpen, setLogVitalsModalOpen] = useState(false)
+  const [registerPregnancyModalOpen, setRegisterPregnancyModalOpen] = useState(false)
+  const [appointmentModalOpen, setAppointmentModalOpen] = useState(false)
+  const [labModalOpen, setLabModalOpen] = useState(false)
+  const [supplementModalOpen, setSupplementModalOpen] = useState(false)
+
+  // Side sheet state
+  const [sideSheetOpen, setSideSheetOpen] = useState(false)
+  const [sideSheetType, setSideSheetType] = useState<"pregnancy" | "visitation" | "appointment" | "laboratory" | "prescription" | null>(null)
+  const [selectedRecord, setSelectedRecord] = useState<any>(null)
+
+  const openSideSheet = (type: "pregnancy" | "visitation" | "appointment" | "laboratory" | "prescription", record: any) => {
+    setSideSheetType(type)
+    setSelectedRecord(record)
+    setSideSheetOpen(true)
+  }
 
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,14 +92,27 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
     const token = localStorage.getItem("token")
     
     try {
-      const res = await fetch(`${baseUrl}/api/v1/mother/search/${targetId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+      let res = await fetch(`${baseUrl}/api/v1/mother/search/${targetId}`, {
+        headers: { Authorization: `Bearer ${token}` }
       })
-      const data = await res.json()
+      let data = await res.json()
+
+      // Fallback to get/ endpoint if search/ returns 404
+      if (!res.ok || !data.result) {
+        res = await fetch(`${baseUrl}/api/v1/mother/get/${targetId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        data = await res.json()
+      }
+
       if (res.ok && data.result) {
         setMotherData(data.result)
+        const uId = data.result.user_id || data.result.user?.user_id
+        if (uId) {
+          axios.get(`${baseUrl}/api/v1/appointment/get/user/${uId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }).then(r => setAppointments(r.data)).catch(() => {})
+        }
       }
     } catch (err) {
     } finally {
@@ -122,12 +162,13 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
   }
 
   const fetchAppointments = async () => {
-
+    const userTargetId = motherData?.user_id || motherData?.user?.user_id || targetId
+    if (!userTargetId) return
     try {
       setIsLoading(true);
 
       const token = localStorage.getItem("token")
-      const response = await axios.get(`${baseUrl}/api/v1/appointment/get/user/${targetId}`, {
+      const response = await axios.get(`${baseUrl}/api/v1/appointment/get/user/${userTargetId}`, {
         headers : {
           Authorization : `Bearer ${token}`
         }
@@ -193,57 +234,96 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
     fetchSupplementRecord()
   }, [id, motherId])
 
+  const calculateEDD = (lmpDateStr?: string | Date) => {
+    if (!lmpDateStr) return "N/A"
+    const lmp = new Date(lmpDateStr)
+    if (isNaN(lmp.getTime())) return "N/A"
+    const edd = new Date(lmp.getTime() + 280 * 24 * 60 * 60 * 1000)
+    return formatDate(edd)
+  }
+
+  const calculateGAWeeks = (lmpDateStr?: string | Date) => {
+    if (!lmpDateStr) return 0
+    const lmp = new Date(lmpDateStr)
+    if (isNaN(lmp.getTime())) return 0
+    const diffTime = new Date().getTime() - lmp.getTime()
+    const weeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000))
+    return Math.max(0, weeks)
+  }
+
+  const getTrimesterFromGA = (weeks: number) => {
+    if (weeks === 0) return "N/A"
+    if (weeks <= 12) return "1st Trimester"
+    if (weeks <= 27) return "2nd Trimester"
+    return "3rd Trimester"
+  }
+
   const name = motherData ? [motherData.user?.first_name, motherData.user?.middle_name, motherData.user?.last_name].filter(Boolean).join(" ") : "Loading..."
-  const currentPregnancy = motherData?.pregnancies?.[0]
+  
+  const pregnancyList = (Array.isArray(pregnancy) ? pregnancy : pregnancy?.data || pregnancy?.result) || motherData?.pregnancies || [];
+  const currentPregnancy = pregnancyList[0] || motherData?.pregnancies?.[0]
 
   const calculatedAge = motherData?.age || (motherData?.birth_date ? Math.floor((new Date().getTime() - new Date(motherData.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : null)
   const ageDisplay = calculatedAge && calculatedAge > 0 ? `${calculatedAge} yrs` : "N/A"
 
-  const gestationalWeeks = currentPregnancy?.gestational_age_weeks || 0
+  const lmpRaw = currentPregnancy?.lmp_date || currentPregnancy?.lmp
+  const calculatedGA = lmpRaw ? calculateGAWeeks(lmpRaw) : (currentPregnancy?.gestational_age_weeks || 0)
+  const gestationalWeeks = calculatedGA
   const progressPercent = Math.min(100, Math.max(0, Math.round((gestationalWeeks / 40) * 100)))
+
+  const visitationList = (Array.isArray(visitation) ? visitation : visitation?.data || visitation?.result || motherData?.prenatalVisits || []);
+  const appointmentList = (Array.isArray(appointment) ? appointment : appointment?.data || appointment?.result || motherData?.appointments || []);
+  const labRecordList = (Array.isArray(labRecords) ? labRecords : labRecords?.data || labRecords?.result || motherData?.labRecords || []);
+  const supplementList = (Array.isArray(supplements) ? supplements : supplements?.data || supplements?.result || motherData?.supplementationRecords || []);
 
   const mother = {
     id: motherData?.mother_id || id,
     name,
     ageDisplay,
-    dob: motherData?.birth_date ? new Date(motherData.birth_date).toLocaleDateString() : "N/A",
-    gestationalAge: currentPregnancy?.gestational_age_weeks ? `${currentPregnancy.gestational_age_weeks} Weeks` : "N/A",
-    trimester: currentPregnancy?.trimester ? `${currentPregnancy.trimester} Trimester` : "N/A",
-    risk: currentPregnancy?.risk_flag || "Low Risk",
-    gravida: currentPregnancy?.gravidity ?? 0,
+    dob: motherData?.birth_date ? formatDate(motherData.birth_date) : "N/A",
+    gestationalAge: calculatedGA > 0 ? `${calculatedGA} Weeks` : "N/A",
+    trimester: getTrimesterFromGA(calculatedGA),
+    risk: currentPregnancy?.risk_flag || currentPregnancy?.risk_level || (visitationList[0]?.risk_level_assessed) || null,
+    gravida: currentPregnancy?.gravida ?? currentPregnancy?.gravidity ?? 0,
     parity: currentPregnancy?.parity ?? 0,
-    lmp: currentPregnancy?.lmp ? new Date(currentPregnancy.lmp).toLocaleDateString() : "N/A",
-    edd: currentPregnancy?.edd ? new Date(currentPregnancy.edd).toLocaleDateString() : "N/A",
-    bmi: "Normal",
+    lmp: lmpRaw ? formatDate(lmpRaw) : "N/A",
+    edd: lmpRaw ? calculateEDD(lmpRaw) : (currentPregnancy?.edd ? formatDate(currentPregnancy.edd) : "N/A"),
+    bmi: currentPregnancy?.bmi_category || "Normal",
     bloodType: motherData?.blood_type || "N/A",
     phone: motherData?.user?.phone_number || "N/A",
     address: motherData?.user?.address || "N/A",
     fsn: motherData?.family_serial_no || "N/A"
   }
 
-  const pregnancyList = (Array.isArray(pregnancy) ? pregnancy : pregnancy?.data || pregnancy?.result) || motherData?.pregnancies || [];
+  const getRiskBadge = (riskStr?: string | null) => {
+    if (!riskStr || riskStr === "N/A" || riskStr.trim() === "") {
+      return (
+        <Badge className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none bg-muted text-muted-foreground">
+          <Activity className="h-3 w-3 opacity-60" />
+          No Risk Assessed
+        </Badge>
+      )
+    }
 
-  const visitationList = (Array.isArray(visitation) ? visitation : visitation?.data || visitation?.result || motherData?.prenatalVisits || []);
+    const lower = riskStr.toLowerCase()
+    let displayText = riskStr
+    let bgClass = "bg-green-500/10 text-green-500"
 
-  const appointmentList = (Array.isArray(appointment) ? appointment : appointment?.data || appointment?.result || motherData?.appointments || []);
-
-  const labRecordList = (Array.isArray(labRecords) ? labRecords : labRecords?.data || labRecords?.result || motherData?.labRecords || []);
-
-  const supplementList = (Array.isArray(supplements) ? supplements : supplements?.data || supplements?.result || motherData?.supplementationRecords || []);
-
-  const getRiskBadge = (riskStr: string) => {
-    const isHigh = riskStr?.toLowerCase().includes("high")
-    const isMod = riskStr?.toLowerCase().includes("mod")
-    const bgClass = isHigh
-      ? "bg-red-500/10 text-red-500"
-      : isMod
-      ? "bg-yellow-500/10 text-yellow-500"
-      : "bg-green-500/10 text-green-500"
+    if (lower.includes("high")) {
+      displayText = "High Risk"
+      bgClass = "bg-red-500/10 text-red-500"
+    } else if (lower.includes("mod")) {
+      displayText = "Moderate Risk"
+      bgClass = "bg-yellow-500/10 text-yellow-500"
+    } else if (lower.includes("low")) {
+      displayText = "Low Risk"
+      bgClass = "bg-green-500/10 text-green-500"
+    }
 
     return (
       <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${bgClass}`}>
         <Activity className="h-3 w-3" />
-        {riskStr || "Low Risk"}
+        {displayText}
       </Badge>
     )
   }
@@ -281,11 +361,24 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 w-full">
               {/* Left Side: Avatar & Name */}
               <div className="flex items-center gap-4">
-                <Avatar className="h-14 w-14 border border-sidebar-border shadow-sm">
-                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                    {mother.name.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative group">
+                  <Avatar className="h-14 w-14 border border-sidebar-border shadow-sm">
+                    {motherData?.user?.profile_url && (
+                      <AvatarImage src={motherData.user.profile_url} alt={mother.name} className="object-cover" />
+                    )}
+                    <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                      {mother.name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <button
+                    type="button"
+                    onClick={() => setAvatarModalOpen(true)}
+                    className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-foreground text-background dark:bg-white dark:text-black flex items-center justify-center shadow-md hover:scale-110 transition-transform"
+                    title="Upload Profile Picture"
+                  >
+                    <Pencil className="h-2.5 w-2.5" />
+                  </button>
+                </div>
                 <div className="flex items-center gap-3">
                   <h2 className="text-2xl font-bold text-foreground dark:text-white leading-none">{mother.name}</h2>
                   {getRiskBadge(mother.risk)}
@@ -297,7 +390,7 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                 <Button onClick={() => setEditModalOpen(true)} variant="outline" size="sm" className="flex-1 md:flex-none h-9 px-4 text-xs font-medium border-sidebar-border bg-transparent hover:bg-muted dark:hover:bg-[#1a1a1a]">
                   Edit Profile
                 </Button>
-                <Button size="sm" className="flex-1 md:flex-none h-9 px-4 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-none">
+                <Button size="sm" onClick={() => setLogVitalsModalOpen(true)} className="flex-1 md:flex-none h-9 px-4 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-none">
                   Log Vitals
                 </Button>
               </div>
@@ -417,11 +510,10 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-max">
               <TabsList className="bg-muted dark:bg-[#1e1e1e] border-none h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
                 <TabsTrigger value="pregnancy" className={tabTriggerClass}>Pregnancy</TabsTrigger>
-                <TabsTrigger value="encounters" className={tabTriggerClass}>Encounter History</TabsTrigger>
+                <TabsTrigger value="encounters" className={tabTriggerClass}>Visitation</TabsTrigger>
                 <TabsTrigger value="appointments" className={tabTriggerClass}>Appointments</TabsTrigger>
                 <TabsTrigger value="laboratory" className={tabTriggerClass}>Laboratory Records</TabsTrigger>
                 <TabsTrigger value="prescriptions" className={tabTriggerClass}>Prescriptions & Supplements</TabsTrigger>
-                <TabsTrigger value="allergies" className={tabTriggerClass}>Allergies</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -431,45 +523,86 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
 
             {activeTab === "pregnancy" && (
               <div className="flex flex-col gap-4 mt-2">
-                <div className="rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-[#0a0a0a]">
+                {/* Control Bar */}
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+                    <div className="relative w-[200px]">
+                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input placeholder="Search pregnancy..." className="h-8 pl-8 text-xs font-normal bg-background dark:bg-black border-sidebar-border" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 w-full xl:w-auto shrink-0">
+                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
+                      <Download className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Export</span>
+                    </Button>
+                    <Button variant="outline" onClick={fetchPregnancy} className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Refresh</span>
+                    </Button>
+                    <Button onClick={() => setRegisterPregnancyModalOpen(true)} className="h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
+                      <PlusCircle className="h-3.5 w-3.5" />
+                      New Pregnancy
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-black">
                   <div className="min-w-[900px]">
                     <Table>
                       <TableHeader className="bg-card dark:bg-[#111]">
                         <TableRow className="border-sidebar-border hover:bg-transparent">
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white pl-4 py-2 h-9">Reg. Date</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white pl-4 py-2 h-9">Gravida / Parity</TableHead>
                           <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">LMP</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">EDD</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Estimated Due Date</TableHead>
                           <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Gestational Age</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Gravida/Parity</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Co-morbidities</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Deworming</TableHead>
                           <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Status</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Risk Flag</TableHead>
+                          <TableHead className="w-12 py-2 h-9"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {pregnancyList.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={9} className="h-24 text-center text-xs text-muted-foreground">
-                              No pregnancy records found
+                            <TableCell colSpan={6} className="h-24 text-center text-xs text-muted-foreground">
+                              No pregnancy history found
                             </TableCell>
                           </TableRow>
                         ) : (
-                          pregnancyList.map((p: any, i: number) => (
-                            <TableRow key={p.pregnancy_id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors">
-                              <TableCell className="text-xs font-medium text-foreground dark:text-white pl-4 py-2">
-                                {p.date_of_registration ? new Date(p.date_of_registration).toLocaleDateString() : "N/A"}
-                              </TableCell>
-                              <TableCell className="text-xs text-foreground dark:text-white py-2">{p.lmp ? new Date(p.lmp).toLocaleDateString() : (p.lmp_date ? new Date(p.lmp_date).toLocaleDateString() : "N/A")}</TableCell>
-                              <TableCell className="text-xs text-foreground dark:text-white py-2">{p.edd ? new Date(p.edd).toLocaleDateString() : "N/A"}</TableCell>
-                              <TableCell className="text-xs text-foreground dark:text-white py-2">{p.gestational_age_weeks ? `${p.gestational_age_weeks} Weeks` : "N/A"}</TableCell>
-                              <TableCell className="text-xs text-foreground dark:text-white py-2">G{p.gravidity ?? p.gravida ?? 0} P{p.parity ?? 0}</TableCell>
-                              <TableCell className="text-xs text-foreground dark:text-white py-2">{p.co_morbidities || "None"}</TableCell>
-                              <TableCell className="text-xs text-foreground dark:text-white py-2">{p.deworming_given ? "Given" : "Not Given"}</TableCell>
-                              <TableCell className="text-xs text-foreground dark:text-white py-2">{p.pregnancy_status || "Active"}</TableCell>
-                              <TableCell className="py-2">{getRiskBadge(p.risk_flag || "Low Risk")}</TableCell>
-                            </TableRow>
-                          ))
+                          pregnancyList.map((p: any, i: number) => {
+                            const lmpVal = p.lmp_date || p.lmp
+                            const gaWeeks = lmpVal ? calculateGAWeeks(lmpVal) : (p.gestational_age_weeks || 0)
+                            const eddVal = lmpVal ? calculateEDD(lmpVal) : (p.edd ? formatDate(p.edd) : "N/A")
+
+                            return (
+                              <TableRow key={p.pregnancy_id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors cursor-pointer" onClick={() => openSideSheet("pregnancy", p)}>
+                                <TableCell className="pl-4 text-xs font-medium text-foreground dark:text-white py-2">
+                                  G{p.gravida ?? "0"} P{p.parity ?? "0"}
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground dark:text-white py-2">{lmpVal ? formatDate(lmpVal) : "N/A"}</TableCell>
+                                <TableCell className="text-xs text-foreground dark:text-white py-2 font-medium">{eddVal}</TableCell>
+                                <TableCell className="text-xs text-foreground dark:text-white py-2">{gaWeeks > 0 ? `${gaWeeks} Weeks` : "N/A"}</TableCell>
+                                <TableCell className="py-2">
+                                  <Badge className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none bg-[#24a1de]/10 text-[#24a1de] capitalize">
+                                    {p.pregnancy_status || "Active"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right py-2" onClick={(e) => e.stopPropagation()}>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-foreground dark:text-white hover:text-foreground">
+                                        <MoreVertical className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                                      <DropdownMenuItem onClick={() => openSideSheet("pregnancy", p)} className="text-xs cursor-pointer rounded-md">View Details</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openSideSheet("pregnancy", p)} className="text-xs cursor-pointer rounded-md">Edit Record</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openSideSheet("pregnancy", p)} className="text-xs cursor-pointer rounded-md text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })
                         )}
                       </TableBody>
                     </Table>
@@ -483,24 +616,23 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                 {/* Control Bar */}
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-                    <Input placeholder="Search encounters..." className="h-8 w-[200px] text-xs font-normal bg-background dark:bg-black border-sidebar-border" />
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5 shadow-none">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Trimester
-                    </Button>
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5 shadow-none">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Risk Level
-                    </Button>
+                    <div className="relative w-[200px]">
+                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input placeholder="Search visitations..." className="h-8 pl-8 text-xs font-normal bg-background dark:bg-black border-sidebar-border" />
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 w-full xl:w-auto shrink-0">
                     <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
                       <Download className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Export</span>
                     </Button>
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
+                    <Button variant="outline" onClick={fetchVisit} className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
                       <RefreshCw className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Refresh</span>
+                    </Button>
+                    <Button onClick={() => setLogVitalsModalOpen(true)} className="h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
+                      <PlusCircle className="h-3.5 w-3.5" />
+                      New Visitation
                     </Button>
                   </div>
                 </div>
@@ -528,34 +660,55 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                             </TableCell>
                           </TableRow>
                         ) : (
-                          visitationList.map((visit: any, i: number) => (
-                            <TableRow key={visit.visit_id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors">
-                              <TableCell className="text-xs font-medium text-foreground dark:text-white pl-4 py-2">
-                                {visit.visit_date ? new Date(visit.visit_date).toLocaleDateString() : "N/A"}
-                              </TableCell>
-                              <TableCell className="text-xs text-foreground dark:text-white py-2">{visit.trimester || "N/A"}</TableCell>
-                              <TableCell className="text-xs text-foreground dark:text-white py-2">{visit.blood_pressure || "N/A"}</TableCell>
-                              <TableCell className="text-xs text-foreground dark:text-white py-2">{visit.fetal_heart_rate ? `${visit.fetal_heart_rate} bpm` : "N/A"}</TableCell>
-                              <TableCell className="text-xs text-foreground dark:text-white py-2">{visit.fundal_height ? `${visit.fundal_height} cm` : "N/A"}</TableCell>
-                              <TableCell className="text-xs text-foreground dark:text-white py-2">{visit.weight ? `${visit.weight} kg` : "N/A"}</TableCell>
-                              <TableCell className="py-2">
-                                {getRiskBadge(visit.risk_level || mother.risk)}
-                              </TableCell>
-                              <TableCell className="text-right py-2">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-foreground dark:text-white hover:text-foreground">
-                                      <MoreVertical className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
-                                    <DropdownMenuItem className="text-xs cursor-pointer rounded-md">View Full Consultation</DropdownMenuItem>
-                                    <DropdownMenuItem className="text-xs cursor-pointer rounded-md">Edit Notes</DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
-                            </TableRow>
-                          ))
+                          visitationList.map((visit: any, i: number) => {
+                            const bpDisplay = (visit.bp_systolic && visit.bp_diastolic)
+                              ? `${visit.bp_systolic}/${visit.bp_diastolic} mmHg`
+                              : (visit.blood_pressure || "N/A")
+
+                            const fetalHeart = (visit.fetal_heart_tone_bpm ?? visit.fetal_heart_rate)
+                              ? `${visit.fetal_heart_tone_bpm ?? visit.fetal_heart_rate} bpm`
+                              : "N/A"
+
+                            const fundicHeight = (visit.fundic_height_cm ?? visit.fundal_height)
+                              ? `${visit.fundic_height_cm ?? visit.fundal_height} cm`
+                              : "N/A"
+
+                            const weightDisplay = (visit.weight_kg ?? visit.weight)
+                              ? `${visit.weight_kg ?? visit.weight} kg`
+                              : "N/A"
+
+                            const trimesterDisplay = visit.trimester ? `${visit.trimester}${visit.trimester === 1 ? 'st' : visit.trimester === 2 ? 'nd' : 'rd'} Trimester` : "N/A"
+
+                            return (
+                              <TableRow key={visit.visit_id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors cursor-pointer" onClick={() => openSideSheet("visitation", visit)}>
+                                <TableCell className="text-xs font-medium text-foreground dark:text-white pl-4 py-2">
+                                  {formatDate(visit.visit_date)}
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground dark:text-white py-2">{trimesterDisplay}</TableCell>
+                                <TableCell className="text-xs text-foreground dark:text-white py-2 font-medium">{bpDisplay}</TableCell>
+                                <TableCell className="text-xs text-foreground dark:text-white py-2">{fetalHeart}</TableCell>
+                                <TableCell className="text-xs text-foreground dark:text-white py-2">{fundicHeight}</TableCell>
+                                <TableCell className="text-xs text-foreground dark:text-white py-2">{weightDisplay}</TableCell>
+                                <TableCell className="py-2">
+                                  {getRiskBadge(visit.risk_level_assessed || visit.risk_level || mother.risk)}
+                                </TableCell>
+                                <TableCell className="text-right py-2" onClick={(e) => e.stopPropagation()}>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-foreground dark:text-white hover:text-foreground">
+                                        <MoreVertical className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                                      <DropdownMenuItem onClick={() => openSideSheet("visitation", visit)} className="text-xs cursor-pointer rounded-md">View Consultation</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openSideSheet("visitation", visit)} className="text-xs cursor-pointer rounded-md">Edit Record</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openSideSheet("visitation", visit)} className="text-xs cursor-pointer rounded-md text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })
                         )}
                       </TableBody>
                     </Table>
@@ -569,30 +722,21 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                 {/* Control Bar */}
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-                    <Input placeholder="Search appointments..." className="h-8 w-[200px] text-xs font-normal bg-background dark:bg-black border-sidebar-border" />
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5 shadow-none">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Appointment Status
-                    </Button>
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5 shadow-none">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Risk Flag
-                    </Button>
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5 shadow-none">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Type
-                    </Button>
+                    <div className="relative w-[200px]">
+                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input placeholder="Search appointments..." className="h-8 pl-8 text-xs font-normal bg-background dark:bg-black border-sidebar-border" />
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 w-full xl:w-auto shrink-0">
                     <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
                       <Download className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Export</span>
                     </Button>
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
+                    <Button variant="outline" onClick={fetchAppointments} className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
                       <RefreshCw className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Refresh</span>
                     </Button>
-                    <Button className="h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
+                    <Button onClick={() => setAppointmentModalOpen(true)} className="h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
                       <PlusCircle className="h-3.5 w-3.5" />
                       New Appointment
                     </Button>
@@ -620,9 +764,9 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                           </TableRow>
                         ) : (
                           appointmentList.map((p : any, i : number) => (
-                            <TableRow key={p.appointment_id || p._id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors">
+                            <TableRow key={p.appointment_id || p._id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors cursor-pointer" onClick={() => openSideSheet("appointment", p)}>
                               <TableCell className="pl-4 text-xs font-medium text-foreground dark:text-white py-2">
-                                {p.appointment_date ? `${new Date(p.appointment_date).toLocaleDateString()} ${p.appointment_time || ""}` : (p.appointmentDateTime ? new Date(p.appointmentDateTime).toLocaleString() : "N/A")}
+                                {p.appointment_date ? `${formatDate(p.appointment_date)} ${p.appointment_time || ""}` : (p.appointmentDateTime ? formatDate(p.appointmentDateTime) : "N/A")}
                               </TableCell>
                               <TableCell className="text-xs text-foreground dark:text-white py-2">{p.appointment_type || p.type || "Prenatal Visit"}</TableCell>
                               <TableCell className="text-xs text-muted-foreground py-2">{p.reason || "N/A"}</TableCell>
@@ -631,10 +775,19 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                                   {p.status || p.appointmentStatus || "Scheduled"}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="py-2 text-right">
-                                <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
-                                  View
-                                </Button>
+                              <TableCell className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-foreground dark:text-white hover:text-foreground">
+                                      <MoreVertical className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                                    <DropdownMenuItem onClick={() => openSideSheet("appointment", p)} className="text-xs cursor-pointer rounded-md">View Details</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => openSideSheet("appointment", p)} className="text-xs cursor-pointer rounded-md">Edit Record</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => openSideSheet("appointment", p)} className="text-xs cursor-pointer rounded-md text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </TableCell>
                             </TableRow>
                           ))
@@ -651,26 +804,21 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                 {/* Control Bar */}
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-                    <Input placeholder="Search lab records..." className="h-8 w-[200px] text-xs font-normal bg-background dark:bg-black border-sidebar-border" />
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5 shadow-none">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Trimester
-                    </Button>
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5 shadow-none">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Review Status
-                    </Button>
+                    <div className="relative w-[200px]">
+                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input placeholder="Search lab records..." className="h-8 pl-8 text-xs font-normal bg-background dark:bg-black border-sidebar-border" />
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 w-full xl:w-auto shrink-0">
                     <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
                       <Download className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Export</span>
                     </Button>
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
+                    <Button variant="outline" onClick={fetchLabRecord} className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
                       <RefreshCw className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Refresh</span>
                     </Button>
-                    <Button className="h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
+                    <Button onClick={() => setLabModalOpen(true)} className="h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
                       <PlusCircle className="h-3.5 w-3.5" />
                       New Laboratory Record
                     </Button>
@@ -691,18 +839,33 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                           <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Result</TableHead>
                           <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Remarks</TableHead>
                           <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Sync Status</TableHead>
+                          <TableHead className="w-12 py-2 h-9"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {labRecordList.map((lab: any, i: number) => (
-                          <TableRow key={lab.screening_id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors">
+                          <TableRow key={lab.screening_id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors cursor-pointer" onClick={() => openSideSheet("laboratory", lab)}>
                             <TableCell className="text-xs font-medium text-foreground dark:text-white pl-4 py-2">
-                              {lab.date_of_screening ? new Date(lab.date_of_screening).toLocaleDateString() : "N/A"}
+                              {formatDate(lab.date_of_screening)}
                             </TableCell>
                             <TableCell className="text-xs text-foreground dark:text-white py-2 font-semibold">{lab.screening_type || "N/A"}</TableCell>
                             <TableCell className="text-xs text-foreground dark:text-white py-2">{lab.result || "N/A"}</TableCell>
                             <TableCell className="text-xs text-muted-foreground py-2">{lab.remarks || "None"}</TableCell>
                             <TableCell className="text-xs text-muted-foreground py-2 capitalize">{lab.sync_status || "synced"}</TableCell>
+                            <TableCell className="text-right py-2" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-foreground dark:text-white hover:text-foreground">
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                                  <DropdownMenuItem onClick={() => openSideSheet("laboratory", lab)} className="text-xs cursor-pointer rounded-md">View Details</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openSideSheet("laboratory", lab)} className="text-xs cursor-pointer rounded-md">Edit Record</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openSideSheet("laboratory", lab)} className="text-xs cursor-pointer rounded-md text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -717,30 +880,21 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                 {/* Control Bar */}
                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-                    <Input placeholder="Search prescriptions..." className="h-8 w-[200px] text-xs font-normal bg-background dark:bg-black border-sidebar-border" />
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5 shadow-none">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Status
-                    </Button>
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5 shadow-none">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Type
-                    </Button>
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5 shadow-none">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Prescribing Doctor
-                    </Button>
+                    <div className="relative w-[200px]">
+                      <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input placeholder="Search prescriptions..." className="h-8 pl-8 text-xs font-normal bg-background dark:bg-black border-sidebar-border" />
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 w-full xl:w-auto shrink-0">
                     <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
                       <Download className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Export</span>
                     </Button>
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
+                    <Button variant="outline" onClick={fetchSupplementRecord} className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
                       <RefreshCw className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Refresh</span>
                     </Button>
-                    <Button className="h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
+                    <Button onClick={() => setSupplementModalOpen(true)} className="h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
                       <PlusCircle className="h-3.5 w-3.5" />
                       New Prescription
                     </Button>
@@ -757,20 +911,21 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                           <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Tablets Given</TableHead>
                           <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Status</TableHead>
                           <TableHead className="text-xs font-medium text-foreground dark:text-white py-2 h-9">Sync Status</TableHead>
+                          <TableHead className="w-12 py-2 h-9"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {supplementList.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center text-xs text-muted-foreground">
+                            <TableCell colSpan={6} className="h-24 text-center text-xs text-muted-foreground">
                               No supplementation / medication records found
                             </TableCell>
                           </TableRow>
                         ) : (
                           supplementList.map((sup: any, i: number) => (
-                            <TableRow key={sup.supplement_id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors">
+                            <TableRow key={sup.supplement_id || i} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5 transition-colors cursor-pointer" onClick={() => openSideSheet("prescription", sup)}>
                               <TableCell className="text-xs font-medium text-foreground dark:text-white pl-4 py-2">
-                                {sup.date_given ? new Date(sup.date_given).toLocaleDateString() : "N/A"}
+                                {formatDate(sup.date_given)}
                               </TableCell>
                               <TableCell className="text-xs text-foreground dark:text-white py-2 font-semibold">{sup.supplement_type || "N/A"}</TableCell>
                               <TableCell className="text-xs text-foreground dark:text-white py-2">{sup.tablets_given_count ?? "N/A"} tabs</TableCell>
@@ -780,60 +935,23 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-xs text-muted-foreground py-2 capitalize">{sup.sync_status || "synced"}</TableCell>
+                              <TableCell className="text-right py-2" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-foreground dark:text-white hover:text-foreground">
+                                      <MoreVertical className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                                    <DropdownMenuItem onClick={() => openSideSheet("prescription", sup)} className="text-xs cursor-pointer rounded-md">View Details</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => openSideSheet("prescription", sup)} className="text-xs cursor-pointer rounded-md">Edit Record</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => openSideSheet("prescription", sup)} className="text-xs cursor-pointer rounded-md text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
                             </TableRow>
                           ))
                         )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "allergies" && (
-              <div className="flex flex-col gap-4 mt-2">
-                {/* Control Bar */}
-                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                  <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-                    <Input placeholder="Search allergies..." className="h-8 w-[200px] text-xs font-normal bg-background dark:bg-black border-sidebar-border" />
-                    <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5 shadow-none">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Severity
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-2 w-full xl:w-auto shrink-0">
-                    <Button variant="ghost" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 text-muted-foreground hover:text-foreground">
-                      <Download className="h-3.5 w-3.5" />
-                      Export
-                    </Button>
-                    <Button variant="ghost" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 text-muted-foreground hover:text-foreground">
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      Refresh
-                    </Button>
-                    <Button className="h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      New Allergy
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-black">
-                  <div className="min-w-[900px]">
-                    <Table>
-                      <TableHeader className="bg-card dark:bg-[#111]">
-                        <TableRow className="border-sidebar-border hover:bg-transparent">
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white pl-4">Allergy Name</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white">Severity/Reaction</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white">Identified Date</TableHead>
-                          <TableHead className="w-12"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell colSpan={4} className="h-24 text-center text-xs text-muted-foreground">
-                            No known allergies
-                          </TableCell>
-                        </TableRow>
                       </TableBody>
                     </Table>
                   </div>
@@ -850,6 +968,65 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
         onOpenChange={setEditModalOpen}
         motherData={motherData}
         onSuccess={fetchMotherProfile}
+      />
+      <UploadAvatarModal
+        open={avatarModalOpen}
+        onOpenChange={setAvatarModalOpen}
+        motherData={motherData}
+        onSuccess={fetchMotherProfile}
+      />
+      <LogVitalsModal
+        open={logVitalsModalOpen}
+        onOpenChange={setLogVitalsModalOpen}
+        motherData={motherData}
+        onSuccess={() => {
+          fetchMotherProfile()
+          fetchVisit()
+        }}
+      />
+      <RegisterPregnancyModal
+        open={registerPregnancyModalOpen}
+        onOpenChange={setRegisterPregnancyModalOpen}
+        motherData={motherData}
+        onSuccess={() => {
+          fetchMotherProfile()
+          fetchPregnancy()
+        }}
+      />
+      <RegisterAppointmentModal
+        open={appointmentModalOpen}
+        onOpenChange={setAppointmentModalOpen}
+        motherData={motherData}
+        onSuccess={fetchAppointments}
+      />
+      <RegisterLabModal
+        open={labModalOpen}
+        onOpenChange={setLabModalOpen}
+        motherData={motherData}
+        visitationList={visitationList}
+        onSuccess={fetchLabRecord}
+      />
+      <RegisterSupplementModal
+        open={supplementModalOpen}
+        onOpenChange={setSupplementModalOpen}
+        motherData={motherData}
+        visitationList={visitationList}
+        onSuccess={fetchSupplementRecord}
+      />
+      <DetailSideSheet
+        open={sideSheetOpen}
+        onOpenChange={setSideSheetOpen}
+        type={sideSheetType}
+        data={selectedRecord}
+        motherName={mother.name}
+        onSuccess={() => {
+          fetchMotherProfile()
+          fetchPregnancy()
+          fetchVisit()
+          fetchAppointments()
+          fetchLabRecord()
+          fetchSupplementRecord()
+        }}
       />
     </div>
   )

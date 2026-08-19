@@ -221,14 +221,14 @@ export function CalendarPage() {
             longPressThreshold={10}
             onSelectSlot={handleSelectSlot}
             onSelectEvent={handleSelectEvent}
-            titleAccessor={(event: AppEvent) => event.title || ""}
+            titleAccessor={(event: AppEvent) => String(event.title || "")}
             dayPropGetter={dayPropGetter}
             components={{
-              toolbar: () => null, // We render the toolbar outside
-              event: isMobile ? () => null : CustomEvent, // Hide event pills in grid on mobile
+              toolbar: () => null,
+              event: (isMobile ? () => null : CustomEvent) as any,
               dateCellWrapper: CustomDateCellWrapper,
-            }}
-            tooltipAccessor={() => null}
+            } as any}
+            tooltipAccessor={(() => "") as any}
             formats={formats}
             className="w-full h-full custom-calendar"
           />
