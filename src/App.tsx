@@ -13,6 +13,7 @@ import { MothersPage } from "@/features/mothers/components/MothersPage"
 import { MotherProfilePage } from "@/features/mothers/components/MotherProfilePage"
 import { ReferralsPage } from "@/features/referrals/components/ReferralsPage"
 import { MessagesPage } from "@/features/messages/components/MessagesPage"
+import { EhrPage } from "@/features/ehr/components/EhrPage"
 
 export function App() {
   return (
@@ -34,6 +35,8 @@ export function App() {
             <Route path="mothers" element={<MothersPage />} />
             <Route path="mothers/:id" element={<MotherProfilePage />} />
             <Route path="appointments" element={<AppointmentListPage />} />
+            <Route path="calendar" element={<CalendarPage />} />
+            <Route path="ehr" element={<EhrPage />} />
             <Route path="referrals" element={<ReferralsPage />} />
             <Route path="messages" element={<MessagesPage />} />
             <Route path="team" element={<TeamManagementPage />} />

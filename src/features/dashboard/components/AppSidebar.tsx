@@ -156,6 +156,16 @@ export function AppSidebar() {
 
               <SidebarMenuItem>
                 <SidebarMenuButton
+                  isActive={location.pathname === '/dashboard/ehr'}
+                  onClick={() => handleNavigate('/dashboard/ehr')}
+                >
+                  <FileText className="mr-2" />
+                  <span>EHR Records</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
                   isActive={location.pathname === '/dashboard/referrals'}
                   onClick={() => handleNavigate('/dashboard/referrals')}
                 >
