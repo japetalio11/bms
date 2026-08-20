@@ -137,15 +137,97 @@ export function ScanDocumentModal({
     }
   }
 
+  // Canvas Image Preprocessing for enhanced OCR recognition
+  const preprocessImageForOcr = (imageSrc: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.crossOrigin = "anonymous"
+      img.onload = () => {
+        const canvas = document.createElement("canvas")
+        const ctx = canvas.getContext("2d")
+        if (!ctx) return resolve(imageSrc)
+
+        const scale = img.width < 1000 ? 2 : 1
+        canvas.width = img.width * scale
+        canvas.height = img.height * scale
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const data = imgData.data
+
+        // Grayscale & Contrast Binarization
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i]
+          const g = data[i + 1]
+          const b = data[i + 2]
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b
+          const v = gray > 130 ? 255 : (gray < 70 ? 0 : (gray - 70) * (255 / 60))
+          data[i] = v
+          data[i + 1] = v
+          data[i + 2] = v
+        }
+        ctx.putImageData(imgData, 0, 0)
+        resolve(canvas.toDataURL("image/png"))
+      }
+      img.onerror = () => resolve(imageSrc)
+      img.src = imageSrc
+    })
+  }
+
+  // OCR Text Post-Processing Noise Cleaning & Medical Term Normalization
+  const cleanOcrText = (text: string): string => {
+    if (!text) return ""
+
+    const lines = text.split("\n")
+    const cleanedLines: string[] = []
+
+    for (let line of lines) {
+      let l = line.trim()
+      if (!l) continue
+
+      // Remove noise symbols at start
+      l = l.replace(/^[®»§|~=°_+\-.:;\s]+/, "")
+
+      // Skip noise lines with low alphanumeric density
+      const alphaCount = (l.match(/[a-zA-Z0-9]/g) || []).length
+      if (alphaCount < 2 && l.length < 5) continue
+      if (l.length > 0 && alphaCount / l.length < 0.25) continue
+
+      // Medical OCR Spellcheck & Normalization
+      l = l
+        .replace(/SARS[=\-_]?Col[=\-_]?2/gi, "SARS-CoV-2")
+        .replace(/Col=/gi, "CoV-")
+        .replace(/bactedun|bacteia|bactean/gi, "bacteria")
+        .replace(/Leukacyle|leukacyle/gi, "Leukocytes")
+        .replace(/erythicyles|erythrcyles/gi, "erythrocytes")
+        .replace(/Eepthaeyts|Erythrcytes/gi, "Erythrocytes")
+        .replace(/Pasncdion|Pasmodion/gi, "Plasmodium")
+        .replace(/Monkey pos|Monkeypos/gi, "Monkeypox")
+        .replace(/vies|viue/gi, "virus")
+        .replace(/packicles/gi, "particles")
+        .replace(/\s+/g, " ")
+        .trim()
+
+      if (l.length > 0) {
+        cleanedLines.push(l)
+      }
+    }
+
+    return cleanedLines.join("\n")
+  }
+
   // Run Tesseract.js OCR Recognition
   const runOcr = async (imageSrc: string) => {
     setIsScanning(true)
     setScanProgress(0)
-    setScanStatusText("Initializing OCR Engine...")
+    setScanStatusText("Enhancing Image Contrast...")
     setOcrError(null)
 
     try {
-      const result = await recognize(imageSrc, 'eng', {
+      const processedImage = await preprocessImageForOcr(imageSrc)
+
+      setScanStatusText("Initializing OCR Engine...")
+      const result = await recognize(processedImage, 'eng', {
         logger: (m) => {
           if (m.status) {
             setScanStatusText(m.status.replace(/_/g, " "))
@@ -156,17 +238,20 @@ export function ScanDocumentModal({
         }
       })
 
-      const text = result.data.text.trim()
-      setExtractedText(text)
+      const rawText = result.data.text.trim()
+      const cleaned = cleanOcrText(rawText)
+      const finalText = cleaned || rawText
+
+      setExtractedText(finalText)
       setIsScanning(false)
       setScanProgress(100)
       setScanStatusText("OCR Complete")
 
-      // Smart title auto-fill from first line of OCR text if empty
-      if (text) {
-        const lines = text.split("\n").filter(l => l.trim().length > 3)
+      // Smart title auto-fill from first clean line of OCR text if empty
+      if (finalText) {
+        const lines = finalText.split("\n").filter(l => l.trim().length > 3)
         if (lines.length > 0 && !title) {
-          const suggestedTitle = lines[0].slice(0, 60).replace(/[^a-zA-Z0-9\s-]/g, "")
+          const suggestedTitle = lines[0].slice(0, 60).replace(/[^a-zA-Z0-9\s-]/g, "").trim()
           setTitle(suggestedTitle || "Scanned Medical Record")
         }
       }
