@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { UploadCloud, CheckCircle2 } from "lucide-react"
+import { mothersApi } from "@/features/mothers/api"
 
 interface UploadDocumentModalProps {
   children?: React.ReactNode
@@ -30,11 +31,26 @@ export function UploadDocumentModal({
 
   const [title, setTitle] = React.useState("")
   const [category, setCategory] = React.useState("Clinical Protocols")
-  const [patientName, setPatientName] = React.useState("")
+  const [patientName, setPatientName] = React.useState("Facility General")
   const [securityLevel, setSecurityLevel] = React.useState("Confidential")
   const [file, setFile] = React.useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isSuccess, setIsSuccess] = React.useState(false)
+  const [mothers, setMothers] = React.useState<any[]>([])
+
+  React.useEffect(() => {
+    const fetchMothers = async () => {
+      try {
+        const userStr = localStorage.getItem("user")
+        const user = userStr ? JSON.parse(userStr) : null
+        const data = await mothersApi.getActiveMothers(user?.facility_id)
+        setMothers(data || [])
+      } catch (err) {
+        console.error("Failed to fetch mothers list for EHR upload", err)
+      }
+    }
+    fetchMothers()
+  }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -73,7 +89,7 @@ export function UploadDocumentModal({
         handleOpenChange(false)
         setTitle("")
         setCategory("Clinical Protocols")
-        setPatientName("")
+        setPatientName("Facility General")
         setFile(null)
       }, 1000)
     }, 600)
@@ -143,14 +159,23 @@ export function UploadDocumentModal({
 
             {/* Associated Mother / Patient */}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="doc-patient" className="text-xs font-medium">Associated Mother / Patient (Optional)</Label>
-              <Input 
-                id="doc-patient" 
-                placeholder="e.g. Anna Marie Santos (or leave blank for facility-wide)" 
-                value={patientName} 
-                onChange={(e) => setPatientName(e.target.value)} 
-                className="h-9 text-xs"
-              />
+              <Label htmlFor="doc-patient" className="text-xs font-medium">Associated Mother / Patient</Label>
+              <Select value={patientName} onValueChange={setPatientName}>
+                <SelectTrigger id="doc-patient" className="h-9 text-xs">
+                  <SelectValue placeholder="Select Mother / Patient" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Facility General">Facility General (No specific mother)</SelectItem>
+                  {mothers.map((m: any) => {
+                    const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.name || `Mother #${m.mother_id || m.id}`
+                    return (
+                      <SelectItem key={m.mother_id || m.id} value={name}>
+                        {name}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* File Dropzone */}

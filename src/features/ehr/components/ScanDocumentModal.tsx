@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Camera, UploadCloud, Scan, RefreshCw, CheckCircle2, FileText, AlertCircle } from "lucide-react"
 import { recognize } from "tesseract.js"
+import { mothersApi } from "@/features/mothers/api"
 
 interface ScanDocumentModalProps {
   children?: React.ReactNode
@@ -48,9 +49,24 @@ export function ScanDocumentModal({
   // Document Metadata Form State
   const [title, setTitle] = useState("")
   const [category, setCategory] = useState("Clinical Protocols")
-  const [patientName, setPatientName] = useState("")
+  const [patientName, setPatientName] = useState("Facility General")
   const [securityLevel, setSecurityLevel] = useState("Confidential")
   const [isSuccess, setIsSuccess] = useState(false)
+  const [mothers, setMothers] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchMothers = async () => {
+      try {
+        const userStr = localStorage.getItem("user")
+        const user = userStr ? JSON.parse(userStr) : null
+        const data = await mothersApi.getActiveMothers(user?.facility_id)
+        setMothers(data || [])
+      } catch (err) {
+        console.error("Failed to fetch mothers list for EHR scanner", err)
+      }
+    }
+    fetchMothers()
+  }, [])
 
   // Start Camera Stream
   const startCamera = async () => {
@@ -378,14 +394,23 @@ export function ScanDocumentModal({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="scan-patient" className="text-xs font-medium">Associated Patient / Mother (Optional)</Label>
-                <Input
-                  id="scan-patient"
-                  placeholder="e.g. Maria Santos"
-                  value={patientName}
-                  onChange={(e) => setPatientName(e.target.value)}
-                  className="h-9 text-xs"
-                />
+                <Label htmlFor="scan-patient" className="text-xs font-medium">Associated Mother / Patient</Label>
+                <Select value={patientName} onValueChange={setPatientName}>
+                  <SelectTrigger id="scan-patient" className="h-9 text-xs">
+                    <SelectValue placeholder="Select Mother / Patient" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Facility General">Facility General (No specific mother)</SelectItem>
+                    {mothers.map((m: any) => {
+                      const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.name || `Mother #${m.mother_id || m.id}`
+                      return (
+                        <SelectItem key={m.mother_id || m.id} value={name}>
+                          {name}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
