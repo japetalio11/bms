@@ -124,48 +124,47 @@ export function UploadDocumentModal({
               />
             </div>
 
-            {/* Category & Associated Patient */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="doc-category" className="text-xs font-medium">Category</Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger id="doc-category" className="h-9 text-xs">
-                    <SelectValue placeholder="Select Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Clinical Protocols">Clinical Protocols</SelectItem>
-                    <SelectItem value="Lab & Diagnostics">Lab & Diagnostics</SelectItem>
-                    <SelectItem value="Maternal Records">Maternal Records</SelectItem>
-                    <SelectItem value="Facility Audit & Accreditation">Facility Audit & Accreditation</SelectItem>
-                    <SelectItem value="Referral Archives">Referral Archives</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Category */}
+            <div className="flex flex-col gap-1.5 min-w-0">
+              <Label htmlFor="doc-category" className="text-xs font-medium">Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger id="doc-category" className="h-9 text-xs w-full min-w-0">
+                  <SelectValue placeholder="Select Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Clinical Protocols">Clinical Protocols</SelectItem>
+                  <SelectItem value="Lab & Diagnostics">Lab & Diagnostics</SelectItem>
+                  <SelectItem value="Maternal Records">Maternal Records</SelectItem>
+                  <SelectItem value="Facility Audit & Accreditation">Facility Audit & Accreditation</SelectItem>
+                  <SelectItem value="Referral Archives">Referral Archives</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="doc-patient" className="text-xs font-medium">Associated Mother / Patient</Label>
-                <Select value={patientName} onValueChange={setPatientName}>
-                  <SelectTrigger id="doc-patient" className="h-9 text-xs">
-                    <SelectValue placeholder="Select Mother / Patient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Facility General">Facility General (No specific mother)</SelectItem>
-                    {mothers.map((m: any) => {
-                      const userObj = m.user || m
-                      const name = [userObj.first_name, userObj.middle_name, userObj.last_name].filter(Boolean).join(" ") 
-                        || m.name 
-                        || m.full_name 
-                        || "Patient Record"
-                      const motherKey = m.mother_id || m.id || m.user_id
-                      return (
-                        <SelectItem key={motherKey} value={name}>
-                          {name}
-                        </SelectItem>
-                      )
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Associated Mother / Patient */}
+            <div className="flex flex-col gap-1.5 min-w-0">
+              <Label htmlFor="doc-patient" className="text-xs font-medium">Associated Mother / Patient</Label>
+              <Select value={patientName} onValueChange={setPatientName}>
+                <SelectTrigger id="doc-patient" className="h-9 text-xs w-full min-w-0">
+                  <SelectValue placeholder="Select Mother / Patient" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Facility General">Facility General (No specific mother)</SelectItem>
+                  {mothers.map((m: any) => {
+                    const userObj = m.user || m
+                    const name = [userObj.first_name, userObj.middle_name, userObj.last_name].filter(Boolean).join(" ") 
+                      || m.name 
+                      || m.full_name 
+                      || "Patient Record"
+                    const motherKey = m.mother_id || m.id || m.user_id
+                    return (
+                      <SelectItem key={motherKey} value={name}>
+                        {name}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* File Dropzone */}
