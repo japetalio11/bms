@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Camera, UploadCloud, Scan, RefreshCw, CheckCircle2, FileText, AlertCircle } from "lucide-react"
 import { recognize } from "tesseract.js"
 import { mothersApi } from "@/features/mothers/api"
+import { apiClient } from "@/lib/apiClient"
 
 interface ScanDocumentModalProps {
   children?: React.ReactNode
@@ -294,17 +295,42 @@ export function ScanDocumentModal({
     return resultMarkdown
   }
 
-  // Run Tesseract.js OCR Recognition
+  // Run PaddleOCR Recognition via Backend Engine (with client fallback)
   const runOcr = async (imageSrc: string) => {
     setIsScanning(true)
-    setScanProgress(0)
-    setScanStatusText("Enhancing Image Contrast...")
+    setScanProgress(35)
+    setScanStatusText("Running PaddleOCR Engine...")
     setOcrError(null)
 
     try {
+      // 1. Send base64 image to PaddleOCR backend route
+      const res = await apiClient.post('/api/v1/ocr/scan', { imageBase64: imageSrc })
+      const data = res.data?.result || res.data
+
+      if (data && data.success && data.full_text) {
+        setScanProgress(100)
+        setExtractedText(data.full_text)
+        setIsScanning(false)
+        setScanStatusText("PaddleOCR Complete")
+
+        if (data.full_text && !title) {
+          const lines = data.full_text.split("\n").filter((l: string) => l.trim().length > 3)
+          if (lines.length > 0) {
+            const suggestedTitle = lines[0].slice(0, 60).replace(/[^a-zA-Z0-9\s-]/g, "").trim()
+            setTitle(suggestedTitle || "Scanned Medical Record")
+          }
+        }
+        return
+      }
+    } catch (paddleErr) {
+      console.warn("Backend PaddleOCR endpoint initializing/offline, using client engine", paddleErr)
+    }
+
+    // 2. Fallback to client-side engine if backend endpoint is unavailable
+    try {
+      setScanStatusText("Initializing Local Engine...")
       const processedImage = await preprocessImageForOcr(imageSrc)
 
-      setScanStatusText("Initializing OCR Engine...")
       const result = await recognize(processedImage, 'eng', {
         logger: (m) => {
           if (m.status) {
@@ -325,16 +351,15 @@ export function ScanDocumentModal({
       setScanProgress(100)
       setScanStatusText("OCR Complete")
 
-      // Smart title auto-fill from first clean line of OCR text if empty
-      if (finalText) {
+      if (finalText && !title) {
         const lines = finalText.split("\n").filter(l => l.trim().length > 3)
-        if (lines.length > 0 && !title) {
+        if (lines.length > 0) {
           const suggestedTitle = lines[0].slice(0, 60).replace(/[^a-zA-Z0-9\s-]/g, "").trim()
           setTitle(suggestedTitle || "Scanned Medical Record")
         }
       }
     } catch (err: any) {
-      console.error("Tesseract OCR Error:", err)
+      console.error("OCR Error:", err)
       setOcrError("Failed to extract text from document. Ensure image is clear and well-lit.")
       setIsScanning(false)
     }
