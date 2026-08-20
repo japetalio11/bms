@@ -3,22 +3,16 @@ import { apiClient } from "@/lib/apiClient"
 export const appointmentApi = {
 
   async getAllFacilityAppointment(facilityId?: string) {
-
     try {
-
       let endpoint = "/api/v1/appointment/getAll"
-
       if (facilityId) {
         endpoint = `/api/v1/appointment/get/facility/${facilityId}`
       }
 
       const response = await apiClient.get(endpoint)
       const data = response.data
-
-      if (Array.isArray(data?.data)) {
-        return data.data
-      }
-
+      const list = data?.data || data?.result || (Array.isArray(data) ? data : [])
+      return Array.isArray(list) ? list : []
     } catch (error) {
       console.error("Failed to fetch facility appointments:", error)
       return []

@@ -115,7 +115,6 @@ export function MothersPage() {
       }
     })
     .filter((m) => {
-      // 1. Search Query Filtering
       if (searchQuery.trim() !== "") {
         const q = searchQuery.toLowerCase()
         const matchName = m.name.toLowerCase().includes(q)
@@ -123,7 +122,6 @@ export function MothersPage() {
         if (!matchName && !matchStation) return false
       }
 
-      // 2. Tab Filtering
       if (activeTab === "high-risk") {
         if (!m.risk || !m.risk.toLowerCase().includes("high")) return false
       } else if (activeTab === "triage") {
@@ -133,14 +131,12 @@ export function MothersPage() {
         if (status !== "postpartum" && status !== "delivered") return false
       }
 
-      // 3. Risk Flag Filter Checklist
       if (selectedRiskFilters.length > 0) {
         if (!m.risk) return false
         const match = selectedRiskFilters.some((rf) => m.risk.toLowerCase().includes(rf.toLowerCase()))
         if (!match) return false
       }
 
-      // 4. Barangay Filter Checklist
       if (selectedBarangayFilters.length > 0) {
         const match = selectedBarangayFilters.some((bg) => m.station.toLowerCase().includes(bg.toLowerCase()))
         if (!match) return false
