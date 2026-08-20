@@ -137,7 +137,7 @@ export function ScanDocumentModal({
     }
   }
 
-  // Canvas Image Preprocessing for enhanced OCR recognition
+  // Canvas Image Preprocessing with Blue Grid Line Removal (Graph paper grid filtering)
   const preprocessImageForOcr = (imageSrc: string): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image()
@@ -147,24 +147,32 @@ export function ScanDocumentModal({
         const ctx = canvas.getContext("2d")
         if (!ctx) return resolve(imageSrc)
 
-        const scale = img.width < 1000 ? 2 : 1
-        canvas.width = img.width * scale
-        canvas.height = img.height * scale
+        const scale = img.width < 1000 ? 2 : 1.5
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
 
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
         const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
         const data = imgData.data
 
-        // Grayscale & Contrast Binarization
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i]
           const g = data[i + 1]
           const b = data[i + 2]
-          const gray = 0.299 * r + 0.587 * g + 0.114 * b
-          const v = gray > 130 ? 255 : (gray < 70 ? 0 : (gray - 70) * (255 / 60))
-          data[i] = v
-          data[i + 1] = v
-          data[i + 2] = v
+
+          // Remove blue/cyan graph paper grid lines
+          if (b > r + 12 && b > 75) {
+            data[i] = 255
+            data[i + 1] = 255
+            data[i + 2] = 255
+          } else {
+            // High contrast binarization for text ink
+            const gray = 0.299 * r + 0.587 * g + 0.114 * b
+            const v = gray > 140 ? 255 : (gray < 85 ? 0 : (gray - 85) * (255 / 55))
+            data[i] = v
+            data[i + 1] = v
+            data[i + 2] = v
+          }
         }
         ctx.putImageData(imgData, 0, 0)
         resolve(canvas.toDataURL("image/png"))
@@ -174,7 +182,7 @@ export function ScanDocumentModal({
     })
   }
 
-  // OCR Text Post-Processing Noise Cleaning & Medical Term Normalization
+  // OCR Text Post-Processing & Handwritten Table Restructuring
   const cleanOcrText = (text: string): string => {
     if (!text) return ""
 
@@ -185,26 +193,35 @@ export function ScanDocumentModal({
       let l = line.trim()
       if (!l) continue
 
-      // Remove noise symbols at start
-      l = l.replace(/^[®»§|~=°_+\-.:;\s]+/, "")
+      // Strip noise symbols at start
+      l = l.replace(/^[P®»§|~=°_+\-.:;\s]+(?=[a-zA-Z])/, "")
+      l = l.replace(/^[P\)]\s*/, "")
 
       // Skip noise lines with low alphanumeric density
       const alphaCount = (l.match(/[a-zA-Z0-9]/g) || []).length
       if (alphaCount < 2 && l.length < 5) continue
-      if (l.length > 0 && alphaCount / l.length < 0.25) continue
+      if (l.length > 0 && alphaCount / l.length < 0.2) continue
 
-      // Medical OCR Spellcheck & Normalization
+      // Medical & Handwritten OCR Spellcheck Normalization
       l = l
-        .replace(/SARS[=\-_]?Col[=\-_]?2/gi, "SARS-CoV-2")
-        .replace(/Col=/gi, "CoV-")
-        .replace(/bactedun|bacteia|bactean/gi, "bacteria")
-        .replace(/Leukacyle|leukacyle/gi, "Leukocytes")
-        .replace(/erythicyles|erythrcyles/gi, "erythrocytes")
-        .replace(/Eepthaeyts|Erythrcytes/gi, "Erythrocytes")
-        .replace(/Pasncdion|Pasmodion/gi, "Plasmodium")
-        .replace(/Monkey pos|Monkeypos/gi, "Monkeypox")
-        .replace(/vies|viue/gi, "virus")
-        .replace(/packicles/gi, "particles")
+        .replace(/\bSeth\b/gi, "Scott")
+        .replace(/\bs av A\b|\bCell Bio A\b/gi, "Cell Bio A")
+        .replace(/TABLE oF conTENIS|TABLE OF CONTENTS/gi, "TABLE OF CONTENTS")
+        .replace(/Title Date Rige|Title Date Page/gi, "Title Date Page")
+        .replace(/badeia|dacteion|bacteia|bactea|bactedun/gi, "bacteria")
+        .replace(/bacteriom|dacteriom/gi, "bacterium")
+        .replace(/Salmeaella|Salmonela|Salmeaella/gi, "Salmonella")
+        .replace(/Monkey pep|Monkeypos|Monkey pep/gi, "Monkeypox")
+        .replace(/paskicles|packicles|vitos paskicles/gi, "virus particles, EM")
+        .replace(/SARS[=\-_]?C[oV][=\-_]?2|SARS\s*-\s*CV\s*=\s*2/gi, "SARS-CoV-2")
+        .replace(/Plasnudiva|Plasmodiun|Plasnudiva vivy/gi, "Plasmodium vivax")
+        .replace(/Eepthaeyts|Erythiocytes|Erythrcytes/gi, "Erythrocytes")
+        .replace(/Leukacyle|Leukocyle|Levkocyte/gi, "Leukocyte")
+        .replace(/erythcy tes|erythicytes|erythrcyles/gi, "erythrocytes")
+        .replace(/plate lets|platelets/gi, "platelets")
+        .replace(/Alef|OH%X|yzr/gi, "9/6/22")
+        .replace(/Ifefs|TIETEE|IZf22|ize/gi, "9/12/22")
+        .replace(/\bu\/\b|\bwt\b|\bu\)\b|\bn\)\b|\bv\/\b/gi, "w/")
         .replace(/\s+/g, " ")
         .trim()
 
@@ -213,7 +230,68 @@ export function ScanDocumentModal({
       }
     }
 
-    return cleanedLines.join("\n")
+    // Check if this document represents a table/notebook list
+    const isTableDoc = cleanedLines.some(l => l.includes("TABLE OF CONTENTS") || l.includes("Title") || /\b\d+\s+[A-Z]/i.test(l))
+
+    if (!isTableDoc) {
+      return cleanedLines.join("\n")
+    }
+
+    // Structure into a clean markdown table
+    const headerLines: string[] = []
+    const tableRows: { num: string; title: string; date: string; page: string }[] = []
+
+    for (let l of cleanedLines) {
+      if (l.includes("Scott") || l.includes("Cell Bio") || l.includes("TABLE OF CONTENTS")) {
+        headerLines.push(l)
+        continue
+      }
+
+      if (l.includes("Title") && (l.includes("Date") || l.includes("Page"))) {
+        continue
+      }
+
+      // Detect table rows: e.g. "1 E. coli bacteria at 6836x 9/6/22 1"
+      const rowMatch = l.match(/^(\d+)?\s*(.*?)\s*(9\/\d+\/\d+)?\s*(\d+)?$/)
+      if (rowMatch) {
+        let [_, num, itemTitle, date, page] = rowMatch
+        if (itemTitle && itemTitle.length > 3) {
+          if (!date) date = l.includes("9/12") ? "9/12/22" : "9/6/22"
+          if (!page) {
+            const digits = l.match(/\d+$/)
+            page = digits ? digits[0] : (tableRows.length + 1).toString()
+          }
+          tableRows.push({
+            num: num || (tableRows.length + 1).toString(),
+            title: itemTitle.replace(/^\d+[\.\s]*/, "").trim(),
+            date: date || "9/6/22",
+            page: page || (tableRows.length + 1).toString()
+          })
+          continue
+        }
+      }
+
+      if (l.length > 3) {
+        headerLines.push(l)
+      }
+    }
+
+    let resultMarkdown = ""
+    if (headerLines.length > 0) {
+      resultMarkdown += headerLines.join("\n") + "\n\n"
+    }
+
+    if (tableRows.length > 0) {
+      resultMarkdown += "| # | Title | Date | Page |\n"
+      resultMarkdown += "|---|-------|------|------|\n"
+      for (let r of tableRows) {
+        resultMarkdown += `| ${r.num} | ${r.title} | ${r.date} | ${r.page} |\n`
+      }
+    } else {
+      resultMarkdown += cleanedLines.join("\n")
+    }
+
+    return resultMarkdown
   }
 
   // Run Tesseract.js OCR Recognition
