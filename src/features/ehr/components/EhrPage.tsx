@@ -14,7 +14,15 @@ import {
   PlusCircle, 
   MoreVertical,
   FileSpreadsheet,
-  FileCheck
+  FileCheck,
+  Maximize2,
+  ArrowLeft,
+  Download,
+  Minus,
+  Plus,
+  X,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 import { UploadDocumentModal } from "./UploadDocumentModal"
 import { ResponsiveModal } from "@/components/ui/responsive-modal"
@@ -29,16 +37,42 @@ export interface EhrDocument {
   size: string
   dateUploaded: string
   uploadedBy: string
+  fileUrl?: string
 }
 
 export function EhrPage() {
-  const [documents, setDocuments] = useState<EhrDocument[]>([])
+  const [documents, setDocuments] = useState<EhrDocument[]>(() => {
+    try {
+      const userStr = localStorage.getItem("user")
+      const user = userStr ? JSON.parse(userStr) : null
+      const facilityId = user?.facility_id || "default"
+      const saved = localStorage.getItem(`bms_ehr_docs_${facilityId}`)
+      return saved ? JSON.parse(saved) : []
+    } catch (e) {
+      return []
+    }
+  })
+
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
   const [selectedCategoryFilters, setSelectedCategoryFilters] = useState<string[]>([])
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [viewingDoc, setViewingDoc] = useState<EhrDocument | null>(null)
+  const [previewDocIndex, setPreviewDocIndex] = useState<number | null>(null)
+  const [zoomScale, setZoomScale] = useState(1)
+
+  // Save to localStorage whenever documents array updates
+  React.useEffect(() => {
+    try {
+      const userStr = localStorage.getItem("user")
+      const user = userStr ? JSON.parse(userStr) : null
+      const facilityId = user?.facility_id || "default"
+      localStorage.setItem(`bms_ehr_docs_${facilityId}`, JSON.stringify(documents))
+    } catch (e) {
+      console.error("Failed to save EHR documents to localStorage", e)
+    }
+  }, [documents])
 
   const handleAddDocument = (newDoc: EhrDocument) => {
     setDocuments(prev => [newDoc, ...prev])
@@ -50,6 +84,18 @@ export function EhrPage() {
   }
 
   const handleDownload = (doc: EhrDocument) => {
+    if (doc.fileUrl) {
+      const link = document.createElement("a")
+      link.href = doc.fileUrl
+      const ext = doc.format ? doc.format.toLowerCase() : "png"
+      const cleanTitle = doc.title.replace(/[^a-zA-Z0-9]/g, "_")
+      link.download = cleanTitle.endsWith(`.${ext}`) ? cleanTitle : `${cleanTitle}.${ext}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      return
+    }
+
     const content = `Facility EHR Document Report\n-------------------------\nID: ${doc.id}\nTitle: ${doc.title}\nCategory: ${doc.category}\nPatient/Scope: ${doc.patientName}\nSecurity Level: ${doc.securityLevel}\nDate Uploaded: ${doc.dateUploaded}\nUploaded By: ${doc.uploadedBy}\n`
     const blob = new Blob([content], { type: "text/plain;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
@@ -240,17 +286,32 @@ export function EhrPage() {
                     <TableRow
                       key={doc.id}
                       className="border-sidebar-border cursor-pointer transition-colors group hover:bg-accent dark:hover:bg-white/5"
-                      onClick={() => setViewingDoc(doc)}
+                      onClick={() => {
+                        const idx = filteredDocuments.findIndex(d => d.id === doc.id)
+                        setPreviewDocIndex(idx >= 0 ? idx : 0)
+                        setZoomScale(1)
+                      }}
                     >
                       <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
                         <Checkbox className="border-sidebar-border data-[state=checked]:bg-primary dark:data-[state=checked]:bg-white data-[state=checked]:text-primary-foreground dark:data-[state=checked]:text-black" />
                       </TableCell>
                       <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          {doc.format === "PDF" && <FileText className="h-4 w-4 text-red-400 shrink-0" />}
-                          {doc.format === "CSV" && <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />}
-                          {doc.format !== "PDF" && doc.format !== "CSV" && <FileCheck className="h-4 w-4 text-blue-400 shrink-0" />}
-                          <span className="truncate max-w-[220px]" title={doc.title}>{doc.title}</span>
+                        <div className="flex items-center gap-3">
+                          {doc.fileUrl && (doc.format === "PNG" || doc.format === "JPG" || doc.format === "JPEG" || doc.format === "WEBP" || doc.format === "GIF" || doc.format === "BMP") ? (
+                            <div className="relative h-12 w-12 rounded-lg overflow-hidden border border-sidebar-border shrink-0 bg-black/40 shadow-sm hover:scale-105 transition-transform">
+                              <img src={doc.fileUrl} alt={doc.title} className="h-full w-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="h-12 w-12 rounded-lg flex items-center justify-center border border-sidebar-border shrink-0 bg-card dark:bg-[#181818]">
+                              {doc.format === "PDF" && <FileText className="h-6 w-6 text-red-400" />}
+                              {doc.format === "CSV" && <FileSpreadsheet className="h-6 w-6 text-emerald-400" />}
+                              {doc.format !== "PDF" && doc.format !== "CSV" && <FileCheck className="h-6 w-6 text-blue-400" />}
+                            </div>
+                          )}
+                          <div className="flex flex-col min-w-0">
+                            <span className="truncate max-w-[260px] font-semibold text-foreground dark:text-white text-xs" title={doc.title}>{doc.title}</span>
+                            <span className="text-[10px] text-muted-foreground">{doc.format} • {doc.size}</span>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{doc.category}</TableCell>
@@ -276,7 +337,11 @@ export function EhrPage() {
                           <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
                             <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setViewingDoc(doc)} className="text-xs cursor-pointer rounded-md">View Details</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              const idx = filteredDocuments.findIndex(d => d.id === doc.id)
+                              setPreviewDocIndex(idx >= 0 ? idx : 0)
+                              setZoomScale(1)
+                            }} className="text-xs cursor-pointer rounded-md">View Full Screen</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDownload(doc)} className="text-xs cursor-pointer rounded-md">Download File</DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleDeleteDocument(doc.id)} className="text-xs cursor-pointer rounded-md text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
@@ -292,62 +357,117 @@ export function EhrPage() {
         </div>
       </div>
 
-      {/* Document Detail Preview Modal */}
-      {viewingDoc && (
-        <ResponsiveModal
-          open={!!viewingDoc}
-          onOpenChange={(open) => !open && setViewingDoc(null)}
-          title="EHR Document Details"
-          description={`Metadata & preview summary for ${viewingDoc.id}`}
-        >
-          <div className="flex flex-col gap-4 py-2 text-xs text-foreground">
-            <div className="flex items-start justify-between border-b border-sidebar-border pb-3">
-              <div>
-                <h3 className="text-sm font-semibold">{viewingDoc.title}</h3>
-                <p className="text-muted-foreground text-[11px] mt-0.5">{viewingDoc.category}</p>
+      {/* Google Drive-Style Full Screen Lightbox Overlay */}
+      {previewDocIndex !== null && filteredDocuments[previewDocIndex] && (() => {
+        const activeDoc = filteredDocuments[previewDocIndex]
+        return (
+          <div className="fixed inset-0 z-[100] bg-black/95 text-white flex flex-col backdrop-blur-md select-none animate-in fade-in duration-200">
+            {/* Top Toolbar Header (Google Drive Style) */}
+            <div className="flex items-center justify-between px-4 py-3 bg-black/90 border-b border-white/10 shrink-0">
+              {/* Left: Close, Icon, Title */}
+              <div className="flex items-center gap-3 min-w-0">
+                <Button variant="ghost" size="icon" onClick={() => setPreviewDocIndex(null)} className="h-9 w-9 text-white hover:bg-white/10 rounded-full">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div className="flex items-center gap-2 min-w-0">
+                  {activeDoc.format === "PDF" ? <FileText className="h-5 w-5 text-red-400 shrink-0" /> : <FileCheck className="h-5 w-5 text-blue-400 shrink-0" />}
+                  <span className="font-semibold text-sm text-white truncate max-w-[320px]" title={activeDoc.title}>{activeDoc.title}</span>
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/15 shrink-0 font-mono">
+                    {activeDoc.format}
+                  </span>
+                </div>
               </div>
-              <span className="px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary rounded-md">
-                {viewingDoc.format}
-              </span>
+
+              {/* Center: Zoom Controls */}
+              <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full border border-white/15">
+                <Button variant="ghost" size="icon" onClick={() => setZoomScale(z => Math.max(0.4, z - 0.25))} className="h-7 w-7 text-white hover:bg-white/10 rounded-full">
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="text-xs font-mono w-12 text-center text-white/90">{Math.round(zoomScale * 100)}%</span>
+                <Button variant="ghost" size="icon" onClick={() => setZoomScale(z => Math.min(3.5, z + 0.25))} className="h-7 w-7 text-white hover:bg-white/10 rounded-full">
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setZoomScale(1)} className="h-7 text-[11px] text-white/80 hover:bg-white/10 rounded-full px-2">
+                  Reset
+                </Button>
+              </div>
+
+              {/* Right: Actions */}
+              <div className="flex items-center gap-2 shrink-0">
+                <Button onClick={() => handleDownload(activeDoc)} className="h-9 px-4 text-xs font-medium gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg">
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setPreviewDocIndex(null)} className="h-9 w-9 text-white hover:bg-white/10 rounded-full">
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <span className="text-muted-foreground block text-[11px]">Scope / Patient</span>
-                <span className="font-medium">{viewingDoc.patientName}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-[11px]">Security Level</span>
-                <span className="font-medium">{viewingDoc.securityLevel}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-[11px]">File Size</span>
-                <span className="font-medium">{viewingDoc.size}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block text-[11px]">Uploaded By</span>
-                <span className="font-medium">{viewingDoc.uploadedBy}</span>
-              </div>
-            </div>
+            {/* Center Canvas Viewport */}
+            <div className="relative flex-1 w-full h-full flex items-center justify-center p-4 overflow-auto bg-black/90">
+              {/* Previous Arrow */}
+              {previewDocIndex > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => { setPreviewDocIndex(previewDocIndex - 1); setZoomScale(1); }}
+                  className="absolute left-6 z-20 h-12 w-12 rounded-full bg-black/60 hover:bg-black/90 text-white border border-white/20 shadow-2xl transition-all"
+                  title="Previous Document"
+                >
+                  <ChevronLeft className="h-7 w-7" />
+                </Button>
+              )}
 
-            <div className="bg-muted/40 p-3 rounded-lg border border-sidebar-border mt-2">
-              <span className="font-semibold block mb-1">Document Status & Verification</span>
-              <p className="text-muted-foreground text-[11px] leading-relaxed">
-                This document is digitally signed and indexed under facility records. SHA-256 hash verified with system audit logs.
-              </p>
-            </div>
+              {/* Main Content Render */}
+              <div className="flex items-center justify-center w-full h-full overflow-auto">
+                {activeDoc.fileUrl ? (
+                  activeDoc.format === "PNG" || activeDoc.format === "JPG" || activeDoc.format === "JPEG" || activeDoc.format === "WEBP" || activeDoc.format === "GIF" || activeDoc.format === "BMP" ? (
+                    <img
+                      src={activeDoc.fileUrl}
+                      alt={activeDoc.title}
+                      style={{ transform: `scale(${zoomScale})` }}
+                      className="max-h-[85vh] max-w-[92vw] object-contain rounded-lg shadow-2xl transition-transform duration-200 ease-out"
+                    />
+                  ) : activeDoc.format === "PDF" ? (
+                    <iframe
+                      src={activeDoc.fileUrl}
+                      title={activeDoc.title}
+                      style={{ transform: `scale(${zoomScale})`, transformOrigin: "top center" }}
+                      className="w-[88vw] h-[84vh] rounded-xl border border-white/20 bg-white shadow-2xl"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-12 bg-white/5 rounded-2xl border border-white/10 gap-3 text-white/80">
+                      <FileCheck className="h-16 w-16 text-blue-400" />
+                      <p className="text-sm font-semibold">{activeDoc.title}</p>
+                      <p className="text-xs text-white/60">{activeDoc.format} Document Record</p>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-12 bg-white/5 rounded-2xl border border-white/10 gap-3 text-white/80">
+                    <FileText className="h-16 w-16 text-muted-foreground" />
+                    <p className="text-sm font-semibold">{activeDoc.title}</p>
+                    <p className="text-xs text-white/60">No direct image file payload available</p>
+                  </div>
+                )}
+              </div>
 
-            <div className="flex items-center gap-2 mt-4 pt-3 border-t border-sidebar-border">
-              <Button variant="ghost" onClick={() => setViewingDoc(null)} className="flex-1 h-8 text-xs">
-                Close
-              </Button>
-              <Button onClick={() => handleDownload(viewingDoc)} className="flex-1 h-8 text-xs bg-primary text-primary-foreground dark:bg-white dark:text-black">
-                Download File
-              </Button>
+              {/* Next Arrow */}
+              {previewDocIndex < filteredDocuments.length - 1 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => { setPreviewDocIndex(previewDocIndex + 1); setZoomScale(1); }}
+                  className="absolute right-6 z-20 h-12 w-12 rounded-full bg-black/60 hover:bg-black/90 text-white border border-white/20 shadow-2xl transition-all"
+                  title="Next Document"
+                >
+                  <ChevronRight className="h-7 w-7" />
+                </Button>
+              )}
             </div>
           </div>
-        </ResponsiveModal>
-      )}
+        )
+      })()}
     </div>
   )
 }

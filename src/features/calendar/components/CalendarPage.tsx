@@ -189,15 +189,15 @@ export function CalendarPage() {
 
     return list.filter((ev) => {
       if (selectedTypeFilters.length > 0) {
-        const match = selectedTypeFilters.some(t => (ev.title || '').toLowerCase().includes(t.toLowerCase()))
+        const match = selectedTypeFilters.some(t => String(ev.title || '').toLowerCase().includes(t.toLowerCase()))
         if (!match) return false
       }
       if (selectedStatusFilters.length > 0) {
-        const match = selectedStatusFilters.some(s => (ev.status || '').toLowerCase().includes(s.toLowerCase()))
+        const match = selectedStatusFilters.some(s => String(ev.status || '').toLowerCase().includes(s.toLowerCase()))
         if (!match) return false
       }
       if (selectedRiskFilters.length > 0) {
-        const match = selectedRiskFilters.some(r => (ev.risk || '').toLowerCase().includes(r.toLowerCase()))
+        const match = selectedRiskFilters.some(r => String(ev.risk || '').toLowerCase().includes(r.toLowerCase()))
         if (!match) return false
       }
       return true

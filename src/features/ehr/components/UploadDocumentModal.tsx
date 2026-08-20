@@ -34,6 +34,7 @@ export function UploadDocumentModal({
   const [patientName, setPatientName] = React.useState("Facility General")
   const [securityLevel, setSecurityLevel] = React.useState("Confidential")
   const [file, setFile] = React.useState<File | null>(null)
+  const [fileUrl, setFileUrl] = React.useState<string | undefined>(undefined)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isSuccess, setIsSuccess] = React.useState(false)
   const [mothers, setMothers] = React.useState<any[]>([])
@@ -52,16 +53,79 @@ export function UploadDocumentModal({
     fetchMothers()
   }, [])
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Create compressed lightweight Data URL to fit comfortably in localStorage
+  const createCompressedDataUrl = (selectedFile: File): Promise<string> => {
+    return new Promise((resolve) => {
+      if (!selectedFile.type.startsWith("image/")) {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = () => resolve("")
+        reader.readAsDataURL(selectedFile)
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement("canvas")
+          const ctx = canvas.getContext("2d")
+          if (!ctx) return resolve(e.target?.result as string)
+
+          let width = img.width
+          let height = img.height
+          const MAX_DIM = 1200
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width)
+              width = MAX_DIM
+            } else {
+              width = Math.round((width * MAX_DIM) / height)
+              height = MAX_DIM
+            }
+          }
+
+          canvas.width = width
+          canvas.height = height
+          ctx.drawImage(img, 0, 0, width, height)
+          resolve(canvas.toDataURL("image/jpeg", 0.85))
+        }
+        img.onerror = () => resolve(e.target?.result as string)
+        img.src = e.target?.result as string
+      }
+      reader.onerror = () => resolve("")
+      reader.readAsDataURL(selectedFile)
+    })
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0])
+      const selectedFile = e.target.files[0]
+      setFile(selectedFile)
+
+      try {
+        const dataUrl = await createCompressedDataUrl(selectedFile)
+        setFileUrl(dataUrl)
+      } catch (err) {
+        console.error("Failed to generate file preview Data URL", err)
+      }
+
+      // Auto-set document title from file name
+      const rawName = selectedFile.name
+      const nameWithoutExt = rawName.substring(0, rawName.lastIndexOf('.')) || rawName
+      const formattedTitle = nameWithoutExt.replace(/[-_]/g, ' ').trim()
+
+      if (formattedTitle) {
+        setTitle(formattedTitle)
+      }
     }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title) {
-      alert("Please enter a document title.")
+    const finalTitle = title.trim() || (file ? file.name.substring(0, file.name.lastIndexOf('.')) || file.name : "Facility Document")
+    if (!finalTitle) {
+      alert("Please select a file or enter a document title.")
       return
     }
 
@@ -70,14 +134,15 @@ export function UploadDocumentModal({
     setTimeout(() => {
       const newDoc = {
         id: `EHR-${Date.now().toString().slice(-4)}`,
-        title,
+        title: finalTitle,
         category,
         patientName: patientName || "Facility General",
         securityLevel,
         format: file ? file.name.split('.').pop()?.toUpperCase() || "PDF" : "PDF",
         size: file ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : "1.2 MB",
         dateUploaded: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-        uploadedBy: "Current Healthcare Staff"
+        uploadedBy: "Current Healthcare Staff",
+        fileUrl: fileUrl
       }
 
       setIsSubmitting(false)
@@ -91,6 +156,7 @@ export function UploadDocumentModal({
         setCategory("Clinical Protocols")
         setPatientName("Facility General")
         setFile(null)
+        setFileUrl(undefined)
       }, 1000)
     }, 600)
   }
