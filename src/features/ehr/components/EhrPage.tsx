@@ -14,11 +14,9 @@ import {
   PlusCircle, 
   MoreVertical,
   FileSpreadsheet,
-  FileCheck,
-  Scan
+  FileCheck
 } from "lucide-react"
 import { UploadDocumentModal } from "./UploadDocumentModal"
-import { ScanDocumentModal } from "./ScanDocumentModal"
 import { ResponsiveModal } from "@/components/ui/responsive-modal"
 
 export interface EhrDocument {
@@ -146,13 +144,6 @@ export function EhrPage() {
                 )}
               </PopoverContent>
             </Popover>
-
-            <ScanDocumentModal onSuccess={handleAddDocument}>
-              <Button variant="outline" className="h-9 px-3 text-xs font-medium gap-2 border-sidebar-border shrink-0 !bg-background dark:!bg-black">
-                <Scan className="h-4 w-4 text-blue-400" />
-                Scan Document
-              </Button>
-            </ScanDocumentModal>
 
             <UploadDocumentModal open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen} onSuccess={handleAddDocument}>
               <Button className="h-9 px-3 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200 shrink-0">
