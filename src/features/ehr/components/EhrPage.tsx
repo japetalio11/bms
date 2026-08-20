@@ -34,66 +34,8 @@ export interface EhrDocument {
   uploadedBy: string
 }
 
-const INITIAL_DOCUMENTS: EhrDocument[] = [
-  {
-    id: "EHR-1001",
-    title: "High-Risk Pregnancy Clinical Guidelines 2026",
-    category: "Clinical Protocols",
-    patientName: "Facility General",
-    securityLevel: "Public",
-    format: "PDF",
-    size: "3.4 MB",
-    dateUploaded: "Aug 15, 2026",
-    uploadedBy: "Dr. Elena Rostova"
-  },
-  {
-    id: "EHR-1002",
-    title: "Maternal Blood Screening & Lab Summary",
-    category: "Lab & Diagnostics",
-    patientName: "Anna Marie Santos",
-    securityLevel: "Confidential",
-    format: "PDF",
-    size: "1.8 MB",
-    dateUploaded: "Aug 18, 2026",
-    uploadedBy: "Nurse Maria Lopez"
-  },
-  {
-    id: "EHR-1003",
-    title: "RHU Facility DOH Accreditation Certificate",
-    category: "Facility Audit & Accreditation",
-    patientName: "Facility General",
-    securityLevel: "Restricted",
-    format: "PDF",
-    size: "5.2 MB",
-    dateUploaded: "Jul 10, 2026",
-    uploadedBy: "Admin System"
-  },
-  {
-    id: "EHR-1004",
-    title: "Ultrasound Scan Report & Fetal Doppler Data",
-    category: "Maternal Records",
-    patientName: "Maria Clara Santos",
-    securityLevel: "Confidential",
-    format: "PNG",
-    size: "4.1 MB",
-    dateUploaded: "Aug 12, 2026",
-    uploadedBy: "Dr. Ramon Reyes"
-  },
-  {
-    id: "EHR-1005",
-    title: "Inter-Clinic Emergency Referral Log Q2 2026",
-    category: "Referral Archives",
-    patientName: "Facility General",
-    securityLevel: "Confidential",
-    format: "CSV",
-    size: "820 KB",
-    dateUploaded: "Jul 30, 2026",
-    uploadedBy: "Nurse Joy Cruz"
-  }
-]
-
 export function EhrPage() {
-  const [documents, setDocuments] = useState<EhrDocument[]>(INITIAL_DOCUMENTS)
+  const [documents, setDocuments] = useState<EhrDocument[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
   const [selectedCategoryFilters, setSelectedCategoryFilters] = useState<string[]>([])
@@ -177,49 +119,6 @@ export function EhrPage() {
             Upload Document
           </Button>
         </UploadDocumentModal>
-      </div>
-
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <div className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Total EHR Records</span>
-            <FileText className="h-4 w-4 text-primary" />
-          </div>
-          <span className="text-2xl font-bold mt-2">{documents.length}</span>
-          <span className="text-[10px] text-emerald-500 mt-1 font-medium">Synced with facility vault</span>
-        </div>
-
-        <div className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Clinical Protocols</span>
-            <FileCheck className="h-4 w-4 text-emerald-500" />
-          </div>
-          <span className="text-2xl font-bold mt-2">
-            {documents.filter(d => d.category === "Clinical Protocols").length}
-          </span>
-          <span className="text-[10px] text-muted-foreground mt-1">DOH & RHU Standard SOPs</span>
-        </div>
-
-        <div className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Patient Records</span>
-            <FolderArchive className="h-4 w-4 text-blue-500" />
-          </div>
-          <span className="text-2xl font-bold mt-2">
-            {documents.filter(d => d.category === "Maternal Records" || d.category === "Lab & Diagnostics").length}
-          </span>
-          <span className="text-[10px] text-muted-foreground mt-1">Patient-linked files</span>
-        </div>
-
-        <div className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Encrypted Storage</span>
-            <ShieldCheck className="h-4 w-4 text-purple-500" />
-          </div>
-          <span className="text-2xl font-bold mt-2">15.3 MB</span>
-          <span className="text-[10px] text-muted-foreground mt-1">HIPAA compliant security</span>
-        </div>
       </div>
 
       {/* Control Bar: Tabs, Search, Popover Filters */}
