@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
 import type { Event as RBCEvent } from "react-big-calendar"
@@ -12,6 +12,7 @@ import { CustomEvent } from "./CustomEvent"
 import { WeeklyScheduleView } from "./WeeklyScheduleView"
 import { CreateAppointmentModal } from "@/features/appointments/components/CreateAppointmentModal"
 import { AppointmentSidepeek } from "@/features/dashboard/components/AppointmentSidepeek"
+import { appointmentApi } from "@/features/appointments/api"
 
 import "react-big-calendar/lib/css/react-big-calendar.css"
 
@@ -27,7 +28,6 @@ const localizer = dateFnsLocalizer({
   locales,
 })
 
-// Custom interface extending the standard event
 export interface AppEvent extends RBCEvent {
   id?: string
   type?: 'appointment' | 'availability'
@@ -35,6 +35,8 @@ export interface AppEvent extends RBCEvent {
   risk?: string
   travelTime?: string
   motherName?: string
+  name?: string
+  date?: string
 }
 
 export function CalendarPage() {
@@ -47,6 +49,45 @@ export function CalendarPage() {
   const [view, setView] = useState<any>('month')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
+  
+  const [rawAppointments, setRawAppointments] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [selectedTypeFilters, setSelectedTypeFilters] = useState<string[]>([])
+  const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>([])
+  const [selectedRiskFilters, setSelectedRiskFilters] = useState<string[]>([])
+
+  const fetchAppointments = async () => {
+    setIsLoading(true)
+    const userStr = localStorage.getItem("user")
+    const user = userStr ? JSON.parse(userStr) : null
+    try {
+      const data = await appointmentApi.getAllFacilityAppointment(user?.facility_id)
+      setRawAppointments(data || [])
+    } catch (err) {
+      console.error("Failed to fetch calendar appointments:", err)
+      setRawAppointments([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAppointments()
+  }, [])
+
+  const handleCancelAppointment = async (appointmentId: string) => {
+    if (!confirm("Are you sure you want to cancel this appointment?")) return
+    try {
+      await appointmentApi.cancelAppointment(appointmentId)
+      if (selectedAppointment?.id === appointmentId) {
+        setSelectedAppointment(null)
+      }
+      fetchAppointments()
+    } catch (err) {
+      console.error("Failed to cancel appointment:", err)
+      alert("Could not cancel appointment. Please try again.")
+    }
+  }
 
   // Swipe gesture handling
   const [touchStartPos, setTouchStartPos] = useState<{x: number, y: number} | null>(null)
@@ -68,7 +109,6 @@ export function CalendarPage() {
     const distanceX = touchStartPos.x - touchEndPos.x
     const distanceY = Math.abs(touchStartPos.y - touchEndPos.y)
     
-    // Check if it's a horizontal swipe (X distance > Y distance) and meets the minimum threshold
     if (Math.abs(distanceX) > distanceY && Math.abs(distanceX) > minSwipeDistance) {
       const isLeftSwipe = distanceX > minSwipeDistance
       const isRightSwipe = distanceX < -minSwipeDistance
@@ -85,32 +125,86 @@ export function CalendarPage() {
     }
   }
 
-  // Set default date to current date so it highlights today (e.g. Tue 30)
   const [viewDate, setViewDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
 
+  // Transform raw appointments to RBC events and apply toolbar filters
   const events: AppEvent[] = useMemo(() => {
-    const list: AppEvent[] = []
+    const list: AppEvent[] = rawAppointments.map((item: any) => {
+      const motherUser = item.user || item.patient?.user || item.patient
+      const name = [motherUser?.first_name, motherUser?.middle_name, motherUser?.last_name]
+        .filter(Boolean)
+        .join(" ") || motherUser?.name || "Unknown Mother"
 
-    // Add the main appointment event
-    list.push({
-      id: "ev-1",
-      title: "Prenatal Checkup - Maria Santos",
-      start: new Date(2026, 5, 29, 8, 0), // 8 AM
-      end: new Date(2026, 5, 29, 9, 0),  // 9 AM
-      allDay: false,
-      type: 'appointment',
-      motherName: 'Maria Santos',
-      risk: 'High Risk',
-      status: 'Confirmed'
+      const risk = item.risk_flag || item.risk_level || item.risk || "Low Risk"
+      let status = item.status || "Pending"
+      const lowerStatus = status.toLowerCase()
+      if (lowerStatus === "confirmed" || lowerStatus === "active" || lowerStatus === "scheduled") {
+        status = "Confirmed"
+      } else if (lowerStatus === "completed") {
+        status = "Completed"
+      } else if (lowerStatus === "cancelled") {
+        status = "Cancelled"
+      } else {
+        status = "Pending"
+      }
+
+      let startDate = new Date()
+      if (item.appointment_date) {
+        const parsed = new Date(item.appointment_date)
+        if (!isNaN(parsed.getTime())) {
+          startDate = parsed
+        }
+      }
+      if (item.appointment_time) {
+        const timeMatch = item.appointment_time.match(/(\d+):(\d+)\s*(AM|PM)?/i)
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1], 10)
+          const minutes = parseInt(timeMatch[2], 10)
+          const ampm = timeMatch[3]
+          if (ampm) {
+            if (ampm.toUpperCase() === "PM" && hours < 12) hours += 12
+            if (ampm.toUpperCase() === "AM" && hours === 12) hours = 0
+          }
+          startDate.setHours(hours, minutes, 0, 0)
+        }
+      }
+
+      const endDate = new Date(startDate.getTime() + 60 * 60 * 1000)
+
+      return {
+        id: item.appointment_id || item.id,
+        title: `${item.appointment_type || 'Prenatal Checkup'} - ${name}`,
+        start: startDate,
+        end: endDate,
+        allDay: false,
+        type: 'appointment' as const,
+        motherName: name,
+        name,
+        risk,
+        status,
+        date: `${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} - ${item.appointment_time || "08:00 AM"}`
+      }
     })
 
-    return list
-  }, [])
+    return list.filter((ev) => {
+      if (selectedTypeFilters.length > 0) {
+        const match = selectedTypeFilters.some(t => (ev.title || '').toLowerCase().includes(t.toLowerCase()))
+        if (!match) return false
+      }
+      if (selectedStatusFilters.length > 0) {
+        const match = selectedStatusFilters.some(s => (ev.status || '').toLowerCase().includes(s.toLowerCase()))
+        if (!match) return false
+      }
+      if (selectedRiskFilters.length > 0) {
+        const match = selectedRiskFilters.some(r => (ev.risk || '').toLowerCase().includes(r.toLowerCase()))
+        if (!match) return false
+      }
+      return true
+    })
+  }, [rawAppointments, selectedTypeFilters, selectedStatusFilters, selectedRiskFilters])
 
-  // Custom prop getter to highlight the selected date
   const dayPropGetter = React.useCallback((currentDay: Date) => {
-    // We use a gray highlight for the selected date
     if (currentDay.getDate() === selectedDate.getDate() && currentDay.getMonth() === selectedDate.getMonth() && currentDay.getFullYear() === selectedDate.getFullYear()) {
       return {
         className: 'bg-white/5 dark:bg-white/10 transition-colors',
@@ -119,7 +213,6 @@ export function CalendarPage() {
     return {}
   }, [selectedDate])
 
-  // Custom cell wrapper
   const CustomDateCellWrapper = ({ children, value }: any) => {
     return React.cloneElement(React.Children.only(children), {
       style: { ...children.props.style, position: 'relative' },
@@ -134,10 +227,9 @@ export function CalendarPage() {
 
   const formats = {
     dateFormat: 'd',
-    weekdayFormat: 'EEE', // 'Sun', 'Mon', 'Tue'
+    weekdayFormat: 'EEE',
   }
 
-  // Handle navigate from toolbar or calendar
   const handleNavigate = (action: 'PREV' | 'NEXT' | 'TODAY' | Date) => {
     if (action instanceof Date) {
       setViewDate(action)
@@ -164,8 +256,6 @@ export function CalendarPage() {
     setSelectedDate(slotInfo.start)
     setViewDate(slotInfo.start)
     const day = slotInfo.start.getDay()
-    // On desktop, clicking a weekday opens the create modal. 
-    // On mobile, it just selects the date to show events below.
     if (!isMobileRef.current && day !== 0 && day !== 6) {
       setIsCreateModalOpen(true)
     }
@@ -175,7 +265,6 @@ export function CalendarPage() {
     setSelectedAppointment(event)
   }
 
-  // Filter events for the selected date to show in the mobile bottom section
   const selectedDateEvents = useMemo(() => {
     return events.filter(e => e.start && selectedDate &&
       e.start.getDate() === selectedDate.getDate() &&
@@ -198,6 +287,15 @@ export function CalendarPage() {
           view={view}
           onViewChange={setView}
           onNavigate={handleNavigate}
+          onRefresh={fetchAppointments}
+          isLoading={isLoading}
+          events={events}
+          selectedTypeFilters={selectedTypeFilters}
+          setSelectedTypeFilters={setSelectedTypeFilters}
+          selectedStatusFilters={selectedStatusFilters}
+          setSelectedStatusFilters={setSelectedStatusFilters}
+          selectedRiskFilters={selectedRiskFilters}
+          setSelectedRiskFilters={setSelectedRiskFilters}
         />
       </div>
 
@@ -269,21 +367,34 @@ export function CalendarPage() {
         </div>
       )}
 
-      <CreateAppointmentModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} />
+      <CreateAppointmentModal 
+        open={isCreateModalOpen} 
+        onOpenChange={setIsCreateModalOpen}
+        onSuccess={fetchAppointments}
+      />
 
       {/* Desktop Floating Sidepeek Overlay */}
       {!isMobile && (
-        <div
-          className={`fixed top-0 right-0 h-screen w-[100%] sm:w-[400px] z-50 transition-transform duration-300 ease-in-out shadow-2xl ${selectedAppointment ? 'translate-x-0' : 'translate-x-full'}`}
-        >
-          <AppointmentSidepeek
-            appointment={selectedAppointment}
-            onClose={() => setSelectedAppointment(null)}
-          />
-        </div>
+        <>
+          {selectedAppointment && (
+            <div 
+              className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40 transition-opacity"
+              onClick={() => setSelectedAppointment(null)}
+            />
+          )}
+          <div
+            className={`fixed top-0 right-0 h-screen w-[100%] sm:w-[400px] z-50 transition-transform duration-300 ease-in-out shadow-2xl ${selectedAppointment ? 'translate-x-0' : 'translate-x-full'}`}
+          >
+            <AppointmentSidepeek
+              appointment={selectedAppointment}
+              onClose={() => setSelectedAppointment(null)}
+              onCancelAppointment={handleCancelAppointment}
+            />
+          </div>
+        </>
       )}
 
-      {/* Mobile Sidepeek Drawer (from underneath with drag-to-dismiss) */}
+      {/* Mobile Sidepeek Drawer */}
       {isMobile && (
         <Drawer open={!!selectedAppointment} onOpenChange={(open) => !open && setSelectedAppointment(null)}>
           <DrawerContent className="p-0 bg-background dark:bg-[#0a0a0a] border-t border-sidebar-border border-x-0 border-b-0 before:hidden rounded-t-xl overflow-hidden !h-[80dvh] flex flex-col focus-visible:outline-none">
@@ -293,6 +404,7 @@ export function CalendarPage() {
             <AppointmentSidepeek
               appointment={selectedAppointment}
               onClose={() => setSelectedAppointment(null)}
+              onCancelAppointment={handleCancelAppointment}
             />
           </DrawerContent>
         </Drawer>
@@ -300,3 +412,4 @@ export function CalendarPage() {
     </div>
   )
 }
+
