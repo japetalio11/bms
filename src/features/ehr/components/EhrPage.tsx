@@ -38,7 +38,6 @@ export function EhrPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
   const [selectedCategoryFilters, setSelectedCategoryFilters] = useState<string[]>([])
-  const [selectedSecurityFilters, setSelectedSecurityFilters] = useState<string[]>([])
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [viewingDoc, setViewingDoc] = useState<EhrDocument | null>(null)
@@ -87,14 +86,9 @@ export function EhrPage() {
         if (!selectedCategoryFilters.includes(doc.category)) return false
       }
 
-      // Security popover filter
-      if (selectedSecurityFilters.length > 0) {
-        if (!selectedSecurityFilters.includes(doc.securityLevel)) return false
-      }
-
       return true
     })
-  }, [documents, searchQuery, activeTab, selectedCategoryFilters, selectedSecurityFilters])
+  }, [documents, searchQuery, activeTab, selectedCategoryFilters])
 
   const toggleFilter = (list: string[], setList: (v: string[]) => void, item: string) => {
     if (list.includes(item)) setList(list.filter(i => i !== item))
@@ -149,32 +143,6 @@ export function EhrPage() {
                 ))}
                 {selectedCategoryFilters.length > 0 && (
                   <Button onClick={() => setSelectedCategoryFilters([])} className="h-7 text-xs mt-1">Clear</Button>
-                )}
-              </PopoverContent>
-            </Popover>
-
-            {/* Security Level Popover */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="h-9 px-2 text-xs font-medium gap-1.5 border-sidebar-border shrink-0 !bg-background dark:!bg-black">
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  Security {selectedSecurityFilters.length > 0 && `(${selectedSecurityFilters.length})`}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[180px] p-3 flex flex-col gap-2.5" align="end">
-                {["Public", "Confidential", "Restricted"].map(sec => (
-                  <div key={sec} className="flex items-center space-x-2">
-                    <Checkbox 
-                      id={`filter-sec-${sec}`}
-                      checked={selectedSecurityFilters.includes(sec)}
-                      onCheckedChange={() => toggleFilter(selectedSecurityFilters, setSelectedSecurityFilters, sec)}
-                      className="h-3.5 w-3.5"
-                    />
-                    <label htmlFor={`filter-sec-${sec}`} className="text-xs cursor-pointer">{sec}</label>
-                  </div>
-                ))}
-                {selectedSecurityFilters.length > 0 && (
-                  <Button onClick={() => setSelectedSecurityFilters([])} className="h-7 text-xs mt-1">Clear</Button>
                 )}
               </PopoverContent>
             </Popover>
