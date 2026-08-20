@@ -117,14 +117,21 @@ export function AppointmentListPage() {
       dateStr = dateStr !== "N/A" ? `${dateStr} - ${item.appointment_time}` : item.appointment_time
     }
 
+    const appDate = item.appointment_date ? new Date(item.appointment_date) : null
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const isPast = appDate ? appDate < today : false
+
     let status = item.status || "Pending"
     const lowerStatus = status.toLowerCase()
-    if (lowerStatus === "confirmed" || lowerStatus === "active" || lowerStatus === "scheduled") {
-      status = "Confirmed"
-    } else if (lowerStatus === "completed") {
+    if (lowerStatus === "completed") {
       status = "Completed"
     } else if (lowerStatus === "cancelled") {
       status = "Cancelled"
+    } else if (isPast) {
+      status = "Missed"
+    } else if (lowerStatus === "confirmed" || lowerStatus === "active" || lowerStatus === "scheduled") {
+      status = "Confirmed"
     } else {
       status = "Pending"
     }
@@ -135,6 +142,7 @@ export function AppointmentListPage() {
       name,
       risk,
       status,
+      isPast,
       type: item.appointment_type || "Prenatal Checkup",
       date: dateStr,
       rawDate: item.appointment_date
@@ -153,7 +161,7 @@ export function AppointmentListPage() {
 
     // 2. Tab Filtering
     if (activeTab === "upcoming") {
-      if (appointment.status === "Cancelled" || appointment.status === "Completed") return false
+      if (appointment.isPast || appointment.status === "Cancelled" || appointment.status === "Completed" || appointment.status === "Missed") return false
     } else if (activeTab === "completed") {
       if (appointment.status !== "Completed") return false
     } else if (activeTab === "cancelled") {

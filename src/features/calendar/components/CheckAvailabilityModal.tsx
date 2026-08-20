@@ -19,11 +19,16 @@ export function CheckAvailabilityModal({
   const MAX_DAILY_CAPACITY = 5
 
   const availableDaysInMonth = React.useMemo(() => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const start = startOfMonth(date)
     const end = endOfMonth(date)
     const days = eachDayOfInterval({ start, end })
 
     return days.filter(d => {
+      const dayStart = new Date(d)
+      dayStart.setHours(0, 0, 0, 0)
+      if (dayStart < today) return false
       const isWeekend = d.getDay() === 0 || d.getDay() === 6
       if (isWeekend) return false
       const count = events.filter(e => e.start && isSameDay(e.start, d) && e.status !== 'Cancelled').length
