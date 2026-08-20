@@ -5,17 +5,14 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { 
   FileText, 
   Search, 
   Upload, 
-  Download, 
-  Eye, 
-  Trash2, 
-  ShieldCheck, 
   PlusCircle, 
-  FolderArchive,
-  RefreshCw,
+  MoreVertical,
   FileSpreadsheet,
   FileCheck
 } from "lucide-react"
@@ -103,25 +100,8 @@ export function EhrPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-background text-foreground p-4 md:p-6 overflow-y-auto space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Electronic Health Records (EHR)</h1>
-          <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
-            Central repository for facility medical documents, clinical SOPs, and patient records.
-          </p>
-        </div>
-
-        <UploadDocumentModal open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen} onSuccess={handleAddDocument}>
-          <Button className="h-9 px-3 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
-            <Upload className="h-4 w-4" />
-            Upload Document
-          </Button>
-        </UploadDocumentModal>
-      </div>
-
-      {/* Control Bar: Tabs, Search, Popover Filters */}
+    <div className="flex flex-col h-full bg-background dark:bg-black text-foreground p-4 md:p-6 overflow-y-auto space-y-4">
+      {/* Control Bar: Tabs, Search, Popover Filters & Upload Button */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
@@ -135,20 +115,20 @@ export function EhrPage() {
           </Tabs>
 
           <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-            <div className="relative w-full sm:w-[220px]">
+            <div className="relative w-full sm:w-[200px]">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input 
                 placeholder="Search EHR records..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 h-9 text-xs"
+                className="pl-8 h-9 text-xs border-sidebar-border"
               />
             </div>
 
             {/* Category Filter Popover */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="h-9 px-2 text-xs font-medium gap-1.5 border-sidebar-border shrink-0">
+                <Button variant="outline" className="h-9 px-2 text-xs font-medium gap-1.5 border-sidebar-border shrink-0 !bg-background dark:!bg-black">
                   <PlusCircle className="h-3.5 w-3.5" />
                   Category {selectedCategoryFilters.length > 0 && `(${selectedCategoryFilters.length})`}
                 </Button>
@@ -174,7 +154,7 @@ export function EhrPage() {
             {/* Security Level Popover */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="h-9 px-2 text-xs font-medium gap-1.5 border-sidebar-border shrink-0">
+                <Button variant="outline" className="h-9 px-2 text-xs font-medium gap-1.5 border-sidebar-border shrink-0 !bg-background dark:!bg-black">
                   <PlusCircle className="h-3.5 w-3.5" />
                   Security {selectedSecurityFilters.length > 0 && `(${selectedSecurityFilters.length})`}
                 </Button>
@@ -196,94 +176,151 @@ export function EhrPage() {
                 )}
               </PopoverContent>
             </Popover>
+
+            <UploadDocumentModal open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen} onSuccess={handleAddDocument}>
+              <Button className="h-9 px-3 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200 shrink-0">
+                <Upload className="h-4 w-4" />
+                Upload Document
+              </Button>
+            </UploadDocumentModal>
           </div>
         </div>
       </div>
 
-      {/* EHR Records Data Table */}
-      <div className="border border-sidebar-border rounded-xl bg-card overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-sidebar-border bg-muted/30 dark:bg-white/5 text-muted-foreground font-medium">
-                <th className="py-3 px-4">Document Title</th>
-                <th className="py-3 px-4">Category</th>
-                <th className="py-3 px-4">Scope / Patient</th>
-                <th className="py-3 px-4">Security Level</th>
-                <th className="py-3 px-4">Format & Size</th>
-                <th className="py-3 px-4">Date Uploaded</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-sidebar-border">
-              {filteredDocuments.length > 0 ? (
-                filteredDocuments.map(doc => (
-                  <tr key={doc.id} className="hover:bg-accent/40 dark:hover:bg-white/5 transition-colors">
-                    <td className="py-3.5 px-4 font-medium text-foreground">
-                      <div className="flex items-center gap-2">
-                        {doc.format === "PDF" && <FileText className="h-4 w-4 text-red-400 shrink-0" />}
-                        {doc.format === "CSV" && <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />}
-                        {doc.format !== "PDF" && doc.format !== "CSV" && <FileCheck className="h-4 w-4 text-blue-400 shrink-0" />}
-                        <span className="truncate max-w-[220px]" title={doc.title}>{doc.title}</span>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 text-muted-foreground">{doc.category}</td>
-                    <td className="py-3.5 px-4 text-foreground font-medium">{doc.patientName}</td>
-                    <td className="py-3.5 px-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
-                        doc.securityLevel === 'Public' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                        doc.securityLevel === 'Confidential' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                        'bg-purple-500/10 text-purple-500 border-purple-500/20'
-                      }`}>
-                        {doc.securityLevel}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-muted-foreground">
-                      {doc.format} • {doc.size}
-                    </td>
-                    <td className="py-3.5 px-4 text-muted-foreground">{doc.dateUploaded}</td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => setViewingDoc(doc)} 
-                          title="View Details"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleDownload(doc)} 
-                          title="Download Record"
-                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleDeleteDocument(doc.id)} 
-                          title="Delete Record"
-                          className="h-7 w-7 text-muted-foreground hover:text-red-500"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-muted-foreground italic">
-                    No EHR records matching your search or filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* EHR Records Data Table Container */}
+      <div className="flex flex-col gap-4">
+        {/* Mobile List View (Hidden on MD and up) */}
+        <div className="flex md:hidden flex-col gap-4">
+          {filteredDocuments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center border border-sidebar-border rounded-xl bg-card dark:bg-black">
+              <p className="text-xs text-muted-foreground">No EHR records found</p>
+            </div>
+          ) : (
+            filteredDocuments.map((doc) => (
+              <div
+                key={doc.id}
+                className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-black gap-3 cursor-pointer hover:border-foreground/20 transition-colors"
+                onClick={() => setViewingDoc(doc)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {doc.format === "PDF" && <FileText className="h-4 w-4 text-red-400 shrink-0" />}
+                    {doc.format === "CSV" && <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />}
+                    {doc.format !== "PDF" && doc.format !== "CSV" && <FileCheck className="h-4 w-4 text-blue-400 shrink-0" />}
+                    <h3 className="text-sm font-semibold text-foreground dark:text-white truncate">{doc.title}</h3>
+                  </div>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                    doc.securityLevel === 'Public' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                    doc.securityLevel === 'Confidential' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                    'bg-purple-500/10 text-purple-500 border-purple-500/20'
+                  }`}>
+                    {doc.securityLevel}
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Category</span>
+                    <span className="text-foreground dark:text-white font-medium">{doc.category}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Scope / Patient</span>
+                    <span className="text-foreground dark:text-white font-medium">{doc.patientName}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Date Uploaded</span>
+                    <span className="text-foreground dark:text-white">{doc.dateUploaded}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end pt-2 border-t border-sidebar-border gap-2">
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); setViewingDoc(doc); }}>View</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); handleDownload(doc); }}>Download</Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Data Table */}
+        <div className="hidden md:block rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-black">
+          <div className="min-w-[900px]">
+            <Table>
+              <TableHeader className="bg-card dark:bg-[#111]">
+                <TableRow className="border-sidebar-border hover:bg-transparent">
+                  <TableHead className="w-12 text-center pl-4">
+                    <Checkbox className="border-sidebar-border" />
+                  </TableHead>
+                  <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Document Title</TableHead>
+                  <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Category</TableHead>
+                  <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Scope / Patient</TableHead>
+                  <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Security Level</TableHead>
+                  <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Format & Size</TableHead>
+                  <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Date Uploaded</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredDocuments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center text-xs text-muted-foreground">
+                      No EHR records found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredDocuments.map((doc) => (
+                    <TableRow
+                      key={doc.id}
+                      className="border-sidebar-border cursor-pointer transition-colors group hover:bg-accent dark:hover:bg-white/5"
+                      onClick={() => setViewingDoc(doc)}
+                    >
+                      <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox className="border-sidebar-border data-[state=checked]:bg-primary dark:data-[state=checked]:bg-white data-[state=checked]:text-primary-foreground dark:data-[state=checked]:text-black" />
+                      </TableCell>
+                      <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {doc.format === "PDF" && <FileText className="h-4 w-4 text-red-400 shrink-0" />}
+                          {doc.format === "CSV" && <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />}
+                          {doc.format !== "PDF" && doc.format !== "CSV" && <FileCheck className="h-4 w-4 text-blue-400 shrink-0" />}
+                          <span className="truncate max-w-[220px]" title={doc.title}>{doc.title}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{doc.category}</TableCell>
+                      <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">{doc.patientName}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                          doc.securityLevel === 'Public' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                          doc.securityLevel === 'Confidential' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                          'bg-purple-500/10 text-purple-500 border-purple-500/20'
+                        }`}>
+                          {doc.securityLevel}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{doc.format} • {doc.size}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{doc.dateUploaded}</TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white group-hover:text-foreground dark:group-hover:text-white">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                            <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setViewingDoc(doc)} className="text-xs cursor-pointer rounded-md">View Details</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownload(doc)} className="text-xs cursor-pointer rounded-md">Download File</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleDeleteDocument(doc.id)} className="text-xs cursor-pointer rounded-md text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
 
