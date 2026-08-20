@@ -221,7 +221,7 @@ export function ScanDocumentModal({
       title="Scan Document with OCR"
       description="Capture a photo or upload an image to extract text using Tesseract.js"
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 py-1 text-foreground max-h-[80vh] overflow-y-auto pr-1">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 py-1 text-foreground max-h-[75vh] overflow-y-auto pr-1.5">
         {isSuccess ? (
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-emerald-500">
             <CheckCircle2 className="h-12 w-12 animate-bounce" />

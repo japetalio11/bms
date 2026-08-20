@@ -103,7 +103,7 @@ export function UploadDocumentModal({
       title="Upload EHR & Facility Record"
       description="Store clinical documents, patient archives, and health unit protocols."
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 py-2 text-foreground">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 py-1 text-foreground max-h-[75vh] overflow-y-auto pr-1.5">
         {isSuccess ? (
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-emerald-500">
             <CheckCircle2 className="h-12 w-12 animate-bounce" />
@@ -124,7 +124,7 @@ export function UploadDocumentModal({
               />
             </div>
 
-            {/* Category & Security */}
+            {/* Category & Associated Patient */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="doc-category" className="text-xs font-medium">Category</Label>
@@ -143,51 +143,36 @@ export function UploadDocumentModal({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="doc-security" className="text-xs font-medium">Security Access Level</Label>
-                <Select value={securityLevel} onValueChange={setSecurityLevel}>
-                  <SelectTrigger id="doc-security" className="h-9 text-xs">
-                    <SelectValue placeholder="Select Security" />
+                <Label htmlFor="doc-patient" className="text-xs font-medium">Associated Mother / Patient</Label>
+                <Select value={patientName} onValueChange={setPatientName}>
+                  <SelectTrigger id="doc-patient" className="h-9 text-xs">
+                    <SelectValue placeholder="Select Mother / Patient" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Confidential">Confidential (Facility Staff Only)</SelectItem>
-                    <SelectItem value="Restricted">Restricted (Admins Only)</SelectItem>
-                    <SelectItem value="Public">Public Facility Notice</SelectItem>
+                    <SelectItem value="Facility General">Facility General (No specific mother)</SelectItem>
+                    {mothers.map((m: any) => {
+                      const userObj = m.user || m
+                      const name = [userObj.first_name, userObj.middle_name, userObj.last_name].filter(Boolean).join(" ") 
+                        || m.name 
+                        || m.full_name 
+                        || "Patient Record"
+                      const motherKey = m.mother_id || m.id || m.user_id
+                      return (
+                        <SelectItem key={motherKey} value={name}>
+                          {name}
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {/* Associated Mother / Patient */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="doc-patient" className="text-xs font-medium">Associated Mother / Patient</Label>
-              <Select value={patientName} onValueChange={setPatientName}>
-                <SelectTrigger id="doc-patient" className="h-9 text-xs">
-                  <SelectValue placeholder="Select Mother / Patient" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Facility General">Facility General (No specific mother)</SelectItem>
-                  {mothers.map((m: any) => {
-                    const userObj = m.user || m
-                    const name = [userObj.first_name, userObj.middle_name, userObj.last_name].filter(Boolean).join(" ") 
-                      || m.name 
-                      || m.full_name 
-                      || "Patient Record"
-                    const motherKey = m.mother_id || m.id || m.user_id
-                    return (
-                      <SelectItem key={motherKey} value={name}>
-                        {name}
-                      </SelectItem>
-                    )
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* File Dropzone */}
             <div className="flex flex-col gap-1.5">
               <Label className="text-xs font-medium">Attachment File (PDF, DOCX, PNG)</Label>
-              <label htmlFor="file-upload" className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-sidebar-border rounded-lg cursor-pointer hover:bg-accent/50 dark:hover:bg-white/5 transition-colors">
-                <UploadCloud className="h-7 w-7 text-muted-foreground mb-1" />
+              <label htmlFor="file-upload" className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-sidebar-border rounded-lg cursor-pointer hover:bg-accent/50 dark:hover:bg-white/5 transition-colors">
+                <UploadCloud className="h-6 w-6 text-muted-foreground mb-1" />
                 <span className="text-xs font-medium text-foreground">
                   {file ? file.name : "Click or drag file to upload"}
                 </span>
