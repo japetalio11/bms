@@ -58,13 +58,16 @@ export function WeeklyScheduleView({ viewDate, selectedDate, events, isMobile, o
               // Filter events for this day
               const dayEvents = events.filter(e => e.start && isSameDay(e.start, day))
 
-              // Badges Logic
-              const isDay29 = day.getDate() === 29 && day.getMonth() === 5
-              const isBooked = isDay29
-              const badgeText = isDay29 ? "Fully Booked" : "5 Slots Available"
-              const BadgeIcon = isBooked ? CalendarOff : CalendarIcon
+              // Dynamic Slot Availability Logic (Max 5 appointments per weekday)
               const isWeekend = day.getDay() === 0 || day.getDay() === 6
-              const showBadge = !isWeekend && (day >= new Date(2026, 4, 31) && day <= new Date(2026, 6, 4))
+              const dayEventsCount = events.filter(e => e.start && isSameDay(e.start, day) && e.status !== 'Cancelled').length
+              const MAX_DAILY_CAPACITY = 5
+              const remainingSlots = Math.max(0, MAX_DAILY_CAPACITY - dayEventsCount)
+              const isFullyBooked = remainingSlots === 0
+              
+              const badgeText = isFullyBooked ? "Fully Booked" : `${remainingSlots} Slots Available`
+              const BadgeIcon = isFullyBooked ? CalendarOff : CalendarIcon
+              const showBadge = !isWeekend
 
               return (
                 <div
@@ -91,11 +94,11 @@ export function WeeklyScheduleView({ viewDate, selectedDate, events, isMobile, o
                     {showBadge && (
                       <div className="sticky top-[80px] left-0 w-full flex justify-end pr-2 z-30 pointer-events-none pt-2">
                         {isMobile ? (
-                          <div className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold text-white shadow-md ${isBooked ? 'bg-[#ff7373]' : 'bg-[#22C55E]'}`}>
-                            {isBooked ? <CalendarOff className="h-3 w-3" /> : '5'}
+                          <div className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold text-white shadow-md ${isFullyBooked ? 'bg-[#ff7373]' : 'bg-[#22C55E]'}`}>
+                            {isFullyBooked ? <CalendarOff className="h-3 w-3" /> : remainingSlots}
                           </div>
                         ) : (
-                          <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-medium text-white whitespace-nowrap border shadow-sm ${isBooked ? 'bg-[#ff7373] border-[#ff7373]/20' : 'bg-[#22C55E] border-[#22C55E]/20'}`}>
+                          <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-medium text-white whitespace-nowrap border shadow-sm ${isFullyBooked ? 'bg-[#ff7373] border-[#ff7373]/20' : 'bg-[#22C55E] border-[#22C55E]/20'}`}>
                             <BadgeIcon className="h-3 w-3" />
                             {badgeText}
                           </div>

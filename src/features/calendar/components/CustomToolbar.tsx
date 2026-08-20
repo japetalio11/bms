@@ -216,7 +216,7 @@ export function CustomToolbar(props: CustomToolbarProps) {
             </Button>
           </ExportCalendarModal>
           
-          <CheckAvailabilityModal>
+          <CheckAvailabilityModal events={events} date={date}>
             <Button variant="outline" className="flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-white shrink-0">
               <CalendarCheck className="h-3.5 w-3.5" />
               Check Available Slots
