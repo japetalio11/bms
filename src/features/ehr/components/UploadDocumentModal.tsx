@@ -167,9 +167,14 @@ export function UploadDocumentModal({
                 <SelectContent>
                   <SelectItem value="Facility General">Facility General (No specific mother)</SelectItem>
                   {mothers.map((m: any) => {
-                    const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.name || `Mother #${m.mother_id || m.id}`
+                    const userObj = m.user || m
+                    const name = [userObj.first_name, userObj.middle_name, userObj.last_name].filter(Boolean).join(" ") 
+                      || m.name 
+                      || m.full_name 
+                      || "Patient Record"
+                    const motherKey = m.mother_id || m.id || m.user_id
                     return (
-                      <SelectItem key={m.mother_id || m.id} value={name}>
+                      <SelectItem key={motherKey} value={name}>
                         {name}
                       </SelectItem>
                     )
