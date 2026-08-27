@@ -92,7 +92,7 @@ export function MothersPage() {
 
   const displayedMothers = motherList
     .map((m: any) => {
-      const name = [m.user?.first_name, m.user?.middle_name, m.user?.last_name].filter(Boolean).join(" ") || "Unknown"
+      const name = [m.user?.first_name || m.first_name, m.user?.middle_name || m.middle_name, m.user?.last_name || m.last_name].filter(Boolean).join(" ") || m.name || "Unknown"
       const currentPregnancy = m.pregnancies?.[0]
       const latestVisit = currentPregnancy?.prenatalVisits?.[0]
       const risk = currentPregnancy?.risk_flag || currentPregnancy?.risk_level || latestVisit?.risk_level_assessed || null
@@ -102,10 +102,10 @@ export function MothersPage() {
       const gestationalAge = calculatedGA > 0 ? `${calculatedGA} Weeks` : "N/A"
 
       const eddVal = lmpRaw ? calculateEDD(lmpRaw) : (currentPregnancy?.edd ? formatDate(currentPregnancy.edd) : "N/A")
-      const station = m.user?.address || "N/A"
+      const station = m.user?.address || m.address || "N/A"
 
       return {
-        id: m.mother_id || m.user_id,
+        id: m.id || m._id || m.mother_id || m.user_id,
         rawMother: m,
         name,
         risk,

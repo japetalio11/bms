@@ -48,6 +48,7 @@ import { formatDate } from "@/lib/utils"
 
 import { UploadAvatarModal } from "./UploadAvatarModal"
 import { mothersApi } from "../api"
+import { db } from "@/lib/db/bmsDatabase"
 
 export function MotherProfilePage({motherId} : {motherId?: string}) {
   const navigate = useNavigate()
@@ -85,97 +86,58 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
   const [labRecords, setLabRecords] = useState<any>(null);
   const [supplements, setSupplements] = useState<any>(null);
 
-  const fetchMotherProfile = async () => {
+  const fetchAllData = async () => {
     if (!targetId) return
     setLoading(true)
+    setIsLoading(true)
+    setError(null)
+
     try {
-      const data = await mothersApi.getMotherProfile(targetId)
-      if (data) {
-        setMotherData(data)
-        const uId = data.user_id || data.user?.user_id
-        if (uId) {
-          mothersApi.getAppointmentsByUser(uId).then(r => setAppointments(r)).catch(() => {})
+      // 1. Fetch main Mother Profile
+      let motherRes = await mothersApi.getMotherProfile(targetId)
+      if (!motherRes) {
+        try {
+          motherRes = (await db.mothers.get(targetId)) || null
+          if (!motherRes) {
+            const allMothers = await db.mothers.toArray()
+            motherRes = allMothers.find((m) => m.id === targetId || m._id === targetId || m.mother_id === targetId || m.user_id === targetId) || null
+          }
+        } catch {
+          // Ignore Dexie read error fallback
         }
       }
-    } catch (err) {
+      if (motherRes) {
+        setMotherData(motherRes)
+      }
+
+      // 2. Fetch sub-records in parallel using Promise.allSettled
+      const uId = motherRes?.user_id || motherRes?.user?.user_id || motherRes?._id || motherRes?.id || targetId
+
+      await Promise.allSettled([
+        mothersApi.getPregnancies(targetId).then((r) => setPregnancy(r)).catch(() => {}),
+        mothersApi.getPrenatalVisits(targetId).then((r) => setVisitation(r)).catch(() => {}),
+        mothersApi.getAppointmentsByUser(uId).then((r) => setAppointments(r)).catch(() => {}),
+        mothersApi.getLabRecords(targetId).then((r) => setLabRecords(r)).catch(() => {}),
+        mothersApi.getSupplements(targetId).then((r) => setSupplements(r)).catch(() => {}),
+      ])
+    } catch (err: any) {
+      console.warn("[MotherProfilePage] Load error:", err)
+      setError(err?.message || "Failed to load profile details")
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchPregnancy = async () => {
-    if (!targetId) return
-    try {
-      setIsLoading(true)
-      const data = await mothersApi.getPregnancies(targetId)
-      setPregnancy(data)
-    } catch (err: any) {
-      setError(err.message || "Failed to load pregnancy")
-    } finally {
       setIsLoading(false)
     }
   }
 
-  const fetchVisit = async () => {
-    if (!targetId) return
-    try {
-      setLoading(true)
-      const data = await mothersApi.getPrenatalVisits(targetId)
-      setVisitation(data)
-    } catch (err: any) {
-      setError(err.message || "Failed to load Visitation")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const fetchAppointments = async () => {
-    const userTargetId = motherData?.user_id || motherData?.user?.user_id || targetId
-    if (!userTargetId) return
-    try {
-      setIsLoading(true)
-      const data = await mothersApi.getAppointmentsByUser(userTargetId)
-      setAppointments(data)
-    } catch (err: any) {
-      setError(err.message || "Failed to load Appointments")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const fetchLabRecord = async () => {
-    if (!targetId) return
-    try {
-      setIsLoading(true)
-      const data = await mothersApi.getLabRecords(targetId)
-      setLabRecords(data)
-    } catch (err: any) {
-      setError(err.message || "Failed to load Laboratory Records")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const fetchSupplementRecord = async () => {
-    if (!targetId) return
-    try {
-      setIsLoading(true)
-      const data = await mothersApi.getSupplements(targetId)
-      setSupplements(data)
-    } catch (err: any) {
-      setError(err.message || "Failed to load Supplementation Records")
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const fetchMotherProfile = fetchAllData
+  const fetchPregnancy = fetchAllData
+  const fetchVisit = fetchAllData
+  const fetchAppointments = fetchAllData
+  const fetchLabRecord = fetchAllData
+  const fetchSupplementRecord = fetchAllData
 
   useEffect(() => {
-    fetchMotherProfile()
-    fetchPregnancy()
-    fetchVisit()
-    fetchAppointments()
-    fetchLabRecord()
-    fetchSupplementRecord()
+    fetchAllData()
   }, [id, motherId])
 
   const calculateEDD = (lmpDateStr?: string | Date) => {
@@ -202,7 +164,9 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
     return "3rd Trimester"
   }
 
-  const name = motherData ? [motherData.user?.first_name, motherData.user?.middle_name, motherData.user?.last_name].filter(Boolean).join(" ") : "Loading..."
+  const name = motherData
+    ? ([motherData.user?.first_name || motherData.first_name, motherData.user?.middle_name || motherData.middle_name, motherData.user?.last_name || motherData.last_name].filter(Boolean).join(" ") || motherData.name || "Mother Profile")
+    : "Loading..."
   
   const pregnancyList = (Array.isArray(pregnancy) ? pregnancy : pregnancy?.data || pregnancy?.result) || motherData?.pregnancies || [];
   const currentPregnancy = pregnancyList[0] || motherData?.pregnancies?.[0]
@@ -221,7 +185,7 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
   const supplementList = (Array.isArray(supplements) ? supplements : supplements?.data || supplements?.result || motherData?.supplementationRecords || []);
 
   const mother = {
-    id: motherData?.mother_id || id,
+    id: motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id || targetId,
     name,
     ageDisplay,
     dob: motherData?.birth_date ? formatDate(motherData.birth_date) : "N/A",
@@ -234,8 +198,8 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
     edd: lmpRaw ? calculateEDD(lmpRaw) : (currentPregnancy?.edd ? formatDate(currentPregnancy.edd) : "N/A"),
     bmi: currentPregnancy?.bmi_category || "Normal",
     bloodType: motherData?.blood_type || "N/A",
-    phone: motherData?.user?.phone_number || "N/A",
-    address: motherData?.user?.address || "N/A",
+    phone: motherData?.user?.phone_number || motherData?.phone_number || "N/A",
+    address: motherData?.user?.address || motherData?.address || "N/A",
     fsn: motherData?.family_serial_no || "N/A"
   }
 
@@ -307,8 +271,8 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
               <div className="flex items-center gap-4">
                 <div className="relative group">
                   <Avatar className="h-14 w-14 border border-sidebar-border shadow-sm">
-                    {motherData?.user?.profile_url && (
-                      <AvatarImage src={motherData.user.profile_url} alt={mother.name} className="object-cover" />
+                    {(motherData?.user?.profile_url || motherData?.profile_url || motherData?.photo_url || motherData?.user?.photo_url) && (
+                      <AvatarImage src={motherData?.user?.profile_url || motherData?.profile_url || motherData?.photo_url || motherData?.user?.photo_url} alt={mother.name} className="object-cover" />
                     )}
                     <AvatarFallback className="bg-primary/10 text-primary font-bold">
                       {mother.name.slice(0, 2).toUpperCase()}

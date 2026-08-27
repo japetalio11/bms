@@ -42,17 +42,21 @@ export function UploadAvatarModal({
   }
 
   const handleSave = async () => {
-    if (!selectedFile || !motherData?.mother_id) return
+    const targetId = motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id
+    if (!selectedFile || !targetId) return
 
     setUploading(true)
     setError(null)
 
     try {
       const uploadRes = await mothersApi.uploadLabFile(selectedFile)
-      const fileUrl = uploadRes?.file_url || uploadRes?.url
+      const fileUrl = uploadRes?.file_url || uploadRes?.url || uploadRes?.fileUrl
 
       if (fileUrl) {
-        await mothersApi.updateMother(motherData.mother_id, { profile_url: fileUrl })
+        await mothersApi.updateMother(targetId, {
+          profile_url: fileUrl,
+          photo_url: fileUrl,
+        })
         setSuccess(true)
         setTimeout(() => {
           onSuccess?.()

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import headerImage from "@/assets/Header.svg"
+import { db } from "@/lib/db/bmsDatabase"
 
 export function AuthForm() {
   const navigate = useNavigate()
@@ -148,6 +149,7 @@ export function AuthForm() {
       }
       if (data.user) {
         localStorage.setItem("user", JSON.stringify(data.user))
+        await db.userSession.put({ id: "current_user", ...data.user, token: data.token })
       }
 
       navigate("/dashboard")
@@ -183,6 +185,7 @@ export function AuthForm() {
       }
       if (data.user) {
         localStorage.setItem("user", JSON.stringify(data.user))
+        await db.userSession.put({ id: "current_user", ...data.user, token: data.token })
       }
 
       navigate("/dashboard")

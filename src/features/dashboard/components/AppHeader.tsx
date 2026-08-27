@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useTheme } from "@/components/theme-provider"
 import { useLocation } from "react-router-dom"
+import { OfflineSyncBadge } from "@/components/OfflineSyncBadge"
 
 export function AppHeader() {
   const { theme, setTheme } = useTheme()
@@ -128,6 +129,8 @@ export function AppHeader() {
           <span className="sr-only">Toggle theme</span>
         </Button>
 
+        <div className="h-4 w-px bg-border" />
+        <OfflineSyncBadge />
         <div className="h-4 w-px bg-border" />
 
         <DropdownMenu>
