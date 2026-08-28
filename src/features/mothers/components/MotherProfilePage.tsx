@@ -184,6 +184,18 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
   const labRecordList = (Array.isArray(labRecords) ? labRecords : labRecords?.data || labRecords?.result || motherData?.labRecords || []);
   const supplementList = (Array.isArray(supplements) ? supplements : supplements?.data || supplements?.result || motherData?.supplementationRecords || []);
 
+  const fullMotherData = {
+    ...motherData,
+    mother_id: motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id || targetId,
+    _id: motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id || targetId,
+    id: motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id || targetId,
+    pregnancies: pregnancyList,
+    prenatalVisits: visitationList,
+    appointments: appointmentList,
+    labRecords: labRecordList,
+    supplementationRecords: supplementList,
+  }
+
   const mother = {
     id: motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id || targetId,
     name,
@@ -880,13 +892,13 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
       <UploadAvatarModal
         open={avatarModalOpen}
         onOpenChange={setAvatarModalOpen}
-        motherData={motherData}
+        motherData={fullMotherData}
         onSuccess={fetchMotherProfile}
       />
       <LogVitalsModal
         open={logVitalsModalOpen}
         onOpenChange={setLogVitalsModalOpen}
-        motherData={motherData}
+        motherData={fullMotherData}
         onSuccess={() => {
           fetchMotherProfile()
           fetchVisit()
@@ -895,7 +907,7 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
       <RegisterPregnancyModal
         open={registerPregnancyModalOpen}
         onOpenChange={setRegisterPregnancyModalOpen}
-        motherData={motherData}
+        motherData={fullMotherData}
         onSuccess={() => {
           fetchMotherProfile()
           fetchPregnancy()
@@ -904,20 +916,20 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
       <RegisterAppointmentModal
         open={appointmentModalOpen}
         onOpenChange={setAppointmentModalOpen}
-        motherData={motherData}
+        motherData={fullMotherData}
         onSuccess={fetchAppointments}
       />
       <RegisterLabModal
         open={labModalOpen}
         onOpenChange={setLabModalOpen}
-        motherData={motherData}
+        motherData={fullMotherData}
         visitationList={visitationList}
         onSuccess={fetchLabRecord}
       />
       <RegisterSupplementModal
         open={supplementModalOpen}
         onOpenChange={setSupplementModalOpen}
-        motherData={motherData}
+        motherData={fullMotherData}
         visitationList={visitationList}
         onSuccess={fetchSupplementRecord}
       />

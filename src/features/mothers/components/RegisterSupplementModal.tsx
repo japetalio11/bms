@@ -80,7 +80,10 @@ export function RegisterSupplementModal({
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
+      const motherId = motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id || ""
+
       const payload = {
+        mother_id: motherId,
         pregnancy_id: pregnancyId,
         visit_id: visitId,
         supplement_type: supplementType,

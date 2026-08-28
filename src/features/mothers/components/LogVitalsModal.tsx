@@ -47,17 +47,22 @@ export function LogVitalsModal({
   const pregnancies = motherData?.pregnancies || []
 
   React.useEffect(() => {
-    if (pregnancies.length > 0) {
-      const activePreg = pregnancies.find((p: any) => p.pregnancy_status?.toLowerCase() === "active") || pregnancies[0]
-      setPregnancyId(activePreg.pregnancy_id || activePreg._id || activePreg.id || "")
-      if (activePreg.gestational_age_weeks) {
-        setGestationWeeks(Number(activePreg.gestational_age_weeks))
-      }
-      if (activePreg.trimester) {
-        setTrimester(Number(activePreg.trimester))
-      }
-      if (activePreg.risk_flag) {
-        setRiskLevel(activePreg.risk_flag)
+    if (open) {
+      const existingVisits = motherData?.prenatalVisits || []
+      setVisitNumber(existingVisits.length + 1)
+
+      if (pregnancies.length > 0) {
+        const activePreg = pregnancies.find((p: any) => p.pregnancy_status?.toLowerCase() === "active") || pregnancies[0]
+        setPregnancyId(activePreg.pregnancy_id || activePreg._id || activePreg.id || "")
+        if (activePreg.gestational_age_weeks) {
+          setGestationWeeks(Number(activePreg.gestational_age_weeks))
+        }
+        if (activePreg.trimester) {
+          setTrimester(Number(activePreg.trimester))
+        }
+        if (activePreg.risk_flag) {
+          setRiskLevel(activePreg.risk_flag)
+        }
       }
     }
   }, [motherData, open])
@@ -116,7 +121,10 @@ export function LogVitalsModal({
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
+      const motherId = motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id || ""
+
       const payload = {
+        mother_id: motherId,
         pregnancy_id: pregnancyId,
         health_worker_id: healthWorkerId,
         trimester: Number(trimester),

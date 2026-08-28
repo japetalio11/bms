@@ -137,6 +137,19 @@ export class BMSDatabase extends Dexie {
       blobs: "id",
       userSession: "id",
     })
+
+    this.version(2).stores({
+      mothers: "id, mother_id, user_id, facility_id, phone_number, sync_status, updated_at",
+      pregnancies: "id, pregnancy_id, mother_id, sync_status, updated_at",
+      prenatalVisits: "id, visit_id, pregnancy_id, mother_id, visit_date, sync_status, updated_at",
+      appointments: "id, appointment_id, mother_id, user_id, facility_id, appointment_date, status, sync_status, updated_at",
+      labRecords: "id, screening_id, pregnancy_id, mother_id, sync_status, updated_at",
+      supplements: "id, supplement_id, pregnancy_id, mother_id, sync_status, updated_at",
+      ehrDocuments: "id, mother_id, sync_status, updated_at",
+      offlineQueue: "++id, client_mutation_id, entity_type, created_at, retry_count",
+      blobs: "id",
+      userSession: "id",
+    })
   }
 }
 

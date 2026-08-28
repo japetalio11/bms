@@ -36,6 +36,13 @@ export function UploadAvatarModal({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    if (file.size > 10 * 1024 * 1024) {
+      setError(`Selected image (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the maximum allowed 10 MB size limit.`)
+      e.target.value = ""
+      return
+    }
+
     setSelectedFile(file)
     setPreviewUrl(URL.createObjectURL(file))
     setError(null)

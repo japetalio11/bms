@@ -47,8 +47,13 @@ export function SyncQueueDrawer({ open, onClose }: Props) {
   if (!open) return null
 
   const handleClearQueue = async () => {
-    if (confirm("Are you sure you want to clear the pending offline queue? Unsynced changes will be discarded.")) {
+    if (confirm("Are you sure you want to clear the pending offline queue and discard unsynced offline records?")) {
       await db.offlineQueue.clear()
+      await db.mothers.where("sync_status").notEqual("synced").delete()
+      await db.pregnancies.where("sync_status").notEqual("synced").delete()
+      await db.appointments.where("sync_status").notEqual("synced").delete()
+      await db.labRecords.where("sync_status").notEqual("synced").delete()
+      await db.supplements.where("sync_status").notEqual("synced").delete()
     }
   }
 

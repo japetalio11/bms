@@ -49,6 +49,12 @@ export function RegisterLabModal({
     const file = e.target.files?.[0]
     if (!file) return
 
+    if (file.size > 10 * 1024 * 1024) {
+      setError(`Selected document (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the maximum allowed 10 MB limit.`)
+      e.target.value = ""
+      return
+    }
+
     setUploading(true)
     setError(null)
     const token = localStorage.getItem("token")
@@ -106,7 +112,10 @@ export function RegisterLabModal({
     setLoading(true)
 
     try {
+      const motherId = motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id || ""
+
       const payload = {
+        mother_id: motherId,
         pregnancy_id: pregnancyId,
         visit_id: visitId,
         screening_type: screeningType,
