@@ -1,4 +1,5 @@
 import { motherRepository } from "@/lib/repositories/motherRepository"
+import { appointmentRepository } from "@/lib/repositories/appointmentRepository"
 import { apiClient } from "@/lib/apiClient"
 import { syncEngine } from "@/lib/sync/syncEngine"
 
@@ -28,23 +29,12 @@ export const mothersApi = {
   },
 
   async getPregnancies(motherId: string) {
-    if (!syncEngine.isNetworkOnline()) {
-      return { result: [] }
-    }
-    try {
-      const response = await apiClient.get(`/api/v1/pregnancy/mother/${motherId}`)
-      return response.data
-    } catch {
-      return { result: [] }
-    }
+    const pregnancies = await motherRepository.getPregnancies(motherId)
+    return { result: pregnancies, data: pregnancies }
   },
 
   async registerPregnancy(payload: any) {
-    if (syncEngine.isNetworkOnline()) {
-      const response = await apiClient.post("/api/v1/pregnancy/register", payload)
-      return response.data
-    }
-    return { success: true, offline: true }
+    return await motherRepository.registerPregnancy(payload)
   },
 
   async getPrenatalVisits(motherId: string) {
@@ -57,35 +47,20 @@ export const mothersApi = {
   },
 
   async getAppointmentsByUser(userId: string) {
-    if (!syncEngine.isNetworkOnline()) {
-      return { result: [] }
-    }
-    try {
-      const response = await apiClient.get(`/api/v1/appointment/get/user/${userId}`)
-      return response.data
-    } catch {
-      return { result: [] }
-    }
+    const appointments = await appointmentRepository.getAllFacilityAppointments()
+    const filtered = appointments.filter(
+      (a) => a.user_id === userId || a.mother_id === userId || a.id === userId
+    )
+    return { result: filtered, data: filtered }
   },
 
   async registerAppointment(payload: any) {
-    if (syncEngine.isNetworkOnline()) {
-      const response = await apiClient.post("/api/v1/appointment/register", payload)
-      return response.data
-    }
-    return { success: true, offline: true }
+    return await appointmentRepository.createAppointment(payload)
   },
 
   async getLabRecords(motherId: string) {
-    if (!syncEngine.isNetworkOnline()) {
-      return { result: [] }
-    }
-    try {
-      const response = await apiClient.get(`/api/v1/lab-screening/get/mother/${motherId}`)
-      return response.data
-    } catch {
-      return { result: [] }
-    }
+    const labs = await motherRepository.getLabRecords(motherId)
+    return { result: labs, data: labs }
   },
 
   async uploadLabFile(file: File) {
@@ -98,23 +73,12 @@ export const mothersApi = {
   },
 
   async getSupplements(motherId: string) {
-    if (!syncEngine.isNetworkOnline()) {
-      return { result: [] }
-    }
-    try {
-      const response = await apiClient.get(`/api/v1/supplement/get/mother/${motherId}`)
-      return response.data
-    } catch {
-      return { result: [] }
-    }
+    const supplements = await motherRepository.getSupplements(motherId)
+    return { result: supplements, data: supplements }
   },
 
   async registerSupplement(payload: any) {
-    if (syncEngine.isNetworkOnline()) {
-      const response = await apiClient.post("/api/v1/supplement/register", payload)
-      return response.data
-    }
-    return { success: true, offline: true }
+    return await motherRepository.registerSupplement(payload)
   },
 
   async updateRecord(url: string, payload: any) {

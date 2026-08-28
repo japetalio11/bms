@@ -45,17 +45,18 @@ export function EditMotherModal({
 
   React.useEffect(() => {
     if (motherData) {
-      setFirstName(motherData.user?.first_name || "")
-      setLastName(motherData.user?.last_name || "")
-      setMiddleName(motherData.user?.middle_name || "")
-      setPhone(motherData.user?.phone_number || "")
-      setEmail(motherData.user?.email || "")
-      setAddress(motherData.user?.address || "")
+      setFirstName(motherData.user?.first_name || motherData.first_name || "")
+      setLastName(motherData.user?.last_name || motherData.last_name || "")
+      setMiddleName(motherData.user?.middle_name || motherData.middle_name || "")
+      setPhone(motherData.user?.phone_number || motherData.phone_number || "")
+      setEmail(motherData.user?.email || motherData.email || "")
+      setAddress(motherData.user?.address || motherData.address || "")
       setFamilySerialNo(motherData.family_serial_no || "")
       setCivilStatus(motherData.civil_status || "Single")
       setBloodType(motherData.blood_type || "O+")
-      if (motherData.birth_date) {
-        setDob(new Date(motherData.birth_date))
+      const rawDob = motherData.birth_date || motherData.date_of_birth || motherData.user?.birth_date || motherData.user?.date_of_birth
+      if (rawDob) {
+        setDob(new Date(rawDob))
       }
     }
   }, [motherData, open])
@@ -69,7 +70,7 @@ export function EditMotherModal({
     setLoading(true)
     setError(null)
 
-    const motherId = motherData?.mother_id || motherData?.user_id
+    const motherId = motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id
 
     try {
       await mothersApi.updateMother(motherId, {

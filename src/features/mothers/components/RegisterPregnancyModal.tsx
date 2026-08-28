@@ -44,7 +44,7 @@ export function RegisterPregnancyModal({
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  const motherId = motherData?.mother_id || motherData?.user_id
+  const motherId = motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id
 
   const handleSubmit = async () => {
     setError(null)

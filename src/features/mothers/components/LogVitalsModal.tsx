@@ -49,7 +49,7 @@ export function LogVitalsModal({
   React.useEffect(() => {
     if (pregnancies.length > 0) {
       const activePreg = pregnancies.find((p: any) => p.pregnancy_status?.toLowerCase() === "active") || pregnancies[0]
-      setPregnancyId(activePreg.pregnancy_id || "")
+      setPregnancyId(activePreg.pregnancy_id || activePreg._id || activePreg.id || "")
       if (activePreg.gestational_age_weeks) {
         setGestationWeeks(Number(activePreg.gestational_age_weeks))
       }
@@ -175,8 +175,9 @@ export function LogVitalsModal({
               <SelectContent>
                 {pregnancies.map((p: any, idx: number) => {
                   const isLatest = idx === 0
+                  const pId = p.pregnancy_id || p._id || p.id || String(idx)
                   return (
-                    <SelectItem key={p.pregnancy_id || idx} value={p.pregnancy_id}>
+                    <SelectItem key={pId} value={pId}>
                       Pregnancy #{pregnancies.length - idx} {isLatest ? "(Latest)" : ""} - {p.pregnancy_status || "Active"} (LMP: {p.lmp_date ? new Date(p.lmp_date).toLocaleDateString() : (p.date_of_registration ? new Date(p.date_of_registration).toLocaleDateString() : "N/A")})
                     </SelectItem>
                   )

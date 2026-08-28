@@ -315,4 +315,170 @@ export const motherRepository = {
       return { url: base64Url, blobId: tempBlobId }
     }
   },
+
+  /**
+   * Registers a new pregnancy (offline-first).
+   */
+  async registerPregnancy(payload: any): Promise<LocalPregnancy> {
+    const tempId = `temp-preg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+    const motherId = payload.motherId || payload.mother_id || payload.targetId || ""
+
+    const newPregnancy: LocalPregnancy = {
+      ...payload,
+      id: tempId,
+      pregnancy_id: tempId,
+      mother_id: motherId,
+      pregnancy_status: payload.pregnancy_status || "Active",
+      sync_status: "pending_create",
+      updated_at: Date.now(),
+    }
+
+    await db.pregnancies.put(newPregnancy)
+
+    await syncEngine.enqueueMutation({
+      entity_type: "pregnancy",
+      action: "CREATE",
+      endpoint: "/api/v1/pregnancy/register",
+      method: "POST",
+      payload,
+      temp_id: tempId,
+    })
+
+    return newPregnancy
+  },
+
+  /**
+   * Retrieves pregnancies for a mother.
+   */
+  async getPregnancies(motherId: string): Promise<LocalPregnancy[]> {
+    let local = await db.pregnancies.where("mother_id").equals(motherId).toArray()
+
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.get(`/api/v1/pregnancy/mother/${motherId}`)
+        const remoteList = response.data?.result || response.data?.data || []
+        if (Array.isArray(remoteList) && remoteList.length > 0) {
+          const pending = local.filter((p) => p.sync_status !== "synced")
+          const pendingIds = new Set(pending.map((p) => p.id))
+
+          const formattedRemote: LocalPregnancy[] = remoteList
+            .filter((p: any) => !pendingIds.has(p.pregnancy_id || p._id || p.id))
+            .map((p: any) => ({
+              ...p,
+              id: p.pregnancy_id || p._id || p.id,
+              mother_id: motherId,
+              sync_status: "synced" as const,
+              updated_at: Date.now(),
+            }))
+
+          await db.pregnancies.bulkPut([...formattedRemote, ...pending])
+          return await db.pregnancies.where("mother_id").equals(motherId).toArray()
+        }
+      } catch (err) {
+        console.warn(`[motherRepository] Fetch pregnancies for ${motherId} failed:`, err)
+      }
+    }
+
+    return local
+  },
+
+  /**
+   * Retrieves lab records for a mother.
+   */
+  async getLabRecords(motherId: string): Promise<LocalLabRecord[]> {
+    let local = await db.labRecords.where("mother_id").equals(motherId).toArray()
+
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.get(`/api/v1/lab-screening/get/mother/${motherId}`)
+        const remoteList = response.data?.result || response.data?.data || []
+        if (Array.isArray(remoteList) && remoteList.length > 0) {
+          const pending = local.filter((l) => l.sync_status !== "synced")
+          const pendingIds = new Set(pending.map((l) => l.id))
+
+          const formattedRemote: LocalLabRecord[] = remoteList
+            .filter((l: any) => !pendingIds.has(l._id || l.id))
+            .map((l: any) => ({
+              ...l,
+              id: l._id || l.id,
+              mother_id: motherId,
+              sync_status: "synced" as const,
+              updated_at: Date.now(),
+            }))
+
+          await db.labRecords.bulkPut([...formattedRemote, ...pending])
+          return await db.labRecords.where("mother_id").equals(motherId).toArray()
+        }
+      } catch (err) {
+        console.warn(`[motherRepository] Fetch lab records for ${motherId} failed:`, err)
+      }
+    }
+
+    return local
+  },
+
+  /**
+   * Registers a supplement record (offline-first).
+   */
+  async registerSupplement(payload: any): Promise<LocalSupplement> {
+    const tempId = `temp-supp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+    const motherId = payload.motherId || payload.mother_id || payload.targetId || ""
+
+    const newSupplement: LocalSupplement = {
+      ...payload,
+      id: tempId,
+      supplement_id: tempId,
+      mother_id: motherId,
+      sync_status: "pending_create",
+      updated_at: Date.now(),
+    }
+
+    await db.supplements.put(newSupplement)
+
+    await syncEngine.enqueueMutation({
+      entity_type: "supplement",
+      action: "CREATE",
+      endpoint: "/api/v1/supplement/register",
+      method: "POST",
+      payload,
+      temp_id: tempId,
+    })
+
+    return newSupplement
+  },
+
+  /**
+   * Retrieves supplement records for a mother.
+   */
+  async getSupplements(motherId: string): Promise<LocalSupplement[]> {
+    let local = await db.supplements.where("mother_id").equals(motherId).toArray()
+
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.get(`/api/v1/supplement/get/mother/${motherId}`)
+        const remoteList = response.data?.result || response.data?.data || []
+        if (Array.isArray(remoteList) && remoteList.length > 0) {
+          const pending = local.filter((s) => s.sync_status !== "synced")
+          const pendingIds = new Set(pending.map((s) => s.id))
+
+          const formattedRemote: LocalSupplement[] = remoteList
+            .filter((s: any) => !pendingIds.has(s._id || s.id))
+            .map((s: any) => ({
+              ...s,
+              id: s._id || s.id,
+              mother_id: motherId,
+              sync_status: "synced" as const,
+              updated_at: Date.now(),
+            }))
+
+          await db.supplements.bulkPut([...formattedRemote, ...pending])
+          return await db.supplements.where("mother_id").equals(motherId).toArray()
+        }
+      } catch (err) {
+        console.warn(`[motherRepository] Fetch supplements for ${motherId} failed:`, err)
+      }
+    }
+
+    return local
+  },
 }

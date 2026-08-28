@@ -75,13 +75,13 @@ export function RegisterLabModal({
   React.useEffect(() => {
     if (pregnancies.length > 0) {
       const activePreg = pregnancies.find((p: any) => p.pregnancy_status?.toLowerCase() === "active") || pregnancies[0]
-      setPregnancyId(activePreg.pregnancy_id || "")
+      setPregnancyId(activePreg.pregnancy_id || activePreg._id || activePreg.id || "")
     }
   }, [motherData, open])
 
   React.useEffect(() => {
     if (visits.length > 0) {
-      setVisitId(visits[0].visit_id || "")
+      setVisitId(visits[0].visit_id || visits[0]._id || visits[0].id || "")
     }
   }, [visits, open])
 
@@ -150,11 +150,14 @@ export function RegisterLabModal({
                 <SelectValue placeholder="Select Pregnancy" />
               </SelectTrigger>
               <SelectContent>
-                {pregnancies.map((p: any, idx: number) => (
-                  <SelectItem key={p.pregnancy_id || idx} value={p.pregnancy_id}>
-                    Pregnancy #{pregnancies.length - idx} ({p.pregnancy_status || "Active"})
-                  </SelectItem>
-                ))}
+                {pregnancies.map((p: any, idx: number) => {
+                  const pId = p.pregnancy_id || p._id || p.id || String(idx)
+                  return (
+                    <SelectItem key={pId} value={pId}>
+                      Pregnancy #{pregnancies.length - idx} ({p.pregnancy_status || "Active"})
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -169,11 +172,14 @@ export function RegisterLabModal({
                 {visits.length === 0 ? (
                   <SelectItem value="none" disabled>No visits recorded yet</SelectItem>
                 ) : (
-                  visits.map((v: any, idx: number) => (
-                    <SelectItem key={v.visit_id || idx} value={v.visit_id}>
-                      Visit #{v.visit_number || idx + 1} ({v.visit_date ? new Date(v.visit_date).toLocaleDateString() : "N/A"})
-                    </SelectItem>
-                  ))
+                  visits.map((v: any, idx: number) => {
+                    const vId = v.visit_id || v._id || v.id || String(idx)
+                    return (
+                      <SelectItem key={vId} value={vId}>
+                        Visit #{v.visit_number || idx + 1} ({v.visit_date ? new Date(v.visit_date).toLocaleDateString() : "N/A"})
+                      </SelectItem>
+                    )
+                  })
                 )}
               </SelectContent>
             </Select>

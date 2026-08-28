@@ -165,31 +165,75 @@ export function AuthForm() {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
-    
+
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
-      const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: email, password })
-      })
+      if (navigator.onLine) {
+        try {
+          const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ identifier: email, password }),
+          })
 
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || "Authentication failed")
+          const data = await response.json()
+          if (!response.ok) {
+            throw new Error(data.error || "Authentication failed")
+          }
+
+          if (data.token) {
+            localStorage.setItem("token", data.token)
+          }
+          if (data.user) {
+            localStorage.setItem("user", JSON.stringify(data.user))
+            await db.userSession.put({
+              id: "current_user",
+              ...data.user,
+              token: data.token,
+              cachedEmail: email.toLowerCase().trim(),
+              cachedPassword: password,
+              cachedUser: data.user,
+            })
+          }
+
+          navigate("/dashboard")
+          return
+        } catch (fetchErr: any) {
+          if (
+            fetchErr.message &&
+            fetchErr.message !== "Failed to fetch" &&
+            !fetchErr.message.includes("NetworkError") &&
+            !fetchErr.message.includes("fetch")
+          ) {
+            throw fetchErr
+          }
+        }
       }
 
-      if (data.token) {
-        localStorage.setItem("token", data.token)
-      }
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user))
-        await db.userSession.put({ id: "current_user", ...data.user, token: data.token })
+      // Offline re-authentication fallback using cached IndexedDB user session
+      const cachedSession = await db.userSession.get("current_user")
+      if (cachedSession) {
+        const matchesIdentifier =
+          !email ||
+          cachedSession.email?.toLowerCase() === email.toLowerCase().trim() ||
+          cachedSession.phone_number === email.trim() ||
+          cachedSession.cachedEmail === email.toLowerCase().trim()
+
+        const matchesPassword =
+          !cachedSession.cachedPassword || cachedSession.cachedPassword === password
+
+        if (matchesIdentifier && matchesPassword) {
+          const token = cachedSession.token || "offline-session-token"
+          const user = cachedSession.cachedUser || cachedSession
+          localStorage.setItem("token", token)
+          localStorage.setItem("user", JSON.stringify(user))
+          navigate("/dashboard")
+          return
+        }
       }
 
-      navigate("/dashboard")
-
+      throw new Error("Offline login failed. Check credentials or log in online once to save session.")
     } catch (err: any) {
       setError(err.message)
     } finally {

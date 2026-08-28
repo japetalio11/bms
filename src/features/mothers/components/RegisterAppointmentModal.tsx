@@ -39,7 +39,7 @@ export function RegisterAppointmentModal({
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  const userId = motherData?.user?.user_id || motherData?.user_id
+  const userId = motherData?.user?.user_id || motherData?.user_id || motherData?.mother_id || motherData?._id || motherData?.id
 
   const handleSubmit = async () => {
     setError(null)
