@@ -13,6 +13,8 @@ import { WeeklyScheduleView } from "./WeeklyScheduleView"
 import { CreateAppointmentModal } from "@/features/appointments/components/CreateAppointmentModal"
 import { AppointmentSidepeek } from "@/features/dashboard/components/AppointmentSidepeek"
 import { appointmentApi } from "@/features/appointments/api"
+import { mothersApi } from "@/features/mothers/api"
+import { extractRiskLevel } from "@/lib/riskUtils"
 
 import "react-big-calendar/lib/css/react-big-calendar.css"
 
@@ -56,12 +58,26 @@ export function CalendarPage() {
   const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>([])
   const [selectedRiskFilters, setSelectedRiskFilters] = useState<string[]>([])
 
+  const [mothersMap, setMothersMap] = useState<Map<string, any>>(new Map())
+
   const fetchAppointments = async () => {
     setIsLoading(true)
     const userStr = localStorage.getItem("user")
     const user = userStr ? JSON.parse(userStr) : null
     try {
-      const data = await appointmentApi.getAllFacilityAppointment(user?.facility_id)
+      const [data, mothers] = await Promise.all([
+        appointmentApi.getAllFacilityAppointment(user?.facility_id),
+        mothersApi.getActiveMothers(user?.facility_id).catch(() => []),
+      ])
+
+      const map = new Map<string, any>()
+      if (Array.isArray(mothers)) {
+        mothers.forEach((m: any) => {
+          const keys = [m.id, m._id, m.mother_id, m.user_id, m.user?.user_id].filter(Boolean)
+          keys.forEach((k) => map.set(k, m))
+        })
+      }
+      setMothersMap(map)
       setRawAppointments(data || [])
     } catch (err) {
       console.error("Failed to fetch calendar appointments:", err)
@@ -131,12 +147,15 @@ export function CalendarPage() {
   // Transform raw appointments to RBC events and apply toolbar filters
   const events: AppEvent[] = useMemo(() => {
     const list: AppEvent[] = rawAppointments.map((item: any) => {
-      const motherUser = item.user || item.patient?.user || item.patient
-      const name = [motherUser?.first_name, motherUser?.middle_name, motherUser?.last_name]
-        .filter(Boolean)
-        .join(" ") || motherUser?.name || "Unknown Mother"
+      const targetKey = item.mother_id || item.user_id || item.motherId || item.userId
+      const matchedMother = targetKey ? mothersMap.get(targetKey) : null
+      const motherUser = item.user || item.patient?.user || item.patient || matchedMother?.user || matchedMother
 
-      const risk = item.risk_flag || item.risk_level || item.risk || "Low Risk"
+      const name = [motherUser?.first_name || matchedMother?.first_name, motherUser?.middle_name || matchedMother?.middle_name, motherUser?.last_name || matchedMother?.last_name]
+        .filter(Boolean)
+        .join(" ") || motherUser?.name || matchedMother?.name || "Unknown Mother"
+
+      const risk = extractRiskLevel(matchedMother || item, matchedMother?.pregnancies, matchedMother?.prenatalVisits)
       let status = item.status || "Pending"
       const lowerStatus = status.toLowerCase()
       if (lowerStatus === "confirmed" || lowerStatus === "active" || lowerStatus === "scheduled") {

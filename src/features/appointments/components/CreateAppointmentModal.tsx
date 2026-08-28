@@ -91,12 +91,17 @@ export function CreateAppointmentModal({
 
     try {
       const dateStr = format(startDate, "yyyy-MM-dd")
+      const selectedMother = mothers.find((m) => (m.user_id || m.mother_id || m._id || m.id) === selectedMotherId)
+      const motherUser = selectedMother?.user || selectedMother
+
       await appointmentApi.createAppointment({
         user_id: selectedMotherId,
-        facility_id: user?.facility_id,
+        mother_id: selectedMother?.mother_id || selectedMother?._id || selectedMotherId,
+        facility_id: user?.facility_id || user?.facilityId || user?.facility?._id,
         appointment_date: dateStr,
         appointment_time: startTime,
-        appointment_type: appointmentType
+        appointment_type: appointmentType,
+        user: motherUser,
       })
 
       handleOpenChange(false)

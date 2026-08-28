@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Search,
 } from "lucide-react"
+import { extractRiskLevel } from "@/lib/riskUtils"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -93,9 +94,9 @@ export function MothersPage() {
   const displayedMothers = motherList
     .map((m: any) => {
       const name = [m.user?.first_name || m.first_name, m.user?.middle_name || m.middle_name, m.user?.last_name || m.last_name].filter(Boolean).join(" ") || m.name || "Unknown"
-      const currentPregnancy = m.pregnancies?.[0]
+      const currentPregnancy = m.pregnancies?.[0] || m.pregnancy
       const latestVisit = currentPregnancy?.prenatalVisits?.[0]
-      const risk = currentPregnancy?.risk_flag || currentPregnancy?.risk_level || latestVisit?.risk_level_assessed || null
+      const risk = extractRiskLevel(m, m.pregnancies, m.prenatalVisits)
 
       const lmpRaw = currentPregnancy?.lmp_date || currentPregnancy?.lmp
       const calculatedGA = lmpRaw ? calculateGAWeeks(lmpRaw) : (currentPregnancy?.gestational_age_weeks || 0)

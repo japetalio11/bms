@@ -17,6 +17,7 @@ import {
   Search,
   Pencil,
 } from "lucide-react"
+import { extractRiskLevel } from "@/lib/riskUtils"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -203,7 +204,7 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
     dob: motherData?.birth_date ? formatDate(motherData.birth_date) : "N/A",
     gestationalAge: calculatedGA > 0 ? `${calculatedGA} Weeks` : "N/A",
     trimester: getTrimesterFromGA(calculatedGA),
-    risk: currentPregnancy?.risk_flag || currentPregnancy?.risk_level || (visitationList[0]?.risk_level_assessed) || null,
+    risk: extractRiskLevel(motherData, pregnancyList, visitationList),
     gravida: currentPregnancy?.gravida ?? currentPregnancy?.gravidity ?? 0,
     parity: currentPregnancy?.parity ?? 0,
     lmp: lmpRaw ? formatDate(lmpRaw) : "N/A",

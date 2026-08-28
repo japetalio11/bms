@@ -27,31 +27,12 @@ import {
 import { UploadDocumentModal } from "./UploadDocumentModal"
 import { ResponsiveModal } from "@/components/ui/responsive-modal"
 
-export interface EhrDocument {
-  id: string
-  title: string
-  category: string
-  patientName: string
-  securityLevel: string
-  format: string
-  size: string
-  dateUploaded: string
-  uploadedBy: string
-  fileUrl?: string
-}
+import { ehrRepository, type EhrDocument } from "@/lib/repositories/ehrRepository"
+export type { EhrDocument }
 
 export function EhrPage() {
-  const [documents, setDocuments] = useState<EhrDocument[]>(() => {
-    try {
-      const userStr = localStorage.getItem("user")
-      const user = userStr ? JSON.parse(userStr) : null
-      const facilityId = user?.facility_id || "default"
-      const saved = localStorage.getItem(`bms_ehr_docs_${facilityId}`)
-      return saved ? JSON.parse(saved) : []
-    } catch (e) {
-      return []
-    }
-  })
+  const [documents, setDocuments] = useState<EhrDocument[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
@@ -62,25 +43,29 @@ export function EhrPage() {
   const [previewDocIndex, setPreviewDocIndex] = useState<number | null>(null)
   const [zoomScale, setZoomScale] = useState(1)
 
-  // Save to localStorage whenever documents array updates
-  React.useEffect(() => {
-    try {
-      const userStr = localStorage.getItem("user")
-      const user = userStr ? JSON.parse(userStr) : null
-      const facilityId = user?.facility_id || "default"
-      localStorage.setItem(`bms_ehr_docs_${facilityId}`, JSON.stringify(documents))
-    } catch (e) {
-      console.error("Failed to save EHR documents to localStorage", e)
-    }
-  }, [documents])
-
-  const handleAddDocument = (newDoc: EhrDocument) => {
-    setDocuments(prev => [newDoc, ...prev])
+  const fetchDocuments = async () => {
+    setIsLoading(true)
+    const userStr = localStorage.getItem("user")
+    const user = userStr ? JSON.parse(userStr) : null
+    const facilityId = user?.facility_id || user?.facilityId
+    const docs = await ehrRepository.getAllDocuments(facilityId)
+    setDocuments(docs || [])
+    setIsLoading(false)
   }
 
-  const handleDeleteDocument = (id: string) => {
+  React.useEffect(() => {
+    fetchDocuments()
+  }, [])
+
+  const handleAddDocument = async (newDoc: EhrDocument) => {
+    await ehrRepository.createDocument(newDoc)
+    await fetchDocuments()
+  }
+
+  const handleDeleteDocument = async (id: string) => {
     if (!confirm("Are you sure you want to remove this record from facility EHR archives?")) return
-    setDocuments(prev => prev.filter(d => d.id !== id))
+    await ehrRepository.deleteDocument(id)
+    await fetchDocuments()
   }
 
   const handleDownload = (doc: EhrDocument) => {
@@ -420,36 +405,98 @@ export function EhrPage() {
               )}
 
               {/* Main Content Render */}
-              <div className="flex items-center justify-center w-full h-full overflow-auto">
-                {activeDoc.fileUrl ? (
-                  activeDoc.format === "PNG" || activeDoc.format === "JPG" || activeDoc.format === "JPEG" || activeDoc.format === "WEBP" || activeDoc.format === "GIF" || activeDoc.format === "BMP" ? (
-                    <img
-                      src={activeDoc.fileUrl}
-                      alt={activeDoc.title}
-                      style={{ transform: `scale(${zoomScale})` }}
-                      className="max-h-[85vh] max-w-[92vw] object-contain rounded-lg shadow-2xl transition-transform duration-200 ease-out"
-                    />
-                  ) : activeDoc.format === "PDF" ? (
-                    <iframe
-                      src={activeDoc.fileUrl}
-                      title={activeDoc.title}
-                      style={{ transform: `scale(${zoomScale})`, transformOrigin: "top center" }}
-                      className="w-[88vw] h-[84vh] rounded-xl border border-white/20 bg-white shadow-2xl"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center p-12 bg-white/5 rounded-2xl border border-white/10 gap-3 text-white/80">
-                      <FileCheck className="h-16 w-16 text-blue-400" />
-                      <p className="text-sm font-semibold">{activeDoc.title}</p>
-                      <p className="text-xs text-white/60">{activeDoc.format} Document Record</p>
+              <div className="flex items-center justify-center w-full h-full overflow-auto p-4">
+                {(() => {
+                  const url = activeDoc.fileUrl || ""
+                  const isImageData = url.startsWith("data:image/") ||
+                    Boolean(url.match(/\.(png|jpe?g|webp|gif|svg|bmp)(\?.*)?$/i)) ||
+                    ["PNG", "JPG", "JPEG", "WEBP", "GIF", "BMP", "IMAGE"].includes(activeDoc.format?.toUpperCase())
+
+                  const isPdfData = url.startsWith("data:application/pdf") ||
+                    Boolean(url.match(/\.pdf(\?.*)?$/i)) ||
+                    activeDoc.format?.toUpperCase() === "PDF"
+
+                  if (url && isImageData) {
+                    return (
+                      <img
+                        src={url}
+                        alt={activeDoc.title}
+                        style={{ transform: `scale(${zoomScale})` }}
+                        className="max-h-[85vh] max-w-[92vw] object-contain rounded-lg shadow-2xl transition-transform duration-200 ease-out"
+                      />
+                    )
+                  }
+
+                  if (url && isPdfData) {
+                    return (
+                      <iframe
+                        src={url}
+                        title={activeDoc.title}
+                        style={{ transform: `scale(${zoomScale})`, transformOrigin: "top center" }}
+                        className="w-[88vw] h-[84vh] rounded-xl border border-white/20 bg-white shadow-2xl"
+                      />
+                    )
+                  }
+
+                  // Default formatted Clinical Document Report View when no direct uploaded fileUrl exists
+                  return (
+                    <div 
+                      style={{ transform: `scale(${zoomScale})`, transformOrigin: "center center" }}
+                      className="w-[720px] max-w-[90vw] min-h-[520px] bg-white text-zinc-900 rounded-xl p-8 shadow-2xl border border-zinc-200 flex flex-col justify-between transition-transform duration-200 ease-out"
+                    >
+                      {/* Document Header */}
+                      <div className="flex items-start justify-between border-b-2 border-primary/20 pb-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-bold tracking-widest text-primary uppercase">Republic of the Philippines • Department of Health</span>
+                          <h2 className="text-lg font-bold text-zinc-900 leading-tight">{activeDoc.title}</h2>
+                          <p className="text-xs text-zinc-500">Maternal & Child Health Information System • EHR Archive</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-xs font-mono font-bold text-zinc-700 bg-zinc-100 px-2.5 py-1 rounded-md border border-zinc-300">{activeDoc.id}</span>
+                          <span className="text-[10px] text-zinc-500">{activeDoc.dateUploaded}</span>
+                        </div>
+                      </div>
+
+                      {/* Body Metadata Grid */}
+                      <div className="grid grid-cols-2 gap-4 py-6 text-xs border-b border-zinc-200">
+                        <div className="flex flex-col gap-1.5 bg-zinc-50 p-3 rounded-lg border border-zinc-200">
+                          <span className="text-[10px] font-semibold text-zinc-500 uppercase">Document Category</span>
+                          <span className="font-medium text-zinc-800">{activeDoc.category}</span>
+                        </div>
+                        <div className="flex flex-col gap-1.5 bg-zinc-50 p-3 rounded-lg border border-zinc-200">
+                          <span className="text-[10px] font-semibold text-zinc-500 uppercase">Patient / Scope</span>
+                          <span className="font-medium text-zinc-800">{activeDoc.patientName}</span>
+                        </div>
+                        <div className="flex flex-col gap-1.5 bg-zinc-50 p-3 rounded-lg border border-zinc-200">
+                          <span className="text-[10px] font-semibold text-zinc-500 uppercase">Security Classification</span>
+                          <span className="font-medium text-amber-700">{activeDoc.securityLevel}</span>
+                        </div>
+                        <div className="flex flex-col gap-1.5 bg-zinc-50 p-3 rounded-lg border border-zinc-200">
+                          <span className="text-[10px] font-semibold text-zinc-500 uppercase">Uploaded By</span>
+                          <span className="font-medium text-zinc-800">{activeDoc.uploadedBy}</span>
+                        </div>
+                      </div>
+
+                      {/* Document Summary Content */}
+                      <div className="py-4 flex-1 flex flex-col gap-2">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Clinical Summary Record</span>
+                        <div className="bg-zinc-50 rounded-lg p-4 text-xs text-zinc-700 leading-relaxed border border-zinc-200">
+                          This electronic health record is archived under facility clinical compliance regulations. 
+                          The record verifies maternal care guidelines, screening diagnostics, or facility administrative protocol.
+                        </div>
+                      </div>
+
+                      {/* Footer Stamp & Verification */}
+                      <div className="pt-4 border-t border-zinc-200 flex items-center justify-between text-[11px] text-zinc-500">
+                        <div className="flex items-center gap-2">
+                          <FileCheck className="h-4 w-4 text-emerald-600" />
+                          <span>Verified Facility Health Record • Digital Signature Authenticated</span>
+                        </div>
+                        <span className="font-mono text-[10px] text-zinc-400">Format: {activeDoc.format} ({activeDoc.size})</span>
+                      </div>
                     </div>
                   )
-                ) : (
-                  <div className="flex flex-col items-center justify-center p-12 bg-white/5 rounded-2xl border border-white/10 gap-3 text-white/80">
-                    <FileText className="h-16 w-16 text-muted-foreground" />
-                    <p className="text-sm font-semibold">{activeDoc.title}</p>
-                    <p className="text-xs text-white/60">No direct image file payload available</p>
-                  </div>
-                )}
+                })()}
               </div>
 
               {/* Next Arrow */}

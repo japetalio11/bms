@@ -3,6 +3,8 @@ import type { LocalMother, LocalPrenatalVisit, LocalPregnancy, LocalLabRecord, L
 import { apiClient } from "@/lib/apiClient"
 import { syncEngine } from "@/lib/sync/syncEngine"
 
+import { extractRiskLevel } from "@/lib/riskUtils"
+
 export const motherRepository = {
   /**
    * Retrieves active mothers. Reads local Dexie DB immediately, then fetches from
@@ -10,8 +12,13 @@ export const motherRepository = {
    */
   async getActiveMothers(facilityId?: string): Promise<LocalMother[]> {
     let localMothers: LocalMother[] = []
+    let allPregnancies: LocalPregnancy[] = []
+    let allVisits: LocalPrenatalVisit[] = []
+
     try {
       localMothers = await db.mothers.toArray()
+      allPregnancies = await db.pregnancies.toArray()
+      allVisits = await db.prenatalVisits.toArray()
     } catch (err) {
       console.warn("[motherRepository] Local DB query error:", err)
     }
@@ -52,6 +59,25 @@ export const motherRepository = {
       }
     }
 
+    // Map pregnancies and visits to mothers
+    const pregMap = new Map<string, LocalPregnancy[]>()
+    for (const p of allPregnancies) {
+      const mid = p.mother_id || p.motherId || p.targetId
+      if (mid) {
+        if (!pregMap.has(mid)) pregMap.set(mid, [])
+        pregMap.get(mid)!.push(p)
+      }
+    }
+
+    const visitMap = new Map<string, LocalPrenatalVisit[]>()
+    for (const v of allVisits) {
+      const mid = v.mother_id || v.motherId || v.targetId
+      if (mid) {
+        if (!visitMap.has(mid)) visitMap.set(mid, [])
+        visitMap.get(mid)!.push(v)
+      }
+    }
+
     // In-memory deduplication by mother_id, user_id, or full name
     const seen = new Set<string>()
     const deduplicated: LocalMother[] = []
@@ -75,14 +101,26 @@ export const motherRepository = {
       if (userId) seen.add(`uid:${userId}`)
       if (nameKey) seen.add(nameKey)
 
-      deduplicated.push(mother)
+      const pregs = mother.pregnancies?.length ? mother.pregnancies : (motherId && pregMap.get(motherId)) || (userId && pregMap.get(userId)) || []
+      const visits = mother.prenatalVisits?.length ? mother.prenatalVisits : (motherId && visitMap.get(motherId)) || (userId && visitMap.get(userId)) || []
+      const computedRisk = extractRiskLevel(mother, pregs, visits)
+
+      deduplicated.push({
+        ...mother,
+        pregnancies: pregs,
+        prenatalVisits: visits,
+        risk_flag: mother.risk_flag || mother.risk_level || computedRisk,
+        risk_level: mother.risk_level || mother.risk_flag || computedRisk,
+        risk: mother.risk || mother.risk_flag || computedRisk,
+      })
     }
 
+    let result = deduplicated
     if (facilityId) {
-      return deduplicated.filter((m) => !m.facility_id || m.facility_id === facilityId)
+      result = deduplicated.filter((m) => !m.facility_id || m.facility_id === facilityId)
     }
 
-    return deduplicated
+    return result.length > 0 ? result : deduplicated
   },
 
   /**
@@ -240,6 +278,19 @@ export const motherRepository = {
     }
 
     await db.prenatalVisits.put(newVisit)
+
+    if (payload.risk_level_assessed) {
+      try {
+        if (payload.pregnancy_id) {
+          await db.pregnancies.update(payload.pregnancy_id, { risk_flag: payload.risk_level_assessed, risk_level: payload.risk_level_assessed })
+        }
+        if (motherId) {
+          await db.mothers.update(motherId, { risk_flag: payload.risk_level_assessed, risk_level: payload.risk_level_assessed, risk: payload.risk_level_assessed })
+        }
+      } catch (err) {
+        console.warn("[motherRepository] Failed to sync risk flag to pregnancy/mother:", err)
+      }
+    }
 
     await syncEngine.enqueueMutation({
       entity_type: "prenatal_visit",

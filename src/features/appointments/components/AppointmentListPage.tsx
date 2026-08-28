@@ -47,6 +47,8 @@ import { ExportAppointmentsDataModal } from "./ExportAppointmentsDataModal"
 import { AppointmentSidepeek } from "@/features/dashboard/components/AppointmentSidepeek"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { appointmentApi } from "../api"
+import { mothersApi } from "@/features/mothers/api"
+import { extractRiskLevel } from "@/lib/riskUtils"
 
 export function AppointmentListPage() {
   const [activeTab, setActiveTab] = useState("all")
@@ -63,13 +65,27 @@ export function AppointmentListPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
 
+  const [mothersMap, setMothersMap] = useState<Map<string, any>>(new Map())
+
   const fetchAppointments = async () => {
     setIsLoading(true)
     const userStr = localStorage.getItem("user")
     const user = userStr ? JSON.parse(userStr) : null
 
     try {
-      const appointments = await appointmentApi.getAllFacilityAppointment(user?.facility_id)
+      const [appointments, mothers] = await Promise.all([
+        appointmentApi.getAllFacilityAppointment(user?.facility_id),
+        mothersApi.getActiveMothers(user?.facility_id).catch(() => []),
+      ])
+
+      const map = new Map<string, any>()
+      if (Array.isArray(mothers)) {
+        mothers.forEach((m: any) => {
+          const keys = [m.id, m._id, m.mother_id, m.user_id, m.user?.user_id].filter(Boolean)
+          keys.forEach((k) => map.set(k, m))
+        })
+      }
+      setMothersMap(map)
       setAppointmentList(appointments || [])
     } catch (error) {
       console.error("Failed to fetch appointments:", error)
@@ -99,12 +115,15 @@ export function AppointmentListPage() {
 
   // Format appointment records for display
   const formattedAppointments = appointmentList.map((item: any) => {
-    const motherUser = item.user || item.patient?.user || item.patient
-    const name = [motherUser?.first_name, motherUser?.middle_name, motherUser?.last_name]
-      .filter(Boolean)
-      .join(" ") || motherUser?.name || "Unknown Mother"
+    const targetKey = item.mother_id || item.user_id || item.motherId || item.userId
+    const matchedMother = targetKey ? mothersMap.get(targetKey) : null
+    const motherUser = item.user || item.patient?.user || item.patient || matchedMother?.user || matchedMother
 
-    const risk = item.risk_flag || item.risk_level || item.risk || "Low Risk"
+    const name = [motherUser?.first_name || matchedMother?.first_name, motherUser?.middle_name || matchedMother?.middle_name, motherUser?.last_name || matchedMother?.last_name]
+      .filter(Boolean)
+      .join(" ") || motherUser?.name || matchedMother?.name || "Unknown Mother"
+
+    const risk = extractRiskLevel(matchedMother || item, matchedMother?.pregnancies, matchedMother?.prenatalVisits)
 
     let dateStr = "N/A"
     if (item.appointment_date) {
