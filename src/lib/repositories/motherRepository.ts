@@ -678,4 +678,26 @@ export const motherRepository = {
 
     return local
   },
+
+  async assignFacility(motherCode: string): Promise<any> {
+    if (syncEngine.isNetworkOnline()) {
+      const response = await apiClient.post("/api/v1/mother/assign-facility", { mother_code: motherCode })
+      if (response.data?.mother) {
+        const m = response.data.mother
+        const motherId = m.mother_id || m.id
+        await db.mothers.put({
+          ...m,
+          id: motherId,
+          _id: motherId,
+          mother_id: motherId,
+          user_id: m.user_id || m.user?.user_id,
+          sync_status: "synced",
+          updated_at: Date.now(),
+        })
+      }
+      return response.data
+    } else {
+      throw new Error("Connecting a mother via code requires an active network connection.")
+    }
+  },
 }

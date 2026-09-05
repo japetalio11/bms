@@ -16,6 +16,7 @@ import {
   Filter,
   AlertTriangle,
   Search,
+  QrCode,
 } from "lucide-react"
 import { extractRiskLevel } from "@/lib/riskUtils"
 
@@ -41,6 +42,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { RegisterMotherModal } from "./RegisterMotherModal"
+import { ConnectMotherModal } from "./ConnectMotherModal"
 import { ExportMaternalDataModal } from "./ExportMaternalDataModal"
 import { formatDate } from "@/lib/utils"
 import { mothersApi } from "../api"
@@ -49,6 +51,7 @@ export function MothersPage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState("all")
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
+  const [connectModalOpen, setConnectModalOpen] = useState(false)
   const [motherList, setMotherList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -314,6 +317,10 @@ export function MothersPage() {
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
+              <Button onClick={() => setConnectModalOpen(true)} variant="outline" className="w-full md:w-auto h-8 px-2 text-xs font-medium gap-2 border-primary/50 text-primary hover:bg-primary/10">
+                <QrCode className="h-3.5 w-3.5" />
+                Connect Mother (QR/Code)
+              </Button>
               <Button onClick={() => setRegisterModalOpen(true)} className="w-full md:w-auto h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
                 <PlusCircle className="h-3.5 w-3.5" />
                 Register Mother
@@ -499,6 +506,11 @@ export function MothersPage() {
       <RegisterMotherModal
         open={registerModalOpen}
         onOpenChange={setRegisterModalOpen}
+        onSuccess={fetchMothers}
+      />
+      <ConnectMotherModal
+        open={connectModalOpen}
+        onOpenChange={setConnectModalOpen}
         onSuccess={fetchMothers}
       />
     </div>

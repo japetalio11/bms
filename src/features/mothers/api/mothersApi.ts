@@ -96,4 +96,8 @@ export const mothersApi = {
     }
     return { success: true, offline: true }
   },
+
+  async assignFacility(motherCode: string) {
+    return await motherRepository.assignFacility(motherCode)
+  },
 }
