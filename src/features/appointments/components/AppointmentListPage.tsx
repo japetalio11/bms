@@ -41,6 +41,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Skeleton } from "@/components/ui/skeleton"
+import { UnifiedTableLoader } from "@/components/ui/unified-table-loader"
 
 import { CreateAppointmentModal } from "./CreateAppointmentModal"
 import { ExportAppointmentsDataModal } from "./ExportAppointmentsDataModal"
@@ -452,164 +454,181 @@ export function AppointmentListPage() {
         </div>
 
         <div className="flex flex-col gap-4 p-4 md:pt-0 pl-3 pr-4 pb-24 md:pb-4">
-          
-          {isLoading && (
-            <div className="flex items-center justify-center p-12 gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading appointments...
-            </div>
-          )}
+          <UnifiedTableLoader isLoading={isLoading} label="Loading appointments...">
+            {!isLoading && filteredAppointments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-12 gap-2 border border-dashed border-sidebar-border rounded-xl text-center">
+                <CalendarDays className="h-8 w-8 text-muted-foreground/50" />
+                <p className="text-xs font-medium text-foreground dark:text-white">No appointments found</p>
+                <p className="text-[11px] text-muted-foreground">Try adjusting your filters or schedule a new appointment.</p>
+              </div>
+            ) : (
+              <>
+                {/* Mobile Card List */}
+                <div className="flex md:hidden flex-col gap-4">
+                  {isLoading && filteredAppointments.length === 0
+                    ? [...Array(3)].map((_, i) => (
+                        <div key={`appointment-skel-card-${i}`} className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-[#111] gap-3">
+                          <div className="flex items-center justify-between">
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-5 w-16 rounded-sm" />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Skeleton className="h-3 w-full" />
+                            <Skeleton className="h-3 w-3/4" />
+                          </div>
+                        </div>
+                      ))
+                    : paginatedAppointments.map((appointment) => (
+                        <div 
+                          key={appointment.id} 
+                          className={`flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-[#111] gap-4 cursor-pointer transition-colors ${selectedAppointment?.id === appointment.id ? 'ring-1 ring-ring dark:ring-white/20' : 'hover:bg-accent dark:hover:bg-white/5'}`}
+                          onClick={() => setSelectedAppointment(appointment)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="text-sm font-semibold text-foreground dark:text-white">{appointment.name}</h3>
+                            <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${appointment.risk.toLowerCase().includes('high') ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
+                              <Activity className="h-3 w-3" />
+                              {appointment.risk}
+                            </Badge>
+                          </div>
+                          
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Appointment Status</span>
+                              <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${appointment.status === 'Confirmed' ? 'bg-blue-500/10 text-blue-500' : appointment.status === 'Cancelled' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                <CheckCircle2 className="h-3 w-3" />
+                                {appointment.status}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Type</span>
+                              <span className="text-xs text-foreground dark:text-white">{appointment.type}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-muted-foreground">Date & Time</span>
+                              <span className="text-xs text-foreground dark:text-white">{appointment.date}</span>
+                            </div>
+                          </div>
 
-          {!isLoading && filteredAppointments.length === 0 && (
-            <div className="flex flex-col items-center justify-center p-12 gap-2 border border-dashed border-sidebar-border rounded-xl text-center">
-              <CalendarDays className="h-8 w-8 text-muted-foreground/50" />
-              <p className="text-xs font-medium text-foreground dark:text-white">No appointments found</p>
-              <p className="text-[11px] text-muted-foreground">Try adjusting your filters or schedule a new appointment.</p>
-            </div>
-          )}
+                          <div className="flex items-center justify-end pt-3 border-t border-sidebar-border">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white" onClick={(e) => e.stopPropagation()}>
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-[200px] rounded-xl border-border shadow-md">
+                                <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); setSelectedAppointment(appointment); }}>View Details</DropdownMenuItem>
+                                {appointment.status !== 'Cancelled' && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      className="text-xs text-[#ff7373] focus:text-[#ff7373] focus:bg-[#ff7373]/10 cursor-pointer rounded-md" 
+                                      onClick={(e) => { e.stopPropagation(); handleCancelAppointment(appointment.id); }}
+                                    >
+                                      Cancel Appointment
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      ))}
+                </div>
 
-          {/* Mobile Card List */}
-          {!isLoading && filteredAppointments.length > 0 && (
-            <div className="flex md:hidden flex-col gap-4">
-              {paginatedAppointments.map((appointment) => (
-                <div 
-                  key={appointment.id} 
-                  className={`flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-[#111] gap-4 cursor-pointer transition-colors ${selectedAppointment?.id === appointment.id ? 'ring-1 ring-ring dark:ring-white/20' : 'hover:bg-accent dark:hover:bg-white/5'}`}
-                  onClick={() => setSelectedAppointment(appointment)}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-foreground dark:text-white">{appointment.name}</h3>
-                    <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${appointment.risk.toLowerCase().includes('high') ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
-                      <Activity className="h-3 w-3" />
-                      {appointment.risk}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Appointment Status</span>
-                      <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${appointment.status === 'Confirmed' ? 'bg-blue-500/10 text-blue-500' : appointment.status === 'Cancelled' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
-                        <CheckCircle2 className="h-3 w-3" />
-                        {appointment.status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Type</span>
-                      <span className="text-xs text-foreground dark:text-white">{appointment.type}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Date & Time</span>
-                      <span className="text-xs text-foreground dark:text-white">{appointment.date}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end pt-3 border-t border-sidebar-border">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white" onClick={(e) => e.stopPropagation()}>
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-[200px] rounded-xl border-border shadow-md">
-                        <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); setSelectedAppointment(appointment); }}>View Details</DropdownMenuItem>
-                        {appointment.status !== 'Cancelled' && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-xs text-[#ff7373] focus:text-[#ff7373] focus:bg-[#ff7373]/10 cursor-pointer rounded-md" 
-                              onClick={(e) => { e.stopPropagation(); handleCancelAppointment(appointment.id); }}
-                            >
-                              Cancel Appointment
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                {/* Desktop Data Table */}
+                <div className="hidden md:block rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-black">
+                  <div className="min-w-[900px]">
+                    <Table>
+                      <TableHeader className="bg-card dark:bg-[#111]">
+                        <TableRow className="border-sidebar-border hover:bg-transparent">
+                          <TableHead className="w-12 text-center pl-4">
+                            <Checkbox className="border-sidebar-border" />
+                          </TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Mother Name</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Risk Flag</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Appointment Status</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Type</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Date & Time</TableHead>
+                          <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {isLoading && filteredAppointments.length === 0
+                          ? [...Array(5)].map((_, i) => (
+                              <TableRow key={`appointment-skel-${i}`} className="border-sidebar-border">
+                                <TableCell className="pl-4"><Skeleton className="h-4 w-4 rounded" /></TableCell>
+                                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                                <TableCell><Skeleton className="h-5 w-20 rounded-sm" /></TableCell>
+                                <TableCell><Skeleton className="h-5 w-24 rounded-sm" /></TableCell>
+                                <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                                <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                                <TableCell><Skeleton className="h-6 w-6 rounded-md" /></TableCell>
+                              </TableRow>
+                            ))
+                          : paginatedAppointments.map((appointment) => (
+                              <TableRow 
+                                key={appointment.id} 
+                                className={`border-sidebar-border cursor-pointer transition-colors group ${selectedAppointment?.id === appointment.id ? 'bg-accent dark:bg-white/10' : 'hover:bg-accent dark:hover:bg-white/5'}`}
+                                onClick={() => setSelectedAppointment(appointment)}
+                              >
+                                <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
+                                  <Checkbox className="border-sidebar-border" />
+                                </TableCell>
+                                <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">
+                                  {appointment.name}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${appointment.risk.toLowerCase().includes('high') ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
+                                    <Activity className="h-3 w-3" />
+                                    {appointment.risk}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${appointment.status === 'Confirmed' ? 'bg-blue-500/10 text-blue-500' : appointment.status === 'Cancelled' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    {appointment.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
+                                  {appointment.type}
+                                </TableCell>
+                                <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
+                                  {appointment.date}
+                                </TableCell>
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white">
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-[200px] rounded-xl border-border shadow-md">
+                                      <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={() => setSelectedAppointment(appointment)}>View Details</DropdownMenuItem>
+                                      {appointment.status !== 'Cancelled' && (
+                                        <>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem 
+                                            className="text-xs text-[#ff7373] focus:text-[#ff7373] focus:bg-[#ff7373]/10 cursor-pointer rounded-md" 
+                                            onClick={() => handleCancelAppointment(appointment.id)}
+                                          >
+                                            Cancel Appointment
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Desktop Data Table */}
-          {!isLoading && filteredAppointments.length > 0 && (
-            <div className="hidden md:block rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-black">
-              <div className="min-w-[900px]">
-                <Table>
-                  <TableHeader className="bg-card dark:bg-[#111]">
-                    <TableRow className="border-sidebar-border hover:bg-transparent">
-                      <TableHead className="w-12 text-center pl-4">
-                        <Checkbox className="border-sidebar-border" />
-                      </TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Mother Name</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Risk Flag</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Appointment Status</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Type</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Date & Time</TableHead>
-                      <TableHead className="w-12"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedAppointments.map((appointment) => (
-                      <TableRow 
-                        key={appointment.id} 
-                        className={`border-sidebar-border cursor-pointer transition-colors group ${selectedAppointment?.id === appointment.id ? 'bg-accent dark:bg-white/10' : 'hover:bg-accent dark:hover:bg-white/5'}`}
-                        onClick={() => setSelectedAppointment(appointment)}
-                      >
-                        <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
-                          <Checkbox className="border-sidebar-border" />
-                        </TableCell>
-                        <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">
-                          {appointment.name}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${appointment.risk.toLowerCase().includes('high') ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
-                            <Activity className="h-3 w-3" />
-                            {appointment.risk}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${appointment.status === 'Confirmed' ? 'bg-blue-500/10 text-blue-500' : appointment.status === 'Cancelled' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
-                            <CheckCircle2 className="h-3 w-3" />
-                            {appointment.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
-                          {appointment.type}
-                        </TableCell>
-                        <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
-                          {appointment.date}
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[200px] rounded-xl border-border shadow-md">
-                              <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={() => setSelectedAppointment(appointment)}>View Details</DropdownMenuItem>
-                              {appointment.status !== 'Cancelled' && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    className="text-xs text-[#ff7373] focus:text-[#ff7373] focus:bg-[#ff7373]/10 cursor-pointer rounded-md" 
-                                    onClick={() => handleCancelAppointment(appointment.id)}
-                                  >
-                                    Cancel Appointment
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          )}
+              </>
+            )}
+          </UnifiedTableLoader>
 
           {/* Desktop Pagination Footer */}
           {!isLoading && filteredAppointments.length > 0 && (

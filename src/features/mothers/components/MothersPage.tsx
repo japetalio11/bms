@@ -41,6 +41,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Skeleton } from "@/components/ui/skeleton"
+import { UnifiedTableLoader } from "@/components/ui/unified-table-loader"
 import { RegisterMotherModal } from "./RegisterMotherModal"
 import { ConnectMotherModal } from "./ConnectMotherModal"
 import { ExportMaternalDataModal } from "./ExportMaternalDataModal"
@@ -349,125 +351,152 @@ export function MothersPage() {
         </div>
 
         <div className="flex flex-col gap-4 p-4 md:pt-0 pl-3 pr-4 pb-24 md:pb-4">
-          {/* Mobile List View (Hidden on MD and up) */}
-          <div className="flex md:hidden flex-col gap-4">
-            {displayedMothers.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-8 text-center border border-sidebar-border rounded-xl bg-card dark:bg-black">
-                <p className="text-xs text-muted-foreground">No mothers found</p>
-              </div>
-            ) : (
-              displayedMothers.map((mother: any) => (
-                <div
-                  key={mother.id}
-                  className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-black gap-4 cursor-pointer hover:border-foreground/20 transition-colors"
-                  onClick={() => navigate(`/dashboard/mothers/${mother.id}`)}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-foreground dark:text-white">{mother.name}</h3>
-                    {getRiskBadge(mother.risk)}
-                  </div>
-
-                  <div className="flex flex-col gap-2">
+          <UnifiedTableLoader isLoading={loading} label="Loading mothers...">
+            {/* Mobile List View (Hidden on MD and up) */}
+            <div className="flex md:hidden flex-col gap-4">
+              {loading && displayedMothers.length === 0 ? (
+                [...Array(3)].map((_, i) => (
+                  <div key={`mother-skel-card-${i}`} className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-black gap-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Gestational Age</span>
-                      <span className="text-xs text-foreground dark:text-white font-medium">{mother.gestationalAge}</span>
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-5 w-16 rounded-sm" />
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Estimated Due Date</span>
-                      <span className="text-xs text-foreground dark:text-white font-medium">{mother.edd}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">Address</span>
-                      <span className="text-xs text-foreground dark:text-white font-medium">{mother.station}</span>
+                    <div className="flex flex-col gap-2">
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-3/4" />
                     </div>
                   </div>
+                ))
+              ) : displayedMothers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 text-center border border-sidebar-border rounded-xl bg-card dark:bg-black">
+                  <p className="text-xs text-muted-foreground">No mothers found</p>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                displayedMothers.map((mother: any) => (
+                  <div
+                    key={mother.id}
+                    className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-black gap-4 cursor-pointer hover:border-foreground/20 transition-colors"
+                    onClick={() => navigate(`/dashboard/mothers/${mother.id}`)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-foreground dark:text-white">{mother.name}</h3>
+                      {getRiskBadge(mother.risk)}
+                    </div>
 
-          {/* Desktop Data Table */}
-          <div className="hidden md:block rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-black">
-            <div className="min-w-[900px]">
-              <Table>
-                <TableHeader className="bg-card dark:bg-[#111]">
-                  <TableRow className="border-sidebar-border hover:bg-transparent">
-                    <TableHead className="w-12 text-center pl-4">
-                      <Checkbox className="border-sidebar-border" />
-                    </TableHead>
-                    <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Mother Name</TableHead>
-                    <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Risk Flag</TableHead>
-                    <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Gestational Age (Weeks)</TableHead>
-                    <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Estimated Due Date</TableHead>
-                    <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Address</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayedMothers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center text-xs text-muted-foreground">
-                        No mothers found
-                      </TableCell>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Gestational Age</span>
+                        <span className="text-xs text-foreground dark:text-white font-medium">{mother.gestationalAge}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Estimated Due Date</span>
+                        <span className="text-xs text-foreground dark:text-white font-medium">{mother.edd}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Address</span>
+                        <span className="text-xs text-foreground dark:text-white font-medium">{mother.station}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Desktop Data Table */}
+            <div className="hidden md:block rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-black">
+              <div className="min-w-[900px]">
+                <Table>
+                  <TableHeader className="bg-card dark:bg-[#111]">
+                    <TableRow className="border-sidebar-border hover:bg-transparent">
+                      <TableHead className="w-12 text-center pl-4">
+                        <Checkbox className="border-sidebar-border" />
+                      </TableHead>
+                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Mother Name</TableHead>
+                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Risk Flag</TableHead>
+                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Gestational Age (Weeks)</TableHead>
+                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Estimated Due Date</TableHead>
+                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Address</TableHead>
+                      <TableHead className="w-12"></TableHead>
                     </TableRow>
-                  ) : (
-                    displayedMothers.map((mother: any) => (
-                      <TableRow
-                        key={mother.id}
-                        className="border-sidebar-border cursor-pointer transition-colors group hover:bg-accent dark:hover:bg-white/5"
-                        onClick={() => navigate(`/dashboard/mothers/${mother.id}`)}
-                      >
-                        <TableCell className="pl-4">
-                          <Checkbox className="border-sidebar-border data-[state=checked]:bg-primary dark:data-[state=checked]:bg-white data-[state=checked]:text-primary-foreground dark:data-[state=checked]:text-black" />
-                        </TableCell>
-                        <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">{mother.name}</TableCell>
-                        <TableCell>{getRiskBadge(mother.risk)}</TableCell>
-                        <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.gestationalAge}</TableCell>
-                        <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.edd}</TableCell>
-                        <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.station}</TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-foreground dark:text-white group-hover:text-foreground dark:text-foreground dark:text-white" onClick={(e) => e.stopPropagation()}>
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
-                              <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => navigate(`/dashboard/mothers/${mother.id}`)} className="text-xs cursor-pointer rounded-md">View Profile</DropdownMenuItem>
-                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/mothers/${mother.id}`) }} className="text-xs cursor-pointer rounded-md">Edit Profile</DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={async (e) => {
-                                  e.stopPropagation()
-                                  if (confirm(`Are you sure you want to delete ${mother.name}?`)) {
-                                    const token = localStorage.getItem("token")
-                                    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
-                                    try {
-                                      await fetch(`${baseUrl}/api/v1/mother/delete/soft/${mother.id}`, {
-                                        method: "DELETE",
-                                        headers: { Authorization: `Bearer ${token}` }
-                                      })
-                                      fetchMothers()
-                                    } catch (err) {
-                                      alert("Failed to delete mother profile")
-                                    }
-                                  }
-                                }}
-                                className="text-xs cursor-pointer rounded-md text-red-500 focus:text-red-500"
-                              >
-                                Delete Mother
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                  </TableHeader>
+                  <TableBody>
+                    {loading && displayedMothers.length === 0 ? (
+                      [...Array(5)].map((_, i) => (
+                        <TableRow key={`mother-skel-${i}`} className="border-sidebar-border">
+                          <TableCell className="pl-4"><Skeleton className="h-4 w-4 rounded" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-20 rounded-sm" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                          <TableCell><Skeleton className="h-6 w-6 rounded-md" /></TableCell>
+                        </TableRow>
+                      ))
+                    ) : displayedMothers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-24 text-center text-xs text-muted-foreground">
+                          No mothers found
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      displayedMothers.map((mother: any) => (
+                        <TableRow
+                          key={mother.id}
+                          className="border-sidebar-border cursor-pointer transition-colors group hover:bg-accent dark:hover:bg-white/5"
+                          onClick={() => navigate(`/dashboard/mothers/${mother.id}`)}
+                        >
+                          <TableCell className="pl-4">
+                            <Checkbox className="border-sidebar-border data-[state=checked]:bg-primary dark:data-[state=checked]:bg-white data-[state=checked]:text-primary-foreground dark:data-[state=checked]:text-black" />
+                          </TableCell>
+                          <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">{mother.name}</TableCell>
+                          <TableCell>{getRiskBadge(mother.risk)}</TableCell>
+                          <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.gestationalAge}</TableCell>
+                          <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.edd}</TableCell>
+                          <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.station}</TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-foreground dark:text-white group-hover:text-foreground dark:text-foreground dark:text-white" onClick={(e) => e.stopPropagation()}>
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                                <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => navigate(`/dashboard/mothers/${mother.id}`)} className="text-xs cursor-pointer rounded-md">View Profile</DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/mothers/${mother.id}`) }} className="text-xs cursor-pointer rounded-md">Edit Profile</DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={async (e) => {
+                                    e.stopPropagation()
+                                    if (confirm(`Are you sure you want to delete ${mother.name}?`)) {
+                                      const token = localStorage.getItem("token")
+                                      const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+                                      try {
+                                        await fetch(`${baseUrl}/api/v1/mother/delete/soft/${mother.id}`, {
+                                          method: "DELETE",
+                                          headers: { Authorization: `Bearer ${token}` }
+                                        })
+                                        fetchMothers()
+                                      } catch (err) {
+                                        alert("Failed to delete mother profile")
+                                      }
+                                    }
+                                  }}
+                                  className="text-xs text-destructive focus:text-destructive cursor-pointer rounded-md"
+                                >
+                                  Delete Profile
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          </div>
+          </UnifiedTableLoader>
 
           {/* Desktop Pagination Footer */}
           <div className="hidden md:flex flex-row items-center justify-between text-xs text-muted-foreground gap-4 mt-2">
