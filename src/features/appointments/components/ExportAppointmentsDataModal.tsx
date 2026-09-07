@@ -6,17 +6,63 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 export function ExportAppointmentsDataModal({ 
   children,
-  open,
-  onOpenChange
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange,
+  appointments = []
 }: { 
   children?: React.ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  appointments?: any[]
 }) {
+  const [internalOpen, setInternalOpen] = React.useState(false)
+  const isControlled = externalOpen !== undefined
+  const isOpen = isControlled ? externalOpen : internalOpen
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (externalOnOpenChange) {
+      externalOnOpenChange(newOpen)
+    }
+    if (!isControlled) {
+      setInternalOpen(newOpen)
+    }
+  }
+
+  const [fileFormat, setFileFormat] = React.useState("csv")
+
+  const handleExport = () => {
+    if (!appointments || appointments.length === 0) {
+      alert("No appointments available to export.")
+      return
+    }
+
+    const headers = ["Appointment ID", "Mother Name", "Risk Flag", "Status", "Type", "Date & Time"]
+    const rows = appointments.map(app => [
+      `"${app.id || ''}"`,
+      `"${app.name || ''}"`,
+      `"${app.risk || 'Low Risk'}"`,
+      `"${app.status || ''}"`,
+      `"${app.type || ''}"`,
+      `"${app.date || ''}"`
+    ])
+
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n")
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
+    link.setAttribute("download", `Appointments_Export_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    handleOpenChange(false)
+  }
+
   return (
     <ResponsiveModal 
-      open={open}
-      onOpenChange={onOpenChange}
+      open={isOpen}
+      onOpenChange={handleOpenChange}
       trigger={children}
       title="Export Appointments Data"
       description="Download a generated schedule report based on your current filters."
@@ -25,23 +71,17 @@ export function ExportAppointmentsDataModal({
         {/* File Format */}
         <div className="flex flex-col gap-3">
           <h4 className="text-xs font-medium text-foreground dark:text-white">File Format</h4>
-          <RadioGroup defaultValue="excel" className="gap-3">
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="excel" id="af1" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white" />
-              <Label htmlFor="af1" className="text-xs font-normal">
-                <span className="text-foreground dark:text-white">Excel (.xlsx)</span> <span className="text-muted-foreground">- Best for spreadsheets and manual review</span>
-              </Label>
-            </div>
+          <RadioGroup value={fileFormat} onValueChange={setFileFormat} className="gap-3">
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="csv" id="af2" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white" />
               <Label htmlFor="af2" className="text-xs font-normal">
-                <span className="text-foreground dark:text-white">CSV</span> <span className="text-muted-foreground">- Best for importing into other systems</span>
+                <span className="text-foreground dark:text-white">CSV</span> <span className="text-muted-foreground">- Standard spreadsheet format</span>
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="pdf" id="af3" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white" />
-              <Label htmlFor="af3" className="text-xs font-normal">
-                <span className="text-foreground dark:text-white">PDF Summary</span> <span className="text-muted-foreground">- Best for stakeholder meetings</span>
+              <RadioGroupItem value="excel" id="af1" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white" />
+              <Label htmlFor="af1" className="text-xs font-normal">
+                <span className="text-foreground dark:text-white">Excel (.xlsx)</span> <span className="text-muted-foreground">- Sheet document</span>
               </Label>
             </div>
           </RadioGroup>
@@ -54,32 +94,7 @@ export function ExportAppointmentsDataModal({
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="filtered" id="as1" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white" />
               <Label htmlFor="as1" className="text-xs font-normal">
-                <span className="text-foreground dark:text-white">Current Filtered View</span> <span className="text-muted-foreground">(e.g., 8 items) - Useful if filtered by "Today's Queue" or "Pending".</span>
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="all" id="as2" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white" />
-              <Label htmlFor="as2" className="text-xs font-normal">
-                <span className="text-foreground dark:text-white">All Appointments</span> <span className="text-muted-foreground">(e.g., 345 items) - Pulls the entire APPOINTMENT table history.</span>
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
-
-        {/* Included Columns */}
-        <div className="flex flex-col gap-3">
-          <h4 className="text-xs font-medium text-foreground dark:text-white">Included Columns</h4>
-          <RadioGroup defaultValue="standard" className="gap-3">
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="standard" id="ac1" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white" />
-              <Label htmlFor="ac1" className="text-xs font-normal">
-                <span className="text-foreground dark:text-white">Standard View</span> <span className="text-muted-foreground">(Matches your current table columns: Mother Name, Risk Flag, Appointment Status, Type, Date & Time)</span>
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="all" id="ac2" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white" />
-              <Label htmlFor="ac2" className="text-xs font-normal">
-                <span className="text-foreground dark:text-white">All Data Fields</span> <span className="text-muted-foreground">(Includes hidden metadata, exact facility ID, sync status, and scheduling logs)</span>
+                <span className="text-foreground dark:text-white">Current Filtered View</span> <span className="text-muted-foreground">({appointments.length} items)</span>
               </Label>
             </div>
           </RadioGroup>
@@ -87,13 +102,14 @@ export function ExportAppointmentsDataModal({
       </div>
       
       <div className="flex justify-end gap-2 pt-4 border-t border-sidebar-border mt-2">
-        <Button variant="ghost" className="h-8 text-xs text-foreground dark:text-white hover:bg-accent dark:hover:bg-white/5" onClick={() => onOpenChange?.(false)}>
+        <Button variant="ghost" className="h-8 text-xs text-foreground dark:text-white hover:bg-accent dark:hover:bg-white/5" onClick={() => handleOpenChange(false)}>
           Cancel
         </Button>
-        <Button className="h-8 text-xs bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
+        <Button onClick={handleExport} className="h-8 text-xs bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
           Export Appointments
         </Button>
       </div>
     </ResponsiveModal>
   )
 }
+

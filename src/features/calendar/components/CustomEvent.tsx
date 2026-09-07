@@ -33,14 +33,14 @@ export function CustomEvent({ event, onClick }: any) {
           onClick={(e) => {
             if (onClick) onClick(event);
           }}
-          className={`flex h-full bg-transparent border border-sidebar-border rounded-md text-foreground dark:text-white overflow-hidden m-0.5 cursor-pointer hover:bg-white/5 transition-colors ${isMobile ? 'gap-3 p-3' : 'gap-1.5 p-1.5'}`}
+          className={`flex bg-transparent border border-sidebar-border rounded-md text-foreground dark:text-white overflow-hidden my-0.5 mx-0.5 cursor-pointer hover:bg-white/5 transition-colors ${isMobile ? 'gap-3 p-3' : 'gap-1.5 px-1.5 py-1'}`}
         >
-          <div className={`${isMobile ? 'w-1.5' : 'w-[3px]'} ${event.status === 'Confirmed' ? 'bg-[#22C55E]' : 'bg-yellow-500'} rounded-full shrink-0`}></div>
-          <div className="flex flex-col min-w-0 justify-center">
-            <span className={`${isMobile ? 'text-sm' : 'text-[11px]'} font-semibold truncate leading-tight`}>{event.title}</span>
+          <div className={`${isMobile ? 'w-1.5' : 'w-[3px]'} ${event.status === 'Confirmed' ? 'bg-[#22C55E]' : 'bg-yellow-500'} rounded-full shrink-0 my-0.5`}></div>
+          <div className="flex flex-col min-w-0 justify-center leading-tight">
+            <span className={`${isMobile ? 'text-sm' : 'text-[10px]'} font-semibold truncate leading-tight`}>{event.title}</span>
             {event.risk && (
-              <div className={`flex items-center gap-1 mt-1 ${event.risk === 'High Risk' ? 'text-red-500' : 'text-[#22C55E]'} ${isMobile ? 'text-xs' : 'text-[9px] mt-0.5'}`}>
-                <Activity className={`${isMobile ? 'h-4 w-4' : 'h-3 w-3'} shrink-0`} />
+              <div className={`flex items-center gap-1 ${event.risk === 'High Risk' ? 'text-red-500' : 'text-[#22C55E]'} ${isMobile ? 'text-xs mt-1' : 'text-[9px] mt-0.5'}`}>
+                <Activity className={`${isMobile ? 'h-3.5 w-3.5' : 'h-2.5 w-2.5'} shrink-0`} />
                 <span className="truncate">{event.risk}</span>
               </div>
             )}

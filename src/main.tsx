@@ -1,53 +1,39 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
-import { BrowserRouter, Routes, Route } from "react-router-dom"
-
 import "./index.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { AuthForm } from "@/features/auth/components/AuthForm"
-import { DashboardLayout } from "@/features/dashboard/components/DashboardLayout"
-import { DashboardPage } from "@/features/dashboard/components/DashboardPage"
-import { AppointmentListPage } from "@/features/appointments/components/AppointmentListPage"
-import { CalendarPage } from "@/features/calendar/components/CalendarPage"
-import { TeamManagementPage } from "@/features/team/components/TeamManagementPage"
-import { StaffProfilePage } from "@/features/team/components/StaffProfilePage"
-import { SettingsPage } from "@/features/settings/components/SettingsPage"
-import { AnalyticsPage } from "@/features/analytics/components/AnalyticsPage"
-import { MothersPage } from "@/features/mothers/components/MothersPage"
-import { MotherProfilePage } from "@/features/mothers/components/MotherProfilePage"
-import { ReferralsPage } from "@/features/referrals/components/ReferralsPage"
-import { MessagesPage } from "@/features/messages/components/MessagesPage"
+import App from "./App"
+import { initStoragePersistence } from "@/lib/db/storagePersist"
+import { syncEngine } from "@/lib/sync/syncEngine"
+
+// Initialize browser storage persistence for Dexie IndexedDB
+initStoragePersistence().then((persisted) => {
+  console.log(`[BMS App] Dexie IndexedDB storage persistence state: ${persisted ? "Persisted" : "Default"}`)
+})
+
+// Trigger background outbox sync check on startup
+if (navigator.onLine) {
+  syncEngine.processQueue()
+}
+
+// Register PWA Service Worker if supported
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    const swUrl = import.meta.env.DEV ? "/dev-sw.js?dev-sw" : "/sw.js"
+    navigator.serviceWorker
+      .register(swUrl, { type: import.meta.env.DEV ? "module" : "classic" })
+      .then((reg) => console.log("[SW] Service Worker registered successfully:", reg.scope))
+      .catch((err) => {
+        // Fallback to /sw.js
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then((reg) => console.log("[SW] Fallback SW registered:", reg.scope))
+          .catch((e) => console.warn("[SW] Service worker registration failed:", e))
+      })
+  })
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Auth Route */}
-          <Route path="/" element={<AuthForm />} />
-          
-          {/* Dashboard Routes */}
-          <Route path="/dashboard" element={<DashboardLayout />}>
-            <Route index element={<DashboardPage />} />
-
-            {/* New Sidebar Routes */}
-            <Route path="mothers" element={<MothersPage />} />
-            <Route path="mothers/:id" element={<MotherProfilePage />} />
-            <Route path="appointments" element={<AppointmentListPage />} />
-            <Route path="referrals" element={<ReferralsPage />} />
-            <Route path="messages" element={<MessagesPage />} />
-            <Route path="team" element={<TeamManagementPage />} />
-            <Route path="team/:id" element={<StaffProfilePage />} />
-            <Route path="settings" element={<SettingsPage />} />
-
-            {/* Legacy / Hidden Routes */}
-            <Route path="analytics" element={<AnalyticsPage />} />
-
-            <Route path="calendar" element={<CalendarPage />} />
-            <Route path="feedback" element={<div className="flex-1 w-full h-full bg-white dark:bg-black" />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </ThemeProvider>
+    <App />
   </StrictMode>
 )

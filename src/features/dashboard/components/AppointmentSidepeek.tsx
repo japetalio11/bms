@@ -4,12 +4,26 @@ import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Clock, X, Calendar, Activity, ActivitySquare, HeartPulse, Stethoscope, Droplets, Thermometer, Weight, Wind, Baby, Ruler, History } from "lucide-react"
 import { LogVitalsModal } from "./LogVitalsModal"
 
-export function AppointmentSidepeek({ appointment, onClose }: { appointment: any, onClose: () => void }) {
+export function AppointmentSidepeek({ 
+  appointment, 
+  onClose,
+  onCancelAppointment
+}: { 
+  appointment: any
+  onClose: () => void
+  onCancelAppointment?: (id: string) => void
+}) {
   if (!appointment) return null
 
-  // Defaults for styling since we're using mock data
-  const isConfirmed = appointment.status === 'Confirmed'
-  const isHighRisk = appointment.risk === 'High Risk'
+  // Defaults for styling
+  const isConfirmed = appointment.status === 'Confirmed' || appointment.status === 'active' || appointment.status === 'confirmed'
+  const isHighRisk = appointment.risk === 'High Risk' || appointment.risk === 'high'
+
+  const handleCancel = () => {
+    if (appointment.id && onCancelAppointment) {
+      onCancelAppointment(appointment.id)
+    }
+  }
 
   return (
     <div className="flex flex-col h-full bg-background dark:bg-background dark:bg-[#0a0a0a] border-l border-sidebar-border w-full xl:w-[450px]">
@@ -17,7 +31,7 @@ export function AppointmentSidepeek({ appointment, onClose }: { appointment: any
       <div className="shrink-0 p-4 border-b border-sidebar-border flex items-start justify-between">
         <div className="flex flex-col gap-2">
           <h2 className="text-sm font-medium text-foreground dark:text-foreground dark:text-white">
-            {appointment.name || appointment.motherName} - {appointment.type}
+            {appointment.name || appointment.motherName || "Patient"} - {appointment.type || "Appointment"}
           </h2>
           <div className="flex items-center gap-2">
             <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${isConfirmed ? 'bg-blue-500/10 text-blue-500' : 'bg-amber-500/10 text-amber-500'}`}>
@@ -48,7 +62,7 @@ export function AppointmentSidepeek({ appointment, onClose }: { appointment: any
                 <Calendar className="h-3.5 w-3.5" />
                 <span className="text-xs">Date & Time</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">{appointment.date || appointment.datetime || "June 08, 2026 08:00 AM"}</span>
+              <span className="text-xs text-foreground dark:text-white flex-1">{appointment.date || appointment.datetime || "N/A"}</span>
             </div>
             
             <div className="flex items-center">
@@ -151,15 +165,15 @@ export function AppointmentSidepeek({ appointment, onClose }: { appointment: any
             <h3 className="text-xs font-semibold text-foreground dark:text-foreground dark:text-white">Activity Log</h3>
             <History className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
-          <p className="text-xs text-muted-foreground">Recent actions performed by this user.</p>
+          <p className="text-xs text-muted-foreground">Recent actions performed for this appointment.</p>
           
           <div className="flex gap-3 mt-1">
             <div className="flex flex-col items-center mt-1.5">
               <div className="h-1.5 w-1.5 rounded-full bg-foreground dark:bg-white shrink-0" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-foreground dark:text-foreground dark:text-white">Created an appointment</span>
-              <span className="text-[10px] text-muted-foreground">June 05, 2026 10:00 AM</span>
+              <span className="text-xs font-medium text-foreground dark:text-foreground dark:text-white">Scheduled appointment</span>
+              <span className="text-[10px] text-muted-foreground">{appointment.date || "Scheduled"}</span>
             </div>
           </div>
         </div>
@@ -175,10 +189,17 @@ export function AppointmentSidepeek({ appointment, onClose }: { appointment: any
         <Button className="w-full h-8 text-xs font-medium bg-[#e5e5e5] text-black hover:bg-[#d5d5d5] dark:bg-[#e5e5e5] dark:text-black">
           Log Prescription
         </Button>
-        <Button variant="outline" className="w-full h-8 text-xs font-medium bg-[#1e1e1e] text-white hover:bg-[#2a2a2a] border border-sidebar-border dark:bg-[#1e1e1e] dark:text-foreground dark:text-white dark:border-sidebar-border">
-          Cancel Appointment
-        </Button>
+        {appointment.status !== 'Cancelled' && appointment.status !== 'cancelled' && (
+          <Button 
+            variant="outline" 
+            onClick={handleCancel}
+            className="w-full h-8 text-xs font-medium bg-[#1e1e1e] text-white hover:bg-[#2a2a2a] border border-sidebar-border dark:bg-[#1e1e1e] dark:text-foreground dark:text-white dark:border-sidebar-border text-red-400 hover:text-red-300"
+          >
+            Cancel Appointment
+          </Button>
+        )}
       </div>
     </div>
   )
 }
+
