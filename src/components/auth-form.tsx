@@ -294,6 +294,56 @@ export function AuthForm() {
     }
   }
 
+  const handleGoogleLogin = async () => {
+    setIsLoading(true)
+    setError(null)
+
+    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+    let targetEmail = email.trim()
+
+    if (!targetEmail) {
+      const promptEmail = window.prompt("Enter your registered Google email to log in:")
+      if (!promptEmail) {
+        setIsLoading(false)
+        return
+      }
+      targetEmail = promptEmail.trim()
+    }
+
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: targetEmail })
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.message || data.error || "Google sign-in failed")
+      }
+
+      if (data.token) {
+        localStorage.setItem("token", data.token)
+      }
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user))
+        await db.userSession.put({
+          id: "current_user",
+          ...data.user,
+          token: data.token,
+          cachedEmail: data.user.email?.toLowerCase().trim(),
+          cachedUser: data.user,
+        })
+      }
+
+      navigate("/dashboard")
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -587,7 +637,13 @@ export function AuthForm() {
               <>
                 {isLogin && (
                   <>
-                    <Button variant="outline" className="h-8 w-full text-sm dark:bg-black dark:text-white dark:hover:bg-accent">
+                    <Button
+                      type="button"
+                      onClick={handleGoogleLogin}
+                      disabled={isLoading}
+                      variant="outline"
+                      className="h-8 w-full text-sm dark:bg-black dark:text-white dark:hover:bg-accent"
+                    >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24"
