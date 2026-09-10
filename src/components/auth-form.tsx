@@ -9,6 +9,34 @@ import { db } from "@/lib/db/bmsDatabase"
 import { TermsOfServiceModal } from "@/components/TermsOfServiceModal"
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal"
 
+declare global {
+  interface Window {
+    google?: any
+  }
+}
+
+const loadGoogleScript = (): Promise<void> => {
+  return new Promise((resolve) => {
+    if (window.google?.accounts?.id) {
+      resolve()
+      return
+    }
+    const existingScript = document.getElementById("google-gsi-script")
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve())
+      resolve()
+      return
+    }
+    const script = document.createElement("script")
+    script.id = "google-gsi-script"
+    script.src = "https://accounts.google.com/gsi/client"
+    script.async = true
+    script.defer = true
+    script.onload = () => resolve()
+    document.body.appendChild(script)
+  })
+}
+
 interface FacilityItem {
   facility_id: string
   facility_name: string
@@ -294,52 +322,120 @@ export function AuthForm() {
     }
   }
 
+const loadGoogleScript = (): Promise<void> => {
+  return new Promise((resolve) => {
+    if (window.google?.accounts?.id) {
+      resolve()
+      return
+    }
+    const existingScript = document.getElementById("google-gsi-script")
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve())
+      resolve()
+      return
+    }
+    const script = document.createElement("script")
+    script.id = "google-gsi-script"
+    script.src = "https://accounts.google.com/gsi/client"
+    script.async = true
+    script.defer = true
+    script.onload = () => resolve()
+    document.body.appendChild(script)
+  })
+}
+
   const handleGoogleLogin = async () => {
     setIsLoading(true)
     setError(null)
 
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "656579030497-5ugj2op595o8r5i19hj6gre60qcic8v4.apps.googleusercontent.com"
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
-    let targetEmail = email.trim()
-
-    if (!targetEmail) {
-      const promptEmail = window.prompt("Enter your registered Google email to log in:")
-      if (!promptEmail) {
-        setIsLoading(false)
-        return
-      }
-      targetEmail = promptEmail.trim()
-    }
 
     try {
-      const response = await fetch(`${baseUrl}/api/v1/auth/google`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: targetEmail })
-      })
+      await loadGoogleScript()
 
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.message || data.error || "Google sign-in failed")
-      }
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: async (googleRes: any) => {
+            try {
+              setIsLoading(true)
+              const response = await fetch(`${baseUrl}/api/v1/auth/google`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ idToken: googleRes.credential })
+              })
 
-      if (data.token) {
-        localStorage.setItem("token", data.token)
-      }
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user))
-        await db.userSession.put({
-          id: "current_user",
-          ...data.user,
-          token: data.token,
-          cachedEmail: data.user.email?.toLowerCase().trim(),
-          cachedUser: data.user,
+              const data = await response.json()
+              if (!response.ok) {
+                throw new Error(data.message || data.error || "Google sign-in failed")
+              }
+
+              if (data.token) {
+                localStorage.setItem("token", data.token)
+              }
+              if (data.user) {
+                localStorage.setItem("user", JSON.stringify(data.user))
+                await db.userSession.put({
+                  id: "current_user",
+                  ...data.user,
+                  token: data.token,
+                  cachedEmail: data.user.email?.toLowerCase().trim(),
+                  cachedUser: data.user,
+                })
+              }
+
+              navigate("/dashboard")
+            } catch (err: any) {
+              setError(err.message)
+            } finally {
+              setIsLoading(false)
+            }
+          }
+        })
+
+        // Prompt native Google One Tap / Sign-In popup dialog
+        window.google.accounts.id.prompt((notification: any) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            let targetEmail = email.trim()
+            if (!targetEmail) {
+              const promptEmail = window.prompt("Enter your registered Google email to log in:")
+              if (!promptEmail) {
+                setIsLoading(false)
+                return
+              }
+              targetEmail = promptEmail.trim()
+            }
+
+            fetch(`${baseUrl}/api/v1/auth/google`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: targetEmail })
+            })
+              .then((res) => res.json())
+              .then(async (data) => {
+                if (data.token && data.user) {
+                  localStorage.setItem("token", data.token)
+                  localStorage.setItem("user", JSON.stringify(data.user))
+                  await db.userSession.put({
+                    id: "current_user",
+                    ...data.user,
+                    token: data.token,
+                    cachedEmail: data.user.email?.toLowerCase().trim(),
+                    cachedUser: data.user,
+                  })
+                  navigate("/dashboard")
+                } else {
+                  setError(data.message || data.error || "Google sign-in failed")
+                }
+              })
+              .catch((err) => setError(err.message))
+              .finally(() => setIsLoading(false))
+          }
         })
       }
-
-      navigate("/dashboard")
     } catch (err: any) {
       setError(err.message)
-    } finally {
       setIsLoading(false)
     }
   }
