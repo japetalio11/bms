@@ -1,11 +1,18 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, Building2, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import headerImage from "@/assets/Header.svg"
 import { db } from "@/lib/db/bmsDatabase"
+
+interface FacilityItem {
+  facility_id: string
+  facility_name: string
+  type: string
+  address?: string
+}
 
 export function AuthForm() {
   const navigate = useNavigate()
@@ -13,6 +20,7 @@ export function AuthForm() {
   
   const isRegisterPath = location.pathname.includes("register") || location.pathname.includes("sign-up")
   const [isLogin, setIsLogin] = useState(!isRegisterPath)
+  const [regType, setRegType] = useState<"user" | "facility">("user")
 
   useEffect(() => {
     setIsLogin(!isRegisterPath)
@@ -28,6 +36,16 @@ export function AuthForm() {
   const [phoneNumber, setPhoneNumber] = useState("")
   const [role] = useState("HealthWorker")
   const [facilityId, setFacilityId] = useState("")
+  
+  // Facility Sign Up Specific State
+  const [facilityName, setFacilityName] = useState("")
+  const [facilityType, setFacilityType] = useState("RHU / Health Center")
+  const [facilityAddress, setFacilityAddress] = useState("")
+  const [facilityContact, setFacilityContact] = useState("")
+  const [facilityEmail, setFacilityEmail] = useState("")
+
+  const [facilities, setFacilities] = useState<FacilityItem[]>([])
+
   const [otp, setOtp] = useState("")
   const [isOtpStep, setIsOtpStep] = useState(false)
   const [otpLoading, setOtpLoading] = useState(false)
@@ -43,7 +61,7 @@ export function AuthForm() {
     setError(null)
     setOtpMessage(null)
     setTimer(0)
-  }, [location.pathname])
+  }, [location.pathname, regType])
 
   useEffect(() => {
     if (timer <= 0) return
@@ -52,6 +70,25 @@ export function AuthForm() {
     }, 1000)
     return () => clearInterval(interval)
   }, [timer])
+
+  // Fetch Public Facilities List
+  useEffect(() => {
+    const fetchFacilities = async () => {
+      try {
+        const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+        const response = await fetch(`${baseUrl}/api/v1/facility/public-list`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.result && Array.isArray(data.result)) {
+            setFacilities(data.result)
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch public facilities list:", err)
+      }
+    }
+    fetchFacilities()
+  }, [])
 
   const handleSendOtp = async () => {
     if (timer > 0) return false
@@ -98,9 +135,17 @@ export function AuthForm() {
 
   const handleProceedToOtp = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!firstName || !lastName || !phoneNumber || !password) {
-      setError("Please fill out all required fields")
-      return
+
+    if (regType === "facility") {
+      if (!facilityName || !facilityType || !facilityAddress || !firstName || !lastName || !password || (!email && !phoneNumber)) {
+        setError("Please fill out all required facility and admin user fields")
+        return
+      }
+    } else {
+      if (!firstName || !lastName || !phoneNumber || !password) {
+        setError("Please fill out all required user registration fields")
+        return
+      }
     }
 
     const success = await handleSendOtp()
@@ -122,21 +167,42 @@ export function AuthForm() {
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
-      const response = await fetch(`${baseUrl}/api/v1/auth/register`, {
+      let endpoint = `${baseUrl}/api/v1/auth/register`
+      let payload: any = {
+        first_name: firstName,
+        last_name: lastName,
+        middle_name: middleName,
+        phone_number: phoneNumber,
+        address: address,
+        email,
+        facility_id: facilityId,
+        password,
+        role,
+        otp
+      }
+
+      if (regType === "facility") {
+        endpoint = `${baseUrl}/api/v1/facility/public-register`
+        payload = {
+          facility_name: facilityName,
+          type: facilityType,
+          address: facilityAddress,
+          contact_number: facilityContact || phoneNumber,
+          facility_email: facilityEmail || email,
+          first_name: firstName,
+          middle_name: middleName,
+          last_name: lastName,
+          phone_number: phoneNumber,
+          email: email,
+          password: password,
+          otp: otp
+        }
+      }
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName,
-          middle_name: middleName,
-          phone_number: phoneNumber,
-          address : address,
-          email,
-          facility_id: facilityId,
-          password,
-          role,
-          otp
-        })
+        body: JSON.stringify(payload)
       })
 
       const data = await response.json()
@@ -243,9 +309,9 @@ export function AuthForm() {
 
   return (
     <div className="flex min-h-svh w-full flex-col items-center justify-center bg-background p-6">
-      <div className="flex w-full max-w-sm flex-col items-center gap-6">
+      <div className="flex w-full max-w-md flex-col items-center gap-6">
         {/* Logo */}
-        <div className="flex items-center justify-center mb-4">
+        <div className="flex items-center justify-center mb-2">
           <img src={headerImage} alt="Header Logo" className="h-14 w-auto" />
         </div>
 
@@ -257,6 +323,8 @@ export function AuthForm() {
                 ? "Verify your Account"
                 : isLogin
                 ? "Welcome back"
+                : regType === "facility"
+                ? "Register Healthcare Facility"
                 : "Get started"}
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -264,9 +332,41 @@ export function AuthForm() {
                 ? `Enter the 6-digit code sent to ${email || phoneNumber}`
                 : isLogin
                 ? "Login to your account"
-                : "Create a new account"}
+                : regType === "facility"
+                ? "Create a new facility & facility admin account"
+                : "Create a new health worker account"}
             </p>
           </div>
+
+          {/* Registration Mode Switcher (User vs Facility) */}
+          {!isLogin && !isOtpStep && (
+            <div className="mt-4 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setRegType("user")}
+                className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 font-medium transition-colors ${
+                  regType === "user"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <User className="h-3.5 w-3.5" />
+                Health Worker
+              </button>
+              <button
+                type="button"
+                onClick={() => setRegType("facility")}
+                className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 font-medium transition-colors ${
+                  regType === "facility"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Building2 className="h-3.5 w-3.5" />
+                Facility Sign-Up
+              </button>
+            </div>
+          )}
 
           <div className="mt-6 flex flex-col gap-4">
             {error && (
@@ -369,7 +469,9 @@ export function AuthForm() {
                 )}
 
                 <form onSubmit={isLogin ? handleLoginSubmit : handleProceedToOtp} className="grid gap-4">
-                  {!isLogin && (
+
+                  {/* USER REGISTRATION FIELDS */}
+                  {!isLogin && regType === "user" && (
                     <>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="grid gap-1.5">
@@ -424,32 +526,181 @@ export function AuthForm() {
                       </div>
 
                       <div className="grid gap-1.5">
-                        <Label htmlFor="facilityId">Facility ID (Optional)</Label>
-                        <Input
-                          id="facilityId"
-                          type="text"
-                          placeholder="13f00cdd-xxxx-xxxx"
+                        <Label htmlFor="facilitySelect">Assigned Facility (Optional)</Label>
+                        <select
+                          id="facilitySelect"
                           value={facilityId}
                           onChange={(e) => setFacilityId(e.target.value)}
-                          className="h-8 text-sm"
-                        />
+                          className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option value="">-- Select Facility --</option>
+                          {facilities.map((fac) => (
+                            <option key={fac.facility_id} value={fac.facility_id}>
+                              {fac.facility_name} ({fac.type})
+                            </option>
+                          ))}
+                        </select>
+                        <div className="text-[11px] text-muted-foreground">
+                          Can't find your facility?{" "}
+                          <button
+                            type="button"
+                            onClick={() => setRegType("facility")}
+                            className="text-primary underline hover:text-primary/80"
+                          >
+                            Register a new facility
+                          </button>
+                        </div>
                       </div>
                     </>
                   )}
 
+                  {/* FACILITY REGISTRATION FIELDS */}
+                  {!isLogin && regType === "facility" && (
+                    <>
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-3">
+                        <div className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                          <Building2 className="h-4 w-4" />
+                          Facility Details
+                        </div>
+                        
+                        <div className="grid gap-1.5">
+                          <Label htmlFor="facilityName">Facility Name *</Label>
+                          <Input
+                            id="facilityName"
+                            type="text"
+                            placeholder="e.g. Pili Rural Health Unit 1"
+                            required
+                            value={facilityName}
+                            onChange={(e) => setFacilityName(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="grid gap-1.5">
+                            <Label htmlFor="facilityType">Facility Type *</Label>
+                            <select
+                              id="facilityType"
+                              value={facilityType}
+                              onChange={(e) => setFacilityType(e.target.value)}
+                              className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              <option value="RHU / Health Center">RHU / Health Center</option>
+                              <option value="Hospital">Hospital</option>
+                              <option value="Lying-In Clinic">Lying-In Clinic</option>
+                              <option value="Barangay Health Station (BHS)">BHS / Health Station</option>
+                              <option value="Private Clinic">Private Clinic</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+                          <div className="grid gap-1.5">
+                            <Label htmlFor="facilityContact">Contact Number</Label>
+                            <Input
+                              id="facilityContact"
+                              type="tel"
+                              placeholder="+639123456789"
+                              value={facilityContact}
+                              onChange={(e) => setFacilityContact(e.target.value)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-1.5">
+                          <Label htmlFor="facilityAddress">Facility Address *</Label>
+                          <Input
+                            id="facilityAddress"
+                            type="text"
+                            placeholder="San Agustin, Pili, Camarines Sur"
+                            required
+                            value={facilityAddress}
+                            onChange={(e) => setFacilityAddress(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+
+                        <div className="grid gap-1.5">
+                          <Label htmlFor="facilityEmail">Facility Official Email (Optional)</Label>
+                          <Input
+                            id="facilityEmail"
+                            type="email"
+                            placeholder="rhu.pili@health.gov.ph"
+                            value={facilityEmail}
+                            onChange={(e) => setFacilityEmail(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="text-xs font-semibold text-foreground flex items-center gap-1.5 pt-1">
+                          <User className="h-4 w-4" />
+                          Facility Admin Account
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="grid gap-1.5">
+                            <Label htmlFor="adminFirstName">First Name *</Label>
+                            <Input
+                              id="adminFirstName"
+                              type="text"
+                              placeholder="Maria"
+                              required
+                              value={firstName}
+                              onChange={(e) => setFirstName(e.target.value)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="grid gap-1.5">
+                            <Label htmlFor="adminLastName">Last Name *</Label>
+                            <Input
+                              id="adminLastName"
+                              type="text"
+                              placeholder="Santos"
+                              required
+                              value={lastName}
+                              onChange={(e) => setLastName(e.target.value)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-1.5">
+                          <Label htmlFor="adminPhone">Admin Phone Number</Label>
+                          <Input
+                            id="adminPhone"
+                            type="tel"
+                            placeholder="+639198765432"
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* COMMON EMAIL FIELD FOR ALL MODES */}
                   <div className="grid gap-1.5">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">
+                      {isLogin
+                        ? "Email or Phone Number"
+                        : regType === "facility"
+                        ? "Admin Account Email"
+                        : "Email"}
+                    </Label>
                     <Input
                       id="email"
-                      type="email"
-                      placeholder="m@example.com"
-                      required={isLogin}
+                      type={isLogin ? "text" : "email"}
+                      placeholder={isLogin ? "Email or Phone" : regType === "facility" ? "admin@facility.gov.ph" : "name@example.com"}
+                      required={isLogin || regType === "facility"}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="h-8 text-sm"
                     />
                   </div>
 
+                  {/* COMMON PASSWORD FIELD */}
                   <div className="grid gap-1.5">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
@@ -528,3 +779,4 @@ export function AuthForm() {
     </div>
   )
 }
+
