@@ -14,6 +14,7 @@ import { MotherProfilePage } from "@/features/mothers/components/MotherProfilePa
 import { ReferralsPage } from "@/features/referrals/components/ReferralsPage"
 import { MessagesPage } from "@/features/messages/components/MessagesPage"
 import { EhrPage } from "@/features/ehr/components/EhrPage"
+import { TestSmsPage } from "@/pages/TestSmsPage"
 
 export function App() {
   return (
@@ -28,7 +29,10 @@ export function App() {
           <Route path="/sign-up" element={<AuthForm />} />
           <Route path="/forgot-password" element={<AuthForm />} />
           <Route path="/terms" element={<AuthForm />} />
-          <Route path="/privacy" element={<AuthForm />} />
+          <Route path="/test-sms" element={<TestSmsPage />} />
+          <Route path="/test sms" element={<TestSmsPage />} />
+          <Route path="/test%20sms" element={<TestSmsPage />} />
+          <Route path="/sms-test" element={<TestSmsPage />} />
           
           {/* Dashboard Routes */}
           <Route path="/dashboard" element={<DashboardLayout />}>
