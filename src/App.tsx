@@ -26,6 +26,9 @@ export function App() {
           <Route path="/register" element={<AuthForm />} />
           <Route path="/sign-in" element={<AuthForm />} />
           <Route path="/sign-up" element={<AuthForm />} />
+          <Route path="/forgot-password" element={<AuthForm />} />
+          <Route path="/terms" element={<AuthForm />} />
+          <Route path="/privacy" element={<AuthForm />} />
           
           {/* Dashboard Routes */}
           <Route path="/dashboard" element={<DashboardLayout />}>

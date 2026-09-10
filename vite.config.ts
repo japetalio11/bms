@@ -31,6 +31,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: "/index.html",
         navigateFallbackAllowlist: [/^\/dashboard/, /^\/mothers/, /^\/appointments/, /^\/calendar/, /^\/ehr/, /^\/referrals/, /^\/messages/, /^\/team/, /^\/settings/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],

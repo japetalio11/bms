@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
-import { Eye, EyeOff, Building2, User } from "lucide-react"
+import { Eye, EyeOff, Building2, User, KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import headerImage from "@/assets/Header.svg"
 import { db } from "@/lib/db/bmsDatabase"
+import { TermsOfServiceModal } from "@/components/TermsOfServiceModal"
+import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal"
 
 interface FacilityItem {
   facility_id: string
@@ -19,11 +21,21 @@ export function AuthForm() {
   const location = useLocation()
   
   const isRegisterPath = location.pathname.includes("register") || location.pathname.includes("sign-up")
-  const [isLogin, setIsLogin] = useState(!isRegisterPath)
+  const isForgotPath = location.pathname.includes("forgot-password")
+  
+  const [isLogin, setIsLogin] = useState(!isRegisterPath && !isForgotPath)
+  const [isForgotPassword, setIsForgotPassword] = useState(isForgotPath)
   const [regType] = useState<"user" | "facility">("facility")
 
+  // Modal States
+  const [showTermsModal, setShowTermsModal] = useState(location.pathname.includes("terms"))
+  const [showPrivacyModal, setShowPrivacyModal] = useState(location.pathname.includes("privacy"))
+
   useEffect(() => {
-    setIsLogin(!isRegisterPath)
+    setIsForgotPassword(location.pathname.includes("forgot-password"))
+    setIsLogin(!location.pathname.includes("register") && !location.pathname.includes("sign-up") && !location.pathname.includes("forgot-password"))
+    setShowTermsModal(location.pathname.includes("terms"))
+    setShowPrivacyModal(location.pathname.includes("privacy"))
   }, [location.pathname])
 
   const [email, setEmail] = useState("")
@@ -44,6 +56,13 @@ export function AuthForm() {
   const [facilityContact, setFacilityContact] = useState("")
   const [facilityEmail, setFacilityEmail] = useState("")
 
+  // Forgot Password Specific State
+  const [forgotIdentifier, setForgotIdentifier] = useState("")
+  const [forgotOtp, setForgotOtp] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [isForgotOtpStep, setIsForgotOtpStep] = useState(false)
+
   const [facilities, setFacilities] = useState<FacilityItem[]>([])
 
   const [otp, setOtp] = useState("")
@@ -58,10 +77,11 @@ export function AuthForm() {
 
   useEffect(() => {
     setIsOtpStep(false)
+    setIsForgotOtpStep(false)
     setError(null)
     setOtpMessage(null)
     setTimer(0)
-  }, [location.pathname, regType])
+  }, [location.pathname, regType, isForgotPassword])
 
   useEffect(() => {
     if (timer <= 0) return
@@ -90,10 +110,10 @@ export function AuthForm() {
     fetchFacilities()
   }, [])
 
-  const handleSendOtp = async () => {
+  const handleSendOtp = async (overrideIdentifier?: string, purpose = "registration") => {
     if (timer > 0) return false
 
-    const identifier = email || phoneNumber
+    const identifier = overrideIdentifier || email || phoneNumber
     if (!identifier) {
       setError("Please provide an email or phone number to receive OTP")
       return false
@@ -104,16 +124,17 @@ export function AuthForm() {
     setOtpMessage(null)
 
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+    const isEmail = identifier.includes("@")
 
     try {
       const response = await fetch(`${baseUrl}/api/v1/send/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          identifier,
-          type: email ? "email" : "sms",
-          purpose: "registration",
-          provider: email ? "email" : "sms"
+          identifier: identifier.trim(),
+          type: isEmail ? "email" : "sms",
+          purpose,
+          provider: isEmail ? "email" : "sms"
         })
       })
 
@@ -133,19 +154,81 @@ export function AuthForm() {
     }
   }
 
+  const handleSendForgotOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!forgotIdentifier) {
+      setError("Please enter your email or phone number")
+      return
+    }
+
+    const success = await handleSendOtp(forgotIdentifier, "reset_password")
+    if (success) {
+      setIsForgotOtpStep(true)
+    }
+  }
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!forgotOtp) {
+      setError("Please enter the verification code")
+      return
+    }
+    if (!newPassword || newPassword.length < 6) {
+      setError("New password must be at least 6 characters long")
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError("Passwords do not match")
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+
+    try {
+      const response = await fetch(`${baseUrl}/api/v1/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: forgotIdentifier.trim(),
+          otp: forgotOtp.trim(),
+          newPassword
+        })
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to reset password")
+      }
+
+      if (data.token) {
+        localStorage.setItem("token", data.token)
+      }
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user))
+        await db.userSession.put({ id: "current_user", ...data.user, token: data.token })
+      }
+
+      setOtpMessage("Password reset successful! Redirecting to dashboard...")
+      setTimeout(() => {
+        navigate("/dashboard")
+      }, 1000)
+
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleProceedToOtp = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (regType === "facility") {
-      if (!facilityName || !facilityType || !facilityAddress || !firstName || !lastName || !password || (!email && !phoneNumber)) {
-        setError("Please fill out all required facility and admin user fields")
-        return
-      }
-    } else {
-      if (!firstName || !lastName || !phoneNumber || !password) {
-        setError("Please fill out all required user registration fields")
-        return
-      }
+    if (!facilityName || !facilityType || !facilityAddress || !firstName || !lastName || !password || (!email && !phoneNumber)) {
+      setError("Please fill out all required facility and admin user fields")
+      return
     }
 
     const success = await handleSendOtp()
@@ -167,36 +250,20 @@ export function AuthForm() {
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
-      let endpoint = `${baseUrl}/api/v1/auth/register`
-      let payload: any = {
+      const endpoint = `${baseUrl}/api/v1/facility/public-register`
+      const payload = {
+        facility_name: facilityName,
+        type: facilityType,
+        address: facilityAddress,
+        contact_number: facilityContact || phoneNumber,
+        facility_email: facilityEmail || email,
         first_name: firstName,
-        last_name: lastName,
         middle_name: middleName,
+        last_name: lastName,
         phone_number: phoneNumber,
-        address: address,
-        email,
-        facility_id: facilityId,
-        password,
-        role,
-        otp
-      }
-
-      if (regType === "facility") {
-        endpoint = `${baseUrl}/api/v1/facility/public-register`
-        payload = {
-          facility_name: facilityName,
-          type: facilityType,
-          address: facilityAddress,
-          contact_number: facilityContact || phoneNumber,
-          facility_email: facilityEmail || email,
-          first_name: firstName,
-          middle_name: middleName,
-          last_name: lastName,
-          phone_number: phoneNumber,
-          email: email,
-          password: password,
-          otp: otp
-        }
+        email: email,
+        password: password,
+        otp: otp
       }
 
       const response = await fetch(endpoint, {
@@ -277,7 +344,6 @@ export function AuthForm() {
         }
       }
 
-      // Offline re-authentication fallback using cached IndexedDB user session
       const cachedSession = await db.userSession.get("current_user")
       if (cachedSession) {
         const matchesIdentifier =
@@ -319,14 +385,22 @@ export function AuthForm() {
         <div className="w-full rounded-xl border bg-card p-6 shadow-sm">
           <div className="flex flex-col space-y-2 text-center">
             <h1 className="text-xl font-semibold tracking-tight">
-              {isOtpStep
+              {isForgotPassword
+                ? isForgotOtpStep
+                  ? "Set New Password"
+                  : "Reset Password"
+                : isOtpStep
                 ? "Verify your Account"
                 : isLogin
                 ? "Welcome back"
                 : "Register Healthcare Facility"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {isOtpStep
+              {isForgotPassword
+                ? isForgotOtpStep
+                  ? `Enter code sent to ${forgotIdentifier} & set your new password`
+                  : "Enter your account email or phone number to receive OTP"
+                : isOtpStep
                 ? `Enter the 6-digit code sent to ${email || phoneNumber}`
                 : isLogin
                 ? "Login to your account"
@@ -346,8 +420,126 @@ export function AuthForm() {
               </div>
             )}
 
-            {isOtpStep ? (
-              /* Step 2: Dedicated OTP Verification Screen */
+            {/* FORGOT PASSWORD WORKFLOW */}
+            {isForgotPassword ? (
+              isForgotOtpStep ? (
+                /* Forgot Password Step 2: OTP & New Password */
+                <form onSubmit={handleResetPasswordSubmit} className="grid gap-4">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="forgotOtp">Verification Code (OTP)</Label>
+                    <Input
+                      id="forgotOtp"
+                      type="text"
+                      placeholder="Enter 6-digit code"
+                      required
+                      value={forgotOtp}
+                      onChange={(e) => setForgotOtp(e.target.value)}
+                      className="h-10 text-center text-base tracking-widest"
+                      maxLength={6}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="newPassword">New Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Minimum 6 characters"
+                        required
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="h-8 text-sm pr-8"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Re-enter password"
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+
+                  <Button type="submit" disabled={isLoading} className="h-9 w-full text-sm mt-2">
+                    {isLoading ? "Updating Password..." : "Reset Password & Login"}
+                  </Button>
+
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsForgotOtpStep(false)}
+                      className="hover:underline hover:text-foreground"
+                    >
+                      &larr; Change identifier
+                    </button>
+                    <button
+                      type="button"
+                      disabled={otpLoading || timer > 0}
+                      onClick={() => handleSendOtp(forgotIdentifier, "reset_password")}
+                      className="hover:underline hover:text-primary disabled:opacity-50 disabled:no-underline"
+                    >
+                      {otpLoading
+                        ? "Sending..."
+                        : timer > 0
+                        ? `Resend in ${timer}s`
+                        : "Resend Code"}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                /* Forgot Password Step 1: Identifier Input */
+                <form onSubmit={handleSendForgotOtp} className="grid gap-4">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="forgotIdentifier">Email or Phone Number</Label>
+                    <Input
+                      id="forgotIdentifier"
+                      type="text"
+                      placeholder="Enter registered email or phone"
+                      required
+                      value={forgotIdentifier}
+                      onChange={(e) => setForgotIdentifier(e.target.value)}
+                      className="h-8 text-sm"
+                      autoFocus
+                    />
+                  </div>
+
+                  <Button type="submit" disabled={otpLoading} className="h-9 w-full text-sm mt-2">
+                    {otpLoading ? "Sending Code..." : "Send Verification Code"}
+                  </Button>
+
+                  <div className="text-center text-xs text-muted-foreground mt-2">
+                    Remembered your password?{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsForgotPassword(false)
+                        setIsLogin(true)
+                        navigate("/login")
+                      }}
+                      className="text-primary underline hover:text-primary/80"
+                    >
+                      Back to Login
+                    </button>
+                  </div>
+                </form>
+              )
+            ) : isOtpStep ? (
+              /* Step 2: Dedicated Registration OTP Verification Screen */
               <form onSubmit={handleRegisterSubmit} className="grid gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="otp">Verification Code (OTP)</Label>
@@ -379,7 +571,7 @@ export function AuthForm() {
                   <button
                     type="button"
                     disabled={otpLoading || timer > 0}
-                    onClick={handleSendOtp}
+                    onClick={() => handleSendOtp()}
                     className="hover:underline hover:text-primary disabled:opacity-50 disabled:no-underline"
                   >
                     {otpLoading
@@ -391,7 +583,7 @@ export function AuthForm() {
                 </div>
               </form>
             ) : (
-              /* Step 1: Main Login / Register Form */
+              /* Step 1: Main Login / Facility Register Form */
               <>
                 {isLogin && (
                   <>
@@ -562,20 +754,18 @@ export function AuthForm() {
                     </>
                   )}
 
-                  {/* COMMON EMAIL FIELD FOR ALL MODES */}
+                  {/* COMMON EMAIL FIELD FOR LOGIN / REGISTER */}
                   <div className="grid gap-1.5">
                     <Label htmlFor="email">
                       {isLogin
                         ? "Email or Phone Number"
-                        : regType === "facility"
-                        ? "Admin Account Email"
-                        : "Email"}
+                        : "Admin Account Email"}
                     </Label>
                     <Input
                       id="email"
                       type={isLogin ? "text" : "email"}
-                      placeholder={isLogin ? "Email or Phone" : regType === "facility" ? "admin@facility.gov.ph" : "name@example.com"}
-                      required={isLogin || regType === "facility"}
+                      placeholder={isLogin ? "Email or Phone" : "admin@facility.gov.ph"}
+                      required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="h-8 text-sm"
@@ -587,12 +777,16 @@ export function AuthForm() {
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
                       {isLogin && (
-                        <a
-                          href="#"
-                          className="text-xs text-muted-foreground hover:underline"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsForgotPassword(true)
+                            navigate("/forgot-password")
+                          }}
+                          className="text-xs text-muted-foreground hover:underline hover:text-primary"
                         >
                           Forgot password?
-                        </a>
+                        </button>
                       )}
                     </div>
                     <div className="relative">
@@ -633,32 +827,48 @@ export function AuthForm() {
             )}
           </div>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button
-              onClick={() => navigate(isLogin ? "/register" : "/login")}
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              {isLogin ? "Sign up" : "Login"}
-            </button>
-          </div>
+          {!isForgotPassword && (
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+              {isLogin ? "Don't have an account? " : "Already have an account? "}
+              <button
+                onClick={() => {
+                  setIsLogin(!isLogin)
+                  navigate(isLogin ? "/register" : "/login")
+                }}
+                className="underline underline-offset-4 hover:text-primary font-medium"
+              >
+                {isLogin ? "Sign up facility" : "Login"}
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Footer text */}
+        {/* Footer text with interactive legal links */}
         <div className="text-center text-xs text-muted-foreground">
           By clicking continue, you agree to <br className="hidden sm:block" />
           our{" "}
-          <a href="#" className="underline underline-offset-4 hover:text-primary">
+          <button
+            type="button"
+            onClick={() => setShowTermsModal(true)}
+            className="underline underline-offset-4 hover:text-primary font-medium"
+          >
             Terms of Service
-          </a>{" "}
+          </button>{" "}
           and{" "}
-          <a href="#" className="underline underline-offset-4 hover:text-primary">
+          <button
+            type="button"
+            onClick={() => setShowPrivacyModal(true)}
+            className="underline underline-offset-4 hover:text-primary font-medium"
+          >
             Privacy Policy
-          </a>
+          </button>
           .
         </div>
       </div>
+
+      {/* Interactive Terms of Service & Privacy Policy Modals */}
+      <TermsOfServiceModal open={showTermsModal} onClose={() => setShowTermsModal(false)} />
+      <PrivacyPolicyModal open={showPrivacyModal} onClose={() => setShowPrivacyModal(false)} />
     </div>
   )
 }
-
