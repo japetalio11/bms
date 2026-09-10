@@ -20,7 +20,7 @@ export function AuthForm() {
   
   const isRegisterPath = location.pathname.includes("register") || location.pathname.includes("sign-up")
   const [isLogin, setIsLogin] = useState(!isRegisterPath)
-  const [regType, setRegType] = useState<"user" | "facility">("user")
+  const [regType] = useState<"user" | "facility">("facility")
 
   useEffect(() => {
     setIsLogin(!isRegisterPath)
@@ -323,50 +323,16 @@ export function AuthForm() {
                 ? "Verify your Account"
                 : isLogin
                 ? "Welcome back"
-                : regType === "facility"
-                ? "Register Healthcare Facility"
-                : "Get started"}
+                : "Register Healthcare Facility"}
             </h1>
             <p className="text-sm text-muted-foreground">
               {isOtpStep
                 ? `Enter the 6-digit code sent to ${email || phoneNumber}`
                 : isLogin
                 ? "Login to your account"
-                : regType === "facility"
-                ? "Create a new facility & facility admin account"
-                : "Create a new health worker account"}
+                : "Create a new facility & facility admin account"}
             </p>
           </div>
-
-          {/* Registration Mode Switcher (User vs Facility) */}
-          {!isLogin && !isOtpStep && (
-            <div className="mt-4 grid grid-cols-2 gap-1 rounded-lg bg-muted p-1 text-xs">
-              <button
-                type="button"
-                onClick={() => setRegType("user")}
-                className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 font-medium transition-colors ${
-                  regType === "user"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <User className="h-3.5 w-3.5" />
-                Health Worker
-              </button>
-              <button
-                type="button"
-                onClick={() => setRegType("facility")}
-                className={`flex items-center justify-center gap-1.5 rounded-md py-1.5 font-medium transition-colors ${
-                  regType === "facility"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Building2 className="h-3.5 w-3.5" />
-                Facility Sign-Up
-              </button>
-            </div>
-          )}
 
           <div className="mt-6 flex flex-col gap-4">
             {error && (
@@ -470,92 +436,8 @@ export function AuthForm() {
 
                 <form onSubmit={isLogin ? handleLoginSubmit : handleProceedToOtp} className="grid gap-4">
 
-                  {/* USER REGISTRATION FIELDS */}
-                  {!isLogin && regType === "user" && (
-                    <>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="grid gap-1.5">
-                          <Label htmlFor="firstName">First Name</Label>
-                          <Input
-                            id="firstName"
-                            type="text"
-                            placeholder="Jane"
-                            required
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div className="grid gap-1.5">
-                          <Label htmlFor="lastName">Last Name</Label>
-                          <Input
-                            id="lastName"
-                            type="text"
-                            placeholder="Doe"
-                            required
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid gap-1.5">
-                        <Label htmlFor="address">Address</Label>
-                        <Input
-                          id="address"
-                          type="text"
-                          placeholder="Pili, Camarines Sur"
-                          value={address}
-                          onChange={(e) => setAddress(e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-
-                      <div className="grid gap-1.5">
-                        <Label htmlFor="phoneNumber">Phone Number</Label>
-                        <Input
-                          id="phoneNumber"
-                          type="tel"
-                          placeholder="+639123456789"
-                          required
-                          value={phoneNumber}
-                          onChange={(e) => setPhoneNumber(e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-
-                      <div className="grid gap-1.5">
-                        <Label htmlFor="facilitySelect">Assigned Facility (Optional)</Label>
-                        <select
-                          id="facilitySelect"
-                          value={facilityId}
-                          onChange={(e) => setFacilityId(e.target.value)}
-                          className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <option value="">-- Select Facility --</option>
-                          {facilities.map((fac) => (
-                            <option key={fac.facility_id} value={fac.facility_id}>
-                              {fac.facility_name} ({fac.type})
-                            </option>
-                          ))}
-                        </select>
-                        <div className="text-[11px] text-muted-foreground">
-                          Can't find your facility?{" "}
-                          <button
-                            type="button"
-                            onClick={() => setRegType("facility")}
-                            className="text-primary underline hover:text-primary/80"
-                          >
-                            Register a new facility
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
                   {/* FACILITY REGISTRATION FIELDS */}
-                  {!isLogin && regType === "facility" && (
+                  {!isLogin && (
                     <>
                       <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-3">
                         <div className="text-xs font-semibold text-primary flex items-center gap-1.5">
