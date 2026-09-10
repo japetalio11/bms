@@ -354,21 +354,42 @@ const loadGoogleScript = (): Promise<void> => {
     try {
       await loadGoogleScript()
 
-      if (window.google?.accounts?.id) {
-        window.google.accounts.id.initialize({
+      if (window.google?.accounts?.oauth2) {
+        const client = window.google.accounts.oauth2.initTokenClient({
           client_id: googleClientId,
-          callback: async (googleRes: any) => {
+          scope: "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid",
+          callback: async (tokenRes: any) => {
+            if (tokenRes.error) {
+              setError("Google sign-in was cancelled or encountered an error.")
+              setIsLoading(false)
+              return
+            }
+
             try {
               setIsLoading(true)
+              const userinfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                headers: { Authorization: `Bearer ${tokenRes.access_token}` }
+              })
+              const googleUser = await userinfoRes.json()
+
+              if (!googleUser || !googleUser.email) {
+                throw new Error("Could not retrieve Google profile details.")
+              }
+
               const response = await fetch(`${baseUrl}/api/v1/auth/google`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ idToken: googleRes.credential })
+                body: JSON.stringify({
+                  email: googleUser.email,
+                  first_name: googleUser.given_name || googleUser.name || "Google",
+                  last_name: googleUser.family_name || "User",
+                  profile_url: googleUser.picture || null
+                })
               })
 
               const data = await response.json()
               if (!response.ok) {
-                throw new Error(data.message || data.error || "Google sign-in failed")
+                throw new Error(data.message || data.error || "Google authentication failed")
               }
 
               if (data.token) {
@@ -394,45 +415,24 @@ const loadGoogleScript = (): Promise<void> => {
           }
         })
 
-        // Prompt native Google One Tap / Sign-In popup dialog
-        window.google.accounts.id.prompt((notification: any) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            let targetEmail = email.trim()
-            if (!targetEmail) {
-              const promptEmail = window.prompt("Enter your registered Google email to log in:")
-              if (!promptEmail) {
-                setIsLoading(false)
-                return
-              }
-              targetEmail = promptEmail.trim()
-            }
-
-            fetch(`${baseUrl}/api/v1/auth/google`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: targetEmail })
-            })
-              .then((res) => res.json())
-              .then(async (data) => {
-                if (data.token && data.user) {
-                  localStorage.setItem("token", data.token)
-                  localStorage.setItem("user", JSON.stringify(data.user))
-                  await db.userSession.put({
-                    id: "current_user",
-                    ...data.user,
-                    token: data.token,
-                    cachedEmail: data.user.email?.toLowerCase().trim(),
-                    cachedUser: data.user,
-                  })
-                  navigate("/dashboard")
-                } else {
-                  setError(data.message || data.error || "Google sign-in failed")
-                }
-              })
-              .catch((err) => setError(err.message))
-              .finally(() => setIsLoading(false))
-          }
+        client.requestAccessToken()
+      } else if (email.trim()) {
+        const response = await fetch(`${baseUrl}/api/v1/auth/google`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim() })
         })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.message || data.error || "Google authentication failed")
+        if (data.token) localStorage.setItem("token", data.token)
+        if (data.user) {
+          localStorage.setItem("user", JSON.stringify(data.user))
+          await db.userSession.put({ id: "current_user", ...data.user, token: data.token })
+        }
+        navigate("/dashboard")
+      } else {
+        setError("Please enter your email above or allow the Google popup to sign in.")
+        setIsLoading(false)
       }
     } catch (err: any) {
       setError(err.message)
