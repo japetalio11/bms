@@ -1,140 +1,93 @@
-# Firebase Phone Authentication Setup & Verification Guide
+# Comprehensive Web Phone SMS Authentication Checklist & Architecture Guide
 
-This guide details the exact steps required to configure Firebase Console, manage SMS rate limits, and implement Native Mobile App Attestation (Android & iOS) to prevent `auth/too-many-requests` and reCAPTCHA errors permanently.
-
----
-
-## 1. Firebase Console Configuration Checklist
-
-### A. Authorized Domains
-Firebase Phone Auth requires all origin domains to be authorized to initialize `RecaptchaVerifier`.
-1. Open the [Firebase Console](https://console.firebase.google.com/).
-2. Navigate to **Authentication > Settings > Authorized domains**.
-3. Add the following origins:
-   - `localhost` (Default for local development)
-   - `127.0.0.1`
-   - Your production frontend domain (e.g., `app.yourdomain.com`)
-   - Staging/Vercel preview URLs (e.g., `*.vercel.app`)
+This master checklist details all requirements to implement web phone SMS authentication cleanly using **Firebase Authentication**, **Google Cloud reCAPTCHA Enterprise**, and **Backend SMS Gateway (iProgSMS)** while avoiding common pitfalls like `auth/invalid-app-credential`, 403 App Check throttling, and Vercel 404 errors.
 
 ---
 
-### B. Add Phone Numbers for Testing (Bypass SMS Quota & Captcha)
-Configuring test numbers allows developers and automated end-to-end tests to bypass SMS quotas and reCAPTCHA verification during local development.
+## 1. Firebase Console Setup Checklist
 
-1. Go to **Authentication > Sign-in method > Phone**.
-2. Scroll to **Phone numbers for testing**.
-3. Add test number pairs, for example:
-   - **Phone Number:** `+639170000000` | **Verification Code:** `123456`
-   - **Phone Number:** `+639171111111` | **Verification Code:** `123456`
-4. *Note:* When these numbers are passed to `signInWithPhoneNumber`, Firebase does not send an actual SMS, nor does it consume SMS quotas or trigger rate limits.
+- [ ] **Authorized Domains**
+  - Navigate to **Firebase Console > Authentication > Settings > Authorized domains**.
+  - Add all environment domains:
+    - `localhost`
+    - `127.0.0.1`
+    - Staging Vercel URLs (e.g. `your-app-git-branch.vercel.app`)
+    - Production custom domain (e.g. `app.yourdomain.com`)
 
----
+- [ ] **Phone Sign-in Provider**
+  - Go to **Authentication > Sign-in method > Phone**.
+  - Switch the **Enable** toggle to `ON`.
 
-### C. SMS Region Policy & Enforcement
-To prevent billing fraud and unexpected rate-limiting from global SMS abuse:
-1. Go to **Authentication > Settings > SMS Region Policy**.
-2. Select **Allow specific SMS regions**.
-3. Enable only the countries where your application operates (e.g., **Philippines (`+63`)**).
-4. Save changes.
+- [ ] **Phone Numbers for Testing (Bypass SMS Quota in Dev)**
+  - Under **Sign-in method > Phone**, scroll to **Phone numbers for testing**.
+  - Register dev test numbers (e.g. `+639170000000` with verification code `123456`).
+  - *Note:* In dev mode, test numbers bypass reCAPTCHA and SMS quotas instantly.
 
----
-
-## 2. Preventing `auth/too-many-requests` (Best Practices Implemented)
-
-Firebase Authentication enforces strict rate limits:
-- **150 SMS requests per IP address per hour**.
-- **5 SMS requests per phone number per 10 minutes** (production numbers).
-
-### Applied Engineering Solution in `usePhoneAuth.ts`:
-1. **Singleton `RecaptchaVerifier` Reference (`useRef`)**:
-   - Ensures `RecaptchaVerifier` is instantiated only once per lifecycle rather than on every render.
-2. **Explicit Teardown (`cleanupRecaptcha`)**:
-   - Destroys active verifiers using `clear()` and empties container DOM before instantiating a new instance or switching screens.
-3. **60-Second Mandatory Cooldown Timer**:
-   - Prevents users or scripts from firing rapid repeated requests.
-4. **Auto-Recovery on Error**:
-   - Upon catching `auth/too-many-requests` or network errors, `resetRecaptchaState()` automatically clears stale captcha tokens and widget state so subsequent requests succeed cleanly after the cooldown expires.
+- [ ] **SMS Region Policy**
+  - Go to **Authentication > Settings > SMS Region Policy**.
+  - Select **Allow specific SMS regions**.
+  - Enable **Philippines (`+63`)** (or your target country). Saving this ensures real SMS messages are not suppressed by regional fraud filters.
 
 ---
 
-## 3. Native Mobile App Attestation (Flutter / React Native / Expo)
+## 2. Google Cloud & reCAPTCHA Enterprise Setup Checklist
 
-When building native mobile apps (iOS & Android), Firebase Phone Authentication bypasses web reCAPTCHA entirely using silent app attestation.
+- [ ] **reCAPTCHA Enterprise Site Key Creation**
+  - Open [Google Cloud Console > reCAPTCHA Enterprise](https://console.cloud.google.com/security/recaptcha).
+  - Create a **Website** key.
+  - Add allowed domains (`localhost`, `127.0.0.1`, `*.vercel.app`).
+  - Copy the generated **Site Key** (`6LdT...`).
 
-### A. Android Setup (Play Integrity API)
-1. **Register SHA Fingerprints:**
-   - Obtain your app's debug and release SHA-1 & SHA-256 fingerprints:
-     ```bash
-     cd android && ./gradlew signingReport
-     ```
-   - Go to **Firebase Console > Project Settings > General > Your Android App**.
-   - Add both **SHA-1** and **SHA-256** fingerprints.
+- [ ] **Link Site Key in Firebase Console**
+  - Go to **Firebase Console > Authentication > reCAPTCHA > Configured platform site keys**.
+  - Edit the **`</>` Web** platform key and paste the reCAPTCHA Enterprise Site Key.
 
-2. **Enable Google Play Integrity API:**
-   - Go to [Google Cloud Console](https://console.cloud.google.com/).
-   - Select your Firebase Project.
-   - Search for **Play Integrity API** and click **Enable**.
-
-3. **Silent Attestation Flow:**
-   - Android will verify app authenticity via Play Integrity. If Play Integrity fails or SHA fingerprints are missing, Firebase Auth falls back to opening a Web reCAPTCHA modal.
+- [ ] **App Check Caution (Client SDK)**
+  - **Do NOT** call `initializeAppCheck` in client JS unless App Check is fully registered and enforced in **Firebase Console > App Check**. Unregistered App Check client calls return `403 Forbidden` and cause Google to throttle/suppress real SMS delivery for 24 hours.
 
 ---
 
-### B. iOS Setup (APNs Silent Notifications)
-1. **Enable Push Notifications & Background Modes:**
-   - In Xcode under **Signing & Capabilities**:
-     - Add **Push Notifications**.
-     - Add **Background Modes** and check **Remote notifications**.
+## 3. Frontend Architecture Checklist (`usePhoneAuth.ts`)
 
-2. **Upload APNs Key to Firebase Console:**
-   - Download an **APNs Key (`.p8`)** from the Apple Developer Account (Certificates, Identifiers & Profiles > Keys).
-   - Go to **Firebase Console > Project Settings > Cloud Messaging > iOS app configuration**.
-   - Upload the `.p8` key, Key ID, and Team ID.
+- [ ] **E.164 Phone Normalization**
+  - Always format phone numbers to E.164 format (e.g. `09686255210` ➔ `+639686255210`) before invoking Firebase Auth.
 
-3. **App Attestation Flow:**
-   - On iOS, Firebase Auth sends a silent APNs push notification to verify the device. If APNs is not configured, iOS falls back to SFSafariViewController reCAPTCHA verification.
+- [ ] **Singleton `RecaptchaVerifier` Reference (`useRef`)**
+  - Store the `RecaptchaVerifier` instance in a React `useRef` to prevent duplicate widget instantiations and DOM leaks across re-renders.
+
+- [ ] **DOM Container Visibility**
+  - Ensure the target `#recaptcha-container` is **NOT** set to `display: none` (`className="hidden"`). Invisible reCAPTCHA requires an unhidden DOM node to render iframe bounds.
+
+- [ ] **Explicit Widget Render (`appVerifier.render()`)**
+  - Always call `await appVerifier.render()` before calling `signInWithPhoneNumber(auth, formattedPhone, appVerifier)`.
+
+- [ ] **Client Throttling Guard (60s Cooldown)**
+  - Maintain a 60-second cooldown state to prevent users from hitting Firebase's rate limit (**5 SMS per number per 10 minutes**).
+
+- [ ] **Safe Teardown (`cleanupRecaptcha`)**
+  - On component unmount or auth reset, invoke `verifierRef.current.clear()` safely instead of wiping `container.innerHTML` directly to avoid `recaptcha__en.js` script crashes.
 
 ---
 
-## 4. Architectural Summary
+## 4. Backend SMS Gateway Setup (iProgSMS)
 
-```
-                       +---------------------------------------+
-                       |           User Input Form             |
-                       +---------------------------------------+
-                                           |
-                                           v
-                       +---------------------------------------+
-                       |    formatToE164 (Phone Normalizer)    |
-                       +---------------------------------------+
-                                           |
-                                           v
-                       +---------------------------------------+
-                       | Client Throttling (60s Cooldown Guard) |
-                       +---------------------------------------+
-                                           |
-                                           v
-            +-----------------------------------------------------+
-            | Is Dev & Test Number? (+639170000000)               |
-            +-----------------------------------------------------+
-                     /                                   \
-             (Yes)  /                                     \ (No)
-                   v                                       v
-+------------------------------------+   +------------------------------------+
-| auth.settings.appVerification...   |   |  getOrInitRecaptcha (Singleton)    |
-| = true (Instant Mock Verification) |   |  (Invisible reCAPTCHA / APNs)       |
-+------------------------------------+   +------------------------------------+
-                   \                                       /
-                    v                                     v
-                       +---------------------------------------+
-                       |   signInWithPhoneNumber (Firebase)    |
-                       +---------------------------------------+
-                                           |
-                    +----------------------+----------------------+
-                    |                                             |
-             (Success) v                                  (Error) v
-  +-------------------------------+             +-------------------------------+
-  | Store ConfirmationResult      |             | Automatic reCAPTCHA Teardown  |
-  | Prompt 6-digit OTP Input      |             | Human-Readable Error Message  |
-  +-------------------------------+             +-------------------------------+
-```
+- [ ] **Direct Gateway Invocation**
+  - Do **NOT** call Google's REST API (`identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode`) directly from Node.js (which fails with 400 Bad Request without a client reCAPTCHA token).
+  - Call the iProgSMS REST endpoint directly (`https://www.iprogsms.com/api/v1/sms_messages`) using `SMS_API_TOKEN` loaded exclusively from environment variables (`process.env.SMS_API_TOKEN`).
+
+---
+
+## 5. Vercel Single Page Application (SPA) Routing Setup
+
+- [ ] **`vercel.json` Rewrite Rule**
+  - Create a `vercel.json` in project root with SPA rewrite rules so direct URL navigation (e.g. `https://your-app.vercel.app/test-sms`) routes to `index.html` without returning 404 Not Found:
+    ```json
+    {
+      "rewrites": [
+        {
+          "source": "/(.*)",
+          "destination": "/index.html"
+        }
+      ]
+    }
+    ```
