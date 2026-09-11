@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,6 +15,17 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+export let analytics: ReturnType<typeof getAnalytics> | null = null;
+if (typeof window !== "undefined") {
+  isSupported().then((supported) => {
+    if (supported) {
+      analytics = getAnalytics(app);
+    }
+  }).catch((err) => {
+    console.warn("[Firebase Analytics Warning]:", err);
+  });
+}
 
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
@@ -33,3 +45,4 @@ if (typeof window !== "undefined" && recaptchaSiteKey) {
 }
 
 export default app;
+
