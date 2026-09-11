@@ -1,6 +1,8 @@
 import * as React from "react"
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+import { toast } from "sonner"
+import { apiClient } from "@/lib/apiClient"
 import { 
   ChevronLeft, 
   MapPin, 
@@ -29,20 +31,71 @@ import {
   SelectValue 
 } from "@/components/ui/select"
 
-const mockStaff = {
-  name: "Patrick Kurt Villamer",
-  initials: "PV",
-  status: "Active",
-  facility: "Rural Health Unit 1",
-  zone: "Pili, Camarines Sur",
-  email: "pkvillamer@bms.gov.ph",
-  phone: "+63 919 876 5432",
-  role: "system_admin"
-}
-
 export function StaffProfilePage() {
   const navigate = useNavigate()
-  const [role, setRole] = useState(mockStaff.role)
+  const { id } = useParams()
+  
+  const [staff, setStaff] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [role, setRole] = useState("")
+
+  const fetchStaffDetails = async () => {
+    try {
+      setLoading(true)
+      const response = await apiClient.get(`/api/v1/user/${id}`)
+      if (response.data && response.data.result) {
+        setStaff(response.data.result)
+        setRole(response.data.result.role)
+      }
+    } catch (error) {
+      console.error("Failed to fetch staff details:", error)
+      toast.error("Failed to load staff details")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (id) {
+      fetchStaffDetails()
+    }
+  }, [id])
+
+  const handleSavePermissions = async () => {
+    try {
+      await apiClient.put(`/api/v1/user/${id}/role`, { role })
+      toast.success("Permissions updated successfully")
+      fetchStaffDetails()
+    } catch (error) {
+      console.error("Failed to update role:", error)
+      toast.error("Failed to update permissions")
+    }
+  }
+
+  const handleDeactivate = async () => {
+    if (!staff) return
+    const is_active = !staff.is_active
+    try {
+      await apiClient.put(`/api/v1/user/${id}/deactivate`, { is_active })
+      toast.success(`Staff account ${is_active ? 'activated' : 'deactivated'} successfully`)
+      fetchStaffDetails()
+    } catch (error) {
+      console.error("Failed to update status:", error)
+      toast.error("Failed to update account status")
+    }
+  }
+
+  if (loading) {
+    return <div className="flex w-full h-full items-center justify-center text-muted-foreground">Loading profile...</div>
+  }
+
+  if (!staff) {
+    return <div className="flex w-full h-full items-center justify-center text-muted-foreground">Staff not found</div>
+  }
+
+  const staffName = `${staff.first_name} ${staff.middle_name ? staff.middle_name + " " : ""}${staff.last_name}`
+  const initials = `${staff.first_name?.[0] || ""}${staff.last_name?.[0] || ""}`
+  const status = staff.is_active ? "Active" : "Deactivated"
 
   return (
     <div className="relative flex flex-col w-full h-full overflow-hidden bg-background dark:bg-black">
@@ -66,15 +119,15 @@ export function StaffProfilePage() {
           {/* Left Side (Identity) */}
           <div className="flex items-center gap-4 lg:col-span-4 border-b lg:border-b-0 lg:border-r border-sidebar-border pb-6 lg:pb-0 lg:pr-6">
             <Avatar className="h-16 w-16 border border-sidebar-border shadow-sm">
-              <AvatarImage src="https://github.com/shadcn.png" />
-              <AvatarFallback className="bg-primary/10 text-primary">{mockStaff.initials}</AvatarFallback>
+              <AvatarImage src={staff.profile_url || ""} />
+              <AvatarFallback className="bg-primary/10 text-primary">{initials}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col gap-1.5 mt-1">
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold text-foreground dark:text-white leading-tight">{mockStaff.name}</h2>
-                <Badge className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none bg-green-500/10 text-green-500">
-                  <CheckCircle2 className="h-3 w-3" />
-                  {mockStaff.status}
+                <h2 className="text-xl font-semibold text-foreground dark:text-white leading-tight">{staffName}</h2>
+                <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${staff.is_active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                  {staff.is_active ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                  {status}
                 </Badge>
               </div>
             </div>
@@ -88,28 +141,28 @@ export function StaffProfilePage() {
                   <Building2 className="h-3 w-3 opacity-70" />
                   Primary Facility
                 </span>
-                <span className="text-sm font-semibold text-foreground dark:text-white">{mockStaff.facility}</span>
+                <span className="text-sm font-semibold text-foreground dark:text-white">{staff.facility?.facility_name || "N/A"}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                   <MapPin className="h-3 w-3 opacity-70" />
                   Assigned Zone
                 </span>
-                <span className="text-sm font-semibold text-foreground dark:text-white">{mockStaff.zone}</span>
+                <span className="text-sm font-semibold text-foreground dark:text-white">{staff.facility?.address || "N/A"}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                   <Mail className="h-3 w-3 opacity-70" />
                   Email
                 </span>
-                <span className="text-sm font-semibold text-foreground dark:text-white">{mockStaff.email}</span>
+                <span className="text-sm font-semibold text-foreground dark:text-white">{staff.email || "N/A"}</span>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                   <Phone className="h-3 w-3 opacity-70" />
                   Phone
                 </span>
-                <span className="text-sm font-semibold text-foreground dark:text-white">{mockStaff.phone}</span>
+                <span className="text-sm font-semibold text-foreground dark:text-white">{staff.phone_number || "N/A"}</span>
               </div>
             </div>
           </div>
@@ -119,16 +172,16 @@ export function StaffProfilePage() {
             <Button variant="ghost" size="sm" className="h-8 text-xs font-medium text-muted-foreground hover:text-foreground">
               Reset Password
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs font-medium border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30">
-              Deactivate Account
+            <Button variant="outline" size="sm" className={`h-8 text-xs font-medium ${staff.is_active ? 'border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30' : 'border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950/30'}`} onClick={handleDeactivate}>
+              {staff.is_active ? 'Deactivate Account' : 'Activate Account'}
             </Button>
           </div>
           <div className="flex lg:hidden items-center gap-2 mt-4 w-full">
             <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs font-medium text-muted-foreground hover:text-foreground border border-sidebar-border">
               Reset Password
             </Button>
-            <Button variant="outline" size="sm" className="flex-1 h-8 text-xs font-medium border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30">
-              Deactivate Account
+            <Button variant="outline" size="sm" className={`flex-1 h-8 text-xs font-medium ${staff.is_active ? 'border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30' : 'border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950/30'}`} onClick={handleDeactivate}>
+              {staff.is_active ? 'Deactivate Account' : 'Activate Account'}
             </Button>
           </div>
         </div>
@@ -253,10 +306,10 @@ export function StaffProfilePage() {
               
               {/* Action Bar */}
               <div className="flex items-center justify-end gap-2 mt-2 pt-4 border-t border-sidebar-border/50">
-                <Button variant="ghost" size="sm" className="h-9 text-xs font-medium text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="sm" className="h-9 text-xs font-medium text-muted-foreground hover:text-foreground" onClick={() => setRole(staff.role)}>
                   Discard Changes
                 </Button>
-                <Button size="sm" className="h-9 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-none">
+                <Button size="sm" className="h-9 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-none" onClick={handleSavePermissions}>
                   Save Permissions
                 </Button>
               </div>

@@ -4,27 +4,73 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { clsx } from "clsx"
+import { useLiveQuery } from "dexie-react-hooks"
+import { db } from "@/lib/db/bmsDatabase"
+import { format, isToday, isYesterday, parseISO } from "date-fns"
 
-// Mock Data
-const INBOX_MESSAGES = [
-  { id: 1, name: "Maria Santos", message: "Thank you for the update.", time: "10:24 AM", unread: 2, avatar: "https://github.com/shadcn.png" },
-  { id: 2, name: "Jessica Reyes", message: "When is my next appointment?", time: "Yesterday", unread: 0, avatar: "" },
-  { id: 3, name: "Ana Cruz", message: "I have uploaded the lab results.", time: "Monday", unread: 1, avatar: "https://github.com/nextjs.png" },
-  { id: 4, name: "Diana Lim", message: "Noted, doctor.", time: "Sunday", unread: 0, avatar: "" },
-  { id: 5, name: "Elena Ramos", message: "Can I reschedule?", time: "Last Week", unread: 0, avatar: "" },
-]
+interface InboxSidebarProps {
+  activeChatId: string | null
+  setActiveChatId: (id: string) => void
+}
 
-export function InboxSidebar() {
-  const [activeChat, setActiveChat] = React.useState(1)
+export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProps) {
+  const currentUser = useLiveQuery(() => db.userSession.get("current_user"))
+  
+  // Get all messages from local DB
+  const messages = useLiveQuery(() => db.messages.orderBy('updated_at').reverse().toArray(), []) ?? []
+  
+  // Group messages by contact
+  const chatThreads = React.useMemo(() => {
+    if (!currentUser) return []
+    
+    const threads = new Map<string, any>()
+    
+    // Reverse again because orderBy('updated_at').reverse() puts newest first.
+    // We want to iterate and grab the first one we see as the latest snippet.
+    messages.forEach(msg => {
+      const isMe = msg.sender_id === currentUser.user_id
+      const contactId = isMe ? msg.receiver_id : msg.sender_id
+      
+      if (!threads.has(contactId)) {
+        threads.set(contactId, {
+          id: contactId,
+          name: msg.contact_name || "Unknown User",
+          message: msg.message_content,
+          rawDate: msg.message_date,
+          unread: (!isMe && !msg.is_read) ? 1 : 0,
+          avatar: msg.contact_avatar || ""
+        })
+      } else {
+        const existing = threads.get(contactId)
+        if (!isMe && !msg.is_read) {
+          existing.unread += 1
+        }
+      }
+    })
+    
+    return Array.from(threads.values()).sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime())
+  }, [messages, currentUser])
+
+  const formatTime = (dateStr: string) => {
+    if (!dateStr) return ""
+    try {
+      const d = parseISO(dateStr)
+      if (isToday(d)) return format(d, "h:mm a")
+      if (isYesterday(d)) return "Yesterday"
+      return format(d, "MMM d")
+    } catch {
+      return dateStr
+    }
+  }
 
   return (
     <div className="hidden lg:flex flex-col h-full w-[350px] shrink-0 border-r border-sidebar-border bg-background dark:bg-[#0a0a0a]">
-      {/* Header - Fixed height matching other columns */}
+      {/* Header */}
       <div className="h-[72px] px-6 py-4 border-b border-sidebar-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-semibold text-foreground dark:text-white">Messages</h1>
           <span className="inline-flex items-center justify-center bg-muted dark:bg-[#111] text-muted-foreground text-[10px] font-medium h-5 px-2 rounded-full border border-sidebar-border">
-            {INBOX_MESSAGES.length}
+            {chatThreads.length}
           </span>
         </div>
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
@@ -45,13 +91,13 @@ export function InboxSidebar() {
 
       {/* Conversation List */}
       <div className="flex-1 overflow-y-auto">
-        {INBOX_MESSAGES.map((chat) => (
+        {chatThreads.map((chat) => (
           <div 
             key={chat.id} 
-            onClick={() => setActiveChat(chat.id)}
+            onClick={() => setActiveChatId(chat.id)}
             className={clsx(
               "flex items-start gap-3 px-6 py-4 border-b border-sidebar-border cursor-pointer transition-colors hover:bg-muted/50 dark:hover:bg-[#111]",
-              activeChat === chat.id ? "bg-muted dark:bg-[#111]" : ""
+              activeChatId === chat.id ? "bg-muted dark:bg-[#111]" : ""
             )}
           >
             <Avatar className="h-10 w-10 border border-sidebar-border shrink-0">
@@ -61,7 +107,7 @@ export function InboxSidebar() {
             <div className="flex flex-col flex-1 min-w-0 gap-1 mt-0.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-foreground dark:text-white truncate">{chat.name}</span>
-                <span className="text-[10px] text-muted-foreground shrink-0">{chat.time}</span>
+                <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(chat.rawDate)}</span>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className={clsx(
@@ -79,6 +125,11 @@ export function InboxSidebar() {
             </div>
           </div>
         ))}
+        {chatThreads.length === 0 && (
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            No messages found.
+          </div>
+        )}
       </div>
     </div>
   )
