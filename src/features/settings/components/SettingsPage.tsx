@@ -1,7 +1,7 @@
 import * as React from "react"
+import { useState, useEffect } from "react"
 
 import { 
-
   User, 
   Building2, 
   WifiOff, 
@@ -11,6 +11,11 @@ import {
   CheckCircle2,
   AlertCircle
 } from "lucide-react"
+
+import { toast } from "sonner"
+import { db } from "@/lib/db/bmsDatabase"
+import { syncEngine } from "@/lib/sync/syncEngine"
+import { useSettings } from "@/features/settings/hooks/useSettings"
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -28,15 +33,111 @@ import {
 } from "@/components/ui/select"
 
 export function SettingsPage() {
+  const { settings, updateSettings } = useSettings()
 
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [email, setEmail] = useState("")
+  
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [offlinePin, setOfflinePin] = useState(settings.offlinePin || "")
+
+  const [facilityName, setFacilityName] = useState("")
+  const [facilityType, setFacilityType] = useState("rhu")
+  const [contactNumber, setContactNumber] = useState("")
+  const [officialEmail, setOfficialEmail] = useState("")
+  const [completeAddress, setCompleteAddress] = useState("")
+
+  useEffect(() => {
+    db.userSession.get("current_user").then((userSession) => {
+      if (userSession) {
+        setFirstName(userSession.first_name || userSession.cachedUser?.first_name || "")
+        setLastName(userSession.last_name || userSession.cachedUser?.last_name || "")
+        setPhoneNumber(userSession.phone_number || userSession.cachedUser?.phone_number || "")
+        setEmail(userSession.email || userSession.cachedUser?.email || "")
+
+        if (userSession.facility || userSession.cachedUser?.facility) {
+           const fac = userSession.facility || userSession.cachedUser.facility
+           setFacilityName(fac.facility_name || "")
+           setFacilityType(fac.type?.toLowerCase() || "rhu")
+           setContactNumber(fac.contact_number || "")
+           setOfficialEmail(fac.email || "")
+           setCompleteAddress(fac.address || "")
+        }
+      }
+    }).catch(console.error)
+  }, [])
+
+  const handleSaveProfile = async () => {
+    try {
+      const userSession = await db.userSession.get("current_user")
+      if (userSession) {
+        userSession.first_name = firstName
+        userSession.last_name = lastName
+        userSession.phone_number = phoneNumber
+        userSession.email = email
+        if (userSession.cachedUser) {
+          userSession.cachedUser.first_name = firstName
+          userSession.cachedUser.last_name = lastName
+          userSession.cachedUser.phone_number = phoneNumber
+          userSession.cachedUser.email = email
+        }
+        await db.userSession.put(userSession)
+        toast.success("Profile updated", { description: "Changes saved to local session." })
+      }
+    } catch (e) {
+      toast.error("Failed to save profile")
+    }
+  }
+
+  const handleUpdateSecurity = () => {
+    if (newPassword && newPassword !== confirmPassword) {
+      toast.error("Passwords do not match")
+      return
+    }
+    updateSettings({ offlinePin })
+    toast.success("Security settings updated")
+    setCurrentPassword("")
+    setNewPassword("")
+    setConfirmPassword("")
+  }
+
+  const handleClearCache = async () => {
+    if (confirm("Are you sure you want to clear the local database cache? Unsynced records may be lost if not in the queue.")) {
+      try {
+        await Promise.all([
+          db.mothers.clear(),
+          db.pregnancies.clear(),
+          db.prenatalVisits.clear(),
+          db.labRecords.clear(),
+          db.supplements.clear(),
+          db.ehrDocuments.clear(),
+          db.messages.clear(),
+          db.appointments.clear()
+        ])
+        toast.success("Local cache cleared", { description: "User session and sync queue retained." })
+      } catch (err) {
+        toast.error("Failed to clear local cache")
+      }
+    }
+  }
+
+  const handleForceSync = () => {
+    toast.info("Starting sync...", { description: "Processing offline queue." })
+    syncEngine.processQueue().then(() => {
+       toast.success("Sync completed")
+    }).catch(err => {
+       toast.error("Sync failed", { description: err?.message || "Unknown error" })
+    })
+  }
 
   return (
     <div className="relative flex flex-col w-full h-full overflow-hidden bg-background dark:bg-black">
       {/* Scrollable Content */}
       <div className="flex-1 flex flex-col p-4 pl-3 pr-4 pb-24 md:pb-4 overflow-y-auto min-w-0">
-        
-
-
         <Tabs defaultValue="account" className="w-full flex flex-col gap-6">
           {/* Tab Navigation */}
           <div className="w-full overflow-x-auto shrink-0 pb-2 -mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -67,23 +168,23 @@ export function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-foreground dark:text-white">First Name</label>
-                  <Input defaultValue="Patrick Kurt" className="h-9 text-xs border-sidebar-border shadow-none" />
+                  <Input value={firstName} onChange={e => setFirstName(e.target.value)} className="h-9 text-xs border-sidebar-border shadow-none" />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-foreground dark:text-white">Last Name</label>
-                  <Input defaultValue="Villamer" className="h-9 text-xs border-sidebar-border shadow-none" />
+                  <Input value={lastName} onChange={e => setLastName(e.target.value)} className="h-9 text-xs border-sidebar-border shadow-none" />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-foreground dark:text-white">Phone Number</label>
-                  <Input defaultValue="+63 919 876 5432" className="h-9 text-xs border-sidebar-border shadow-none" />
+                  <Input value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} className="h-9 text-xs border-sidebar-border shadow-none" />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-foreground dark:text-white">Email Address</label>
-                  <Input defaultValue="pkvillamer@bms.gov.ph" type="email" className="h-9 text-xs border-sidebar-border shadow-none" />
+                  <Input value={email} onChange={e => setEmail(e.target.value)} type="email" className="h-9 text-xs border-sidebar-border shadow-none" />
                 </div>
               </div>
               <div className="flex justify-end mt-6">
-                <Button size="sm" className="h-9 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+                <Button size="sm" onClick={handleSaveProfile} className="h-9 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
                   Save Profile
                 </Button>
               </div>
@@ -101,15 +202,15 @@ export function SettingsPage() {
                   <h4 className="text-xs font-semibold text-foreground dark:text-white flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" /> Change Password</h4>
                   <div className="flex flex-col gap-2">
                     <label className="text-xs font-medium text-muted-foreground">Current Password</label>
-                    <Input type="password" placeholder="••••••••" className="h-9 text-xs border-sidebar-border shadow-none" />
+                    <Input value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} type="password" placeholder="••••••••" className="h-9 text-xs border-sidebar-border shadow-none" />
                   </div>
                   <div className="flex flex-col gap-2">
                     <label className="text-xs font-medium text-muted-foreground">New Password</label>
-                    <Input type="password" placeholder="••••••••" className="h-9 text-xs border-sidebar-border shadow-none" />
+                    <Input value={newPassword} onChange={e => setNewPassword(e.target.value)} type="password" placeholder="••••••••" className="h-9 text-xs border-sidebar-border shadow-none" />
                   </div>
                   <div className="flex flex-col gap-2">
                     <label className="text-xs font-medium text-muted-foreground">Confirm Password</label>
-                    <Input type="password" placeholder="••••••••" className="h-9 text-xs border-sidebar-border shadow-none" />
+                    <Input value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} type="password" placeholder="••••••••" className="h-9 text-xs border-sidebar-border shadow-none" />
                   </div>
                 </div>
 
@@ -120,13 +221,13 @@ export function SettingsPage() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <label className="text-xs font-medium text-muted-foreground">4-6 Digit Security PIN</label>
-                    <Input type="password" maxLength={6} placeholder="••••" className="h-9 text-xs border-sidebar-border shadow-none font-mono tracking-widest" />
+                    <Input value={offlinePin} onChange={e => setOfflinePin(e.target.value)} type="password" maxLength={6} placeholder="••••" className="h-9 text-xs border-sidebar-border shadow-none font-mono tracking-widest" />
                   </div>
                 </div>
               </div>
               
               <div className="flex justify-end mt-6 pt-5 border-t border-sidebar-border/50">
-                <Button size="sm" className="h-9 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+                <Button size="sm" onClick={handleUpdateSecurity} className="h-9 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
                   Update Security
                 </Button>
               </div>
@@ -144,11 +245,11 @@ export function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-foreground dark:text-white">Facility Name</label>
-                  <Input defaultValue="Rural Health Unit 1" disabled className="h-9 text-xs border-sidebar-border shadow-none bg-muted/50" />
+                  <Input value={facilityName || "Rural Health Unit 1"} disabled className="h-9 text-xs border-sidebar-border shadow-none bg-muted/50" />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-foreground dark:text-white">Facility Type</label>
-                  <Select defaultValue="rhu" disabled>
+                  <Select value={facilityType || "rhu"} disabled>
                     <SelectTrigger className="w-full h-9 text-xs border-sidebar-border shadow-none bg-muted/50">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
@@ -161,15 +262,15 @@ export function SettingsPage() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-foreground dark:text-white">Contact Number</label>
-                  <Input defaultValue="(054) 477 1234" disabled className="h-9 text-xs border-sidebar-border shadow-none bg-muted/50" />
+                  <Input value={contactNumber || "(054) 477 1234"} disabled className="h-9 text-xs border-sidebar-border shadow-none bg-muted/50" />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-foreground dark:text-white">Official Email</label>
-                  <Input defaultValue="rhu1@pili.gov.ph" disabled className="h-9 text-xs border-sidebar-border shadow-none bg-muted/50" />
+                  <Input value={officialEmail || "rhu1@pili.gov.ph"} disabled className="h-9 text-xs border-sidebar-border shadow-none bg-muted/50" />
                 </div>
                 <div className="flex flex-col gap-2 md:col-span-2">
                   <label className="text-xs font-medium text-foreground dark:text-white">Complete Address</label>
-                  <Textarea defaultValue="Municipal Compound, San Agustin, Pili, Camarines Sur" disabled className="min-h-[60px] text-xs border-sidebar-border shadow-none bg-muted/50 resize-none" />
+                  <Textarea value={completeAddress || "Municipal Compound, San Agustin, Pili, Camarines Sur"} disabled className="min-h-[60px] text-xs border-sidebar-border shadow-none bg-muted/50 resize-none" />
                 </div>
               </div>
             </div>
@@ -183,7 +284,7 @@ export function SettingsPage() {
               <div className="flex flex-col gap-4 max-w-xl">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-foreground dark:text-white">Default Receiving Hospital</label>
-                  <Select defaultValue="bmc">
+                  <Select value={settings.defaultReceivingHospital} onValueChange={v => updateSettings({ defaultReceivingHospital: v })}>
                     <SelectTrigger className="w-full h-9 text-xs border-sidebar-border shadow-none">
                       <SelectValue placeholder="Select hospital" />
                     </SelectTrigger>
@@ -196,7 +297,7 @@ export function SettingsPage() {
                 </div>
               </div>
               <div className="flex justify-end mt-6 pt-5 border-t border-sidebar-border/50">
-                <Button size="sm" className="h-9 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+                <Button size="sm" onClick={() => toast.success("Facility settings saved")} className="h-9 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
                   Save Facility Settings
                 </Button>
               </div>
@@ -242,14 +343,14 @@ export function SettingsPage() {
                     <label className="text-xs font-medium text-foreground dark:text-white">Auto-Sync on Reconnect</label>
                     <p className="text-[10px] text-muted-foreground">Automatically push queued records when internet is restored.</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch checked={settings.autoSyncOnReconnect} onCheckedChange={c => updateSettings({ autoSyncOnReconnect: c })} />
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-sidebar-border/50 p-3 shadow-sm bg-background dark:bg-black">
                   <div className="space-y-0.5">
                     <label className="text-xs font-medium text-foreground dark:text-white">Download Historical Records</label>
                     <p className="text-[10px] text-muted-foreground">Cache older maternal records locally for offline viewing.</p>
                   </div>
-                  <Switch />
+                  <Switch checked={settings.downloadHistoricalRecords} onCheckedChange={c => updateSettings({ downloadHistoricalRecords: c })} />
                 </div>
               </div>
             </div>
@@ -262,10 +363,10 @@ export function SettingsPage() {
                 </h3>
               </div>
               <div className="flex items-center gap-3">
-                <Button variant="ghost" size="sm" className="h-9 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-950/50 border border-red-200 dark:border-red-900/50">
+                <Button variant="ghost" size="sm" onClick={handleClearCache} className="h-9 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-950/50 border border-red-200 dark:border-red-900/50">
                   Clear Local Cache
                 </Button>
-                <Button size="sm" className="h-9 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-none">
+                <Button size="sm" onClick={handleForceSync} className="h-9 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-none">
                   Force Sync Now
                 </Button>
               </div>
@@ -327,19 +428,19 @@ export function SettingsPage() {
                     <label className="text-xs font-medium text-foreground dark:text-white">Automated ANC Reminders</label>
                     <p className="text-[10px] text-muted-foreground">Send SMS reminders to mothers 24 hours before scheduled prenatal visits.</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch checked={settings.ancReminders} onCheckedChange={c => updateSettings({ ancReminders: c })} />
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-sidebar-border/50 p-3 shadow-sm bg-background dark:bg-black">
                   <div className="space-y-0.5">
                     <label className="text-xs font-medium text-foreground dark:text-white">Post-Referral SMS</label>
                     <p className="text-[10px] text-muted-foreground">Notify mothers via text when their hospital transfer is accepted.</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch checked={settings.postReferralSms} onCheckedChange={c => updateSettings({ postReferralSms: c })} />
                 </div>
               </div>
               
               <div className="flex justify-end mt-6 pt-5 border-t border-sidebar-border/50">
-                <Button size="sm" className="h-9 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+                <Button size="sm" onClick={() => toast.success("Notification preferences saved")} className="h-9 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
                   Save Preferences
                 </Button>
               </div>

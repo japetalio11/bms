@@ -1,6 +1,7 @@
 import { db } from "@/lib/db/bmsDatabase"
 import type { OfflineQueueItem } from "@/lib/db/bmsDatabase"
 import { apiClient } from "@/lib/apiClient"
+import { settingsStore } from "@/lib/settingsStore"
 
 type SyncListener = (status: { isSyncing: boolean; pendingCount: number; lastSyncedAt: number | null; error: string | null }) => void
 
@@ -49,7 +50,12 @@ class SyncEngine {
       this.isOnlineState = online
       this.notify()
       if (online) {
-        this.processQueue()
+        const settings = settingsStore.getSettings()
+        if (settings.autoSyncOnReconnect) {
+          this.processQueue()
+        } else {
+          console.log("[SyncEngine] Auto-sync on reconnect is disabled in settings.")
+        }
       }
     }
   }

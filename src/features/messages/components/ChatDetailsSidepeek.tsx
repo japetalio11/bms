@@ -1,7 +1,13 @@
 import * as React from "react"
 import { ChevronRight, FileText, Link as LinkIcon, Image as ImageIcon } from "lucide-react"
 
-export function ChatDetailsSidepeek() {
+interface ChatDetailsProps {
+  activeChatId: string | null
+}
+
+export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
+  if (!activeChatId) return null
+
   return (
     <div className="hidden lg:flex flex-col h-full w-[350px] shrink-0 border-l border-sidebar-border bg-background dark:bg-[#0a0a0a]">
       {/* Header - Fixed height matching other columns */}

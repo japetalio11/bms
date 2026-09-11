@@ -1,6 +1,8 @@
 import * as React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
+import { apiClient } from "@/lib/apiClient"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   CheckCircle2,
@@ -38,39 +40,77 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { InviteTeamMemberModal } from "./InviteTeamMemberModal"
 
-const MOCK_STAFF = [
-  {
-    id: "1",
-    name: "Joseph Angelo Petallo",
-    avatar: "https://i.pravatar.cc/150?u=1",
-    status: "Active",
-    position: "Administrator",
-    sector: "Local Government Unit",
-    email: "japetallo@gmail.com"
-  },
-  {
-    id: "2",
-    name: "Maria Santos",
-    avatar: "https://i.pravatar.cc/150?u=2",
-    status: "Active",
-    position: "Manager",
-    sector: "NGO",
-    email: "msantos@example.com"
-  },
-  {
-    id: "3",
-    name: "Juan Dela Cruz",
-    avatar: "https://i.pravatar.cc/150?u=3",
-    status: "Pending",
-    position: "Staff",
-    sector: "Private Sector",
-    email: "juan@example.com"
-  }
-]
-
 export function TeamManagementPage() {
   const [activeTab, setActiveTab] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [staffList, setStaffList] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+
+  const fetchStaff = async () => {
+    setLoading(true)
+    try {
+      const response = await apiClient.get('/api/v1/user/facility')
+      const data = response.data
+      if (data && data.result) {
+        const mapped = data.result.map((user: any) => ({
+          id: user.user_id,
+          name: `${user.first_name} ${user.middle_name ? user.middle_name + " " : ""}${user.last_name}`,
+          avatar: user.profile_url || "",
+          status: user.is_active ? "Active" : "Deactivated",
+          position: user.role,
+          sector: user.facility?.facility_name || "N/A",
+          email: user.email,
+          phone_number: user.phone_number
+        }))
+        setStaffList(mapped)
+      }
+    } catch (e) {
+      console.error("Failed to fetch staff:", e)
+      toast.error("Failed to load team members")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeactivate = async (id: string, currentStatus: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const is_active = currentStatus !== "Active" // Toggle status
+    try {
+      await apiClient.put(`/api/v1/user/${id}/deactivate`, { is_active })
+      toast.success(`Staff account ${is_active ? 'activated' : 'deactivated'} successfully`)
+      fetchStaff()
+    } catch (e) {
+      console.error("Failed to update status:", e)
+      toast.error("Failed to update account status")
+    }
+  }
+
+  useEffect(() => {
+    fetchStaff()
+  }, [])
+
+  // Filter staffList based on activeTab and searchQuery
+  const filteredStaff = staffList.filter((staff) => {
+    // Tab filter
+    if (activeTab === "active" && staff.status !== "Active") return false;
+    if (activeTab === "deactivated" && staff.status !== "Deactivated") return false;
+    if (activeTab === "pending" && staff.status !== "Pending") return false;
+
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      if (
+        !staff.name.toLowerCase().includes(query) && 
+        !staff.email.toLowerCase().includes(query) && 
+        !staff.position.toLowerCase().includes(query)
+      ) {
+        return false;
+      }
+    }
+    
+    return true;
+  })
 
   // Swipe gesture handling
   const [touchStartPos, setTouchStartPos] = useState<{x: number, y: number} | null>(null)
@@ -132,7 +172,12 @@ export function TeamManagementPage() {
           {/* Toolbar */}
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
             <div className="flex w-full xl:w-auto flex-wrap items-center gap-2">
-              <Input placeholder="Filter staff..." className="h-8 px-2 w-full sm:w-[250px] text-xs font-normal bg-background dark:bg-black border-sidebar-border" />
+              <Input 
+                placeholder="Filter staff..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 px-2 w-full sm:w-[250px] text-xs font-normal bg-background dark:bg-black border-sidebar-border" 
+              />
               {Object.entries({
                 "Role": ["Administrator", "Manager", "Coordinator", "Staff"],
                 "Sector": ["Local Government Unit", "NGO", "Private Sector", "Academe"]
@@ -163,11 +208,11 @@ export function TeamManagementPage() {
               ))}
             </div>
             <div className="flex w-full xl:w-auto items-center gap-2">
-              <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
+              <Button onClick={fetchStaff} variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
                 <RefreshCw className="h-3.5 w-3.5" />
                 Refresh
               </Button>
-              <InviteTeamMemberModal>
+              <InviteTeamMemberModal onInviteSuccess={fetchStaff}>
                 <Button className="h-8 text-xs font-medium gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-[#e5e5e5] dark:text-black dark:hover:bg-[#d5d5d5]">
                   <UserPlus className="h-3.5 w-3.5" />
                   Invite Team Member
@@ -209,7 +254,19 @@ export function TeamManagementPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {MOCK_STAFF.map((staff) => (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        Loading team members...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredStaff.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No team members found.
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredStaff.map((staff) => (
                     <TableRow 
                       key={staff.id} 
                       className={`border-sidebar-border cursor-pointer transition-colors group hover:bg-accent dark:hover:bg-white/5`}
@@ -258,13 +315,18 @@ export function TeamManagementPage() {
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white group-hover:text-foreground dark:text-white">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white group-hover:text-foreground dark:text-white" onClick={(e) => e.stopPropagation()}>
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
-                            <DropdownMenuItem className="text-xs cursor-pointer rounded-md">Edit Profile</DropdownMenuItem>
-                            <DropdownMenuItem className="text-xs cursor-pointer rounded-md text-red-500 hover:!text-red-500 hover:!bg-red-500/10">Deactivate</DropdownMenuItem>
+                            <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/team/${staff.id}`); }}>Edit Profile</DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className={`text-xs cursor-pointer rounded-md ${staff.status === 'Active' ? 'text-red-500 hover:!text-red-500 hover:!bg-red-500/10' : 'text-green-500 hover:!text-green-500 hover:!bg-green-500/10'}`}
+                              onClick={(e) => handleDeactivate(staff.id, staff.status, e)}
+                            >
+                              {staff.status === 'Active' ? 'Deactivate' : 'Activate'}
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -277,7 +339,7 @@ export function TeamManagementPage() {
 
           {/* Desktop Pagination Footer */}
           <div className="hidden md:flex flex-row items-center justify-between text-xs text-muted-foreground gap-4">
-            <div>0 of {MOCK_STAFF.length} row(s) selected.</div>
+            <div>0 of {filteredStaff.length} row(s) selected.</div>
             
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
@@ -309,7 +371,7 @@ export function TeamManagementPage() {
 
           {/* Mobile Card List */}
           <div className="flex md:hidden flex-col gap-4">
-            {MOCK_STAFF.map((staff) => (
+            {filteredStaff.map((staff) => (
               <div 
                 key={staff.id} 
                 className={`flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-[#111] gap-4 cursor-pointer transition-colors hover:bg-accent dark:hover:bg-white/5`}
@@ -357,13 +419,18 @@ export function TeamManagementPage() {
                 <div className="flex items-center justify-end pt-3 border-t border-sidebar-border">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white" onClick={(e) => e.stopPropagation()}>
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
-                      <DropdownMenuItem className="text-xs cursor-pointer rounded-md">Edit Profile</DropdownMenuItem>
-                      <DropdownMenuItem className="text-xs cursor-pointer rounded-md text-red-500 hover:!text-red-500 hover:!bg-red-500/10">Deactivate</DropdownMenuItem>
+                      <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/team/${staff.id}`); }}>Edit Profile</DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className={`text-xs cursor-pointer rounded-md ${staff.status === 'Active' ? 'text-red-500 hover:!text-red-500 hover:!bg-red-500/10' : 'text-green-500 hover:!text-green-500 hover:!bg-green-500/10'}`}
+                        onClick={(e) => handleDeactivate(staff.id, staff.status, e as any)}
+                      >
+                        {staff.status === 'Active' ? 'Deactivate' : 'Activate'}
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
