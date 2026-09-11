@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { settingsStore, AppSettings } from "@/lib/settingsStore"
+import { settingsStore, type AppSettings } from "@/lib/settingsStore"
 
 export function useSettings() {
   const [settings, setSettings] = useState<AppSettings>(settingsStore.getSettings())
