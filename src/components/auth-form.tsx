@@ -348,7 +348,10 @@ const loadGoogleScript = (): Promise<void> => {
     setIsLoading(true)
     setError(null)
 
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "656579030497-5ugj2op595o8r5i19hj6gre60qcic8v4.apps.googleusercontent.com"
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!googleClientId) {
+      console.warn("Warning: VITE_GOOGLE_CLIENT_ID environment variable is missing.");
+    }
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {

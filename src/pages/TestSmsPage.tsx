@@ -6,6 +6,7 @@ export function TestSmsPage() {
   const [method, setMethod] = useState<"backend" | "firebase">("firebase");
   const [phoneNumber, setPhoneNumber] = useState("09242926043");
   const [otpCode, setOtpCode] = useState("");
+  const [recaptchaSize, setRecaptchaSize] = useState<"invisible" | "normal">("invisible");
 
   const [backendLoading, setBackendLoading] = useState(false);
   const [backendSent, setBackendSent] = useState(false);
@@ -22,10 +23,11 @@ export function TestSmsPage() {
     isOtpSent: firebaseSent,
     isVerified: firebaseVerified,
     statusMessage: firebaseStatusMsg,
-    statusType: firebaseStatusType
+    statusType: firebaseStatusType,
+    lastError
   } = usePhoneAuth({
     containerId: "recaptcha-container",
-    recaptchaSize: "invisible",
+    recaptchaSize: recaptchaSize,
     cooldownDuration: 60
   });
 
@@ -141,7 +143,7 @@ export function TestSmsPage() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
-      <div id="recaptcha-container" className="hidden"></div>
+      <div id="recaptcha-container"></div>
 
       <div className="w-full max-w-md bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-2xl space-y-6">
         <div className="text-center space-y-2">
@@ -185,7 +187,7 @@ export function TestSmsPage() {
         </div>
 
         {method === "firebase" && (
-          <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-700/80 space-y-2">
+          <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-700/80 space-y-3">
             <div className="flex justify-between items-center text-xs font-medium text-slate-300">
               <span>🛠️ Dev Test Numbers (Firebase Console)</span>
               <span className="text-[10px] text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
@@ -211,6 +213,47 @@ export function TestSmsPage() {
                   {num} {num === "+639170000000" ? "(OTP: 123456)" : ""}
                 </button>
               ))}
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 space-y-1">
+              <div className="flex justify-between items-center text-xs font-semibold text-slate-300">
+                <span>🛡️ reCAPTCHA Mode for Real Numbers</span>
+                <span className="text-[10px] text-blue-400">
+                  {recaptchaSize === "normal" ? "Visible Checkbox Widget" : "Invisible Badge"}
+                </span>
+              </div>
+              <div className="flex bg-slate-950 p-1 rounded border border-slate-800 gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecaptchaSize("invisible");
+                    handleReset();
+                  }}
+                  disabled={isLoading || isSent}
+                  className={`flex-1 py-1 text-[11px] font-medium rounded transition-all cursor-pointer ${
+                    recaptchaSize === "invisible"
+                      ? "bg-blue-900/80 text-blue-200 border border-blue-600"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Invisible (Auto)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecaptchaSize("normal");
+                    handleReset();
+                  }}
+                  disabled={isLoading || isSent}
+                  className={`flex-1 py-1 text-[11px] font-medium rounded transition-all cursor-pointer ${
+                    recaptchaSize === "normal"
+                      ? "bg-blue-900/80 text-blue-200 border border-blue-600"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Normal ("I'm not a robot" Checkbox)
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -316,6 +359,25 @@ export function TestSmsPage() {
               }`}
             >
               {activeStatusMsg}
+            </div>
+          )}
+
+          {method === "firebase" && lastError && (
+            <div className="bg-slate-950 border border-rose-900/80 rounded-lg p-3 space-y-2 text-[11px] font-mono">
+              <div className="flex items-center justify-between text-rose-400 font-bold border-b border-rose-900/60 pb-1">
+                <span>🔍 Firebase Error Diagnostic Info</span>
+                <span className="text-[10px] bg-rose-950 px-1.5 py-0.5 rounded border border-rose-800">
+                  {lastError.code}
+                </span>
+              </div>
+              <div className="text-slate-300 space-y-1">
+                <p><strong className="text-slate-400">Raw Message:</strong> {lastError.message}</p>
+                {lastError.details && (
+                  <pre className="bg-slate-900 p-2 rounded text-[10px] text-slate-400 overflow-x-auto border border-slate-800">
+                    {JSON.stringify(lastError.details, null, 2)}
+                  </pre>
+                )}
+              </div>
             </div>
           )}
         </div>
