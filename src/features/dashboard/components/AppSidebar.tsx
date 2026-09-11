@@ -17,7 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { LayoutGrid, Users, Calendar, CalendarCheck, ArrowRightLeft, MessageSquare, SlidersHorizontal, ChevronsUpDown, LogOut, FileText } from "lucide-react"
 import headerIcon from "@/assets/icon.svg"
-import rhuLogo from "@/assets/Pili Rural Health Unit Logo.jpg"
+import rhuLogo from "@/assets/pili-rhu-logo.jpg"
 import { apiClient } from "@/lib/apiClient"
 
 export function AppSidebar() {
