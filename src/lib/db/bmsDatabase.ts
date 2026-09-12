@@ -128,10 +128,23 @@ export interface LocalReferral {
   [key: string]: any
 }
 
+export interface LocalNotification {
+  id: string // notification_id or temp uuid
+  notification_id?: string
+  user_id: string
+  notification_type: string
+  notification_message: string
+  notification_date: string
+  is_read: boolean
+  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  updated_at: number
+  [key: string]: any
+}
+
 export interface OfflineQueueItem {
   id?: number // Auto-increment ID
   client_mutation_id: string
-  entity_type: "mother" | "pregnancy" | "prenatal_visit" | "appointment" | "lab_record" | "supplement" | "ehr_doc" | "message" | "custom_request"
+  entity_type: "mother" | "pregnancy" | "prenatal_visit" | "appointment" | "lab_record" | "supplement" | "ehr_doc" | "message" | "referral" | "notification" | "custom_request"
   action: "CREATE" | "UPDATE" | "DELETE"
   endpoint: string
   method: "POST" | "PUT" | "DELETE"
@@ -160,6 +173,7 @@ export class BMSDatabase extends Dexie {
   ehrDocuments!: Table<LocalEhrDocument, string>
   messages!: Table<LocalMessage, string>
   referrals!: Table<LocalReferral, string>
+  notifications!: Table<LocalNotification, string>
   offlineQueue!: Table<OfflineQueueItem, number>
   blobs!: Table<LocalBlob, string>
   userSession!: Table<any, string>
@@ -216,6 +230,22 @@ export class BMSDatabase extends Dexie {
       ehrDocuments: "id, mother_id, sync_status, updated_at",
       messages: "id, sender_id, receiver_id, message_date, is_read, sync_status, updated_at",
       referrals: "id, referral_id, pregnancy_id, from_facility_id, to_facility_id, status, sync_status, updated_at",
+      offlineQueue: "++id, client_mutation_id, entity_type, created_at, retry_count",
+      blobs: "id",
+      userSession: "id",
+    })
+
+    this.version(5).stores({
+      mothers: "id, mother_id, user_id, facility_id, phone_number, sync_status, updated_at",
+      pregnancies: "id, pregnancy_id, mother_id, sync_status, updated_at",
+      prenatalVisits: "id, visit_id, pregnancy_id, mother_id, visit_date, sync_status, updated_at",
+      appointments: "id, appointment_id, mother_id, user_id, facility_id, appointment_date, status, sync_status, updated_at",
+      labRecords: "id, screening_id, pregnancy_id, mother_id, sync_status, updated_at",
+      supplements: "id, supplement_id, pregnancy_id, mother_id, sync_status, updated_at",
+      ehrDocuments: "id, mother_id, sync_status, updated_at",
+      messages: "id, sender_id, receiver_id, message_date, is_read, sync_status, updated_at",
+      referrals: "id, referral_id, pregnancy_id, from_facility_id, to_facility_id, status, sync_status, updated_at",
+      notifications: "id, notification_id, user_id, notification_type, is_read, sync_status, updated_at",
       offlineQueue: "++id, client_mutation_id, entity_type, created_at, retry_count",
       blobs: "id",
       userSession: "id",
