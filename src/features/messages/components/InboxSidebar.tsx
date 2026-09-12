@@ -14,19 +14,31 @@ interface InboxSidebarProps {
 }
 
 export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProps) {
+  const [searchQuery, setSearchQuery] = React.useState("")
   const currentUser = useLiveQuery(() => db.userSession.get("current_user"))
   
   // Get all messages from local DB
   const messages = useLiveQuery(() => db.messages.orderBy('updated_at').reverse().toArray(), []) ?? []
   
-  // Group messages by contact
+  // Get active mothers in facility from local DB (for staff members)
+  const facilityMothers = useLiveQuery(async () => {
+    if (!currentUser) return []
+    if (currentUser.role !== 'Mother') {
+      if (currentUser.facility_id) {
+        return await db.mothers.where('facility_id').equals(currentUser.facility_id).toArray()
+      }
+      return await db.mothers.toArray()
+    }
+    return []
+  }, [currentUser]) ?? []
+
+  // Group messages and facility mothers by contact
   const chatThreads = React.useMemo(() => {
     if (!currentUser) return []
     
     const threads = new Map<string, any>()
     
-    // Reverse again because orderBy('updated_at').reverse() puts newest first.
-    // We want to iterate and grab the first one we see as the latest snippet.
+    // Process existing messages
     messages.forEach(msg => {
       const isMe = msg.sender_id === currentUser.user_id
       const contactId = isMe ? msg.receiver_id : msg.sender_id
@@ -47,9 +59,49 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
         }
       }
     })
+
+    // Include facility mothers in contacts for healthcare staff
+    facilityMothers.forEach(mother => {
+      const motherUserId = mother.user_id || mother.user?.user_id
+      if (!motherUserId) return
+      
+      const motherName = `${mother.first_name || mother.user?.first_name || ''} ${mother.last_name || mother.user?.last_name || ''}`.trim() || "Mother"
+      const avatar = mother.photo_url || mother.user?.profile_url || ""
+
+      if (threads.has(motherUserId)) {
+        const existing = threads.get(motherUserId)
+        if (!existing.name || existing.name === "Unknown User") {
+          existing.name = motherName
+        }
+        if (!existing.avatar) {
+          existing.avatar = avatar
+        }
+      } else {
+        threads.set(motherUserId, {
+          id: motherUserId,
+          name: motherName,
+          message: "No messages yet",
+          rawDate: mother.created_at || "",
+          unread: 0,
+          avatar: avatar
+        })
+      }
+    })
     
-    return Array.from(threads.values()).sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime())
-  }, [messages, currentUser])
+    const allThreads = Array.from(threads.values()).sort((a, b) => {
+      const timeA = a.rawDate ? new Date(a.rawDate).getTime() : 0
+      const timeB = b.rawDate ? new Date(b.rawDate).getTime() : 0
+      return timeB - timeA
+    })
+
+    if (!searchQuery.trim()) return allThreads
+
+    const q = searchQuery.toLowerCase()
+    return allThreads.filter(t => 
+      t.name.toLowerCase().includes(q) || 
+      t.message.toLowerCase().includes(q)
+    )
+  }, [messages, facilityMothers, currentUser, searchQuery])
 
   const formatTime = (dateStr: string) => {
     if (!dateStr) return ""
@@ -83,7 +135,9 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
         <div className="relative">
           <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
           <Input 
-            placeholder="Search messages..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search messages or mothers..." 
             className="pl-8 h-8 text-xs bg-muted/50 dark:bg-[#111] border-sidebar-border focus-visible:ring-1 focus-visible:ring-ring"
           />
         </div>
@@ -107,7 +161,7 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
             <div className="flex flex-col flex-1 min-w-0 gap-1 mt-0.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-foreground dark:text-white truncate">{chat.name}</span>
-                <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(chat.rawDate)}</span>
+                {chat.rawDate && <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(chat.rawDate)}</span>}
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className={clsx(
@@ -127,7 +181,7 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
         ))}
         {chatThreads.length === 0 && (
           <div className="p-6 text-center text-sm text-muted-foreground">
-            No messages found.
+            No contacts or messages found.
           </div>
         )}
       </div>

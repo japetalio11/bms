@@ -37,6 +37,11 @@ export const motherRepository = {
             .filter((m: any) => !pendingTempIds.has(m._id || m.id || m.mother_id))
             .map((m: any) => {
               const motherId = m.mother_id || m._id || m.id
+              const firstName = m.first_name || m.user?.first_name || ""
+              const lastName = m.last_name || m.user?.last_name || ""
+              const middleName = m.middle_name || m.user?.middle_name || ""
+              const phoneNumber = m.phone_number || m.user?.phone_number || ""
+              const photoUrl = m.photo_url || m.user?.profile_url || ""
               const userId = m.user_id || m.user?.user_id
               return {
                 ...m,
@@ -44,6 +49,11 @@ export const motherRepository = {
                 _id: motherId,
                 mother_id: motherId,
                 user_id: userId,
+                first_name: firstName,
+                last_name: lastName,
+                middle_name: middleName,
+                phone_number: phoneNumber,
+                photo_url: photoUrl,
                 facility_id: m.facility_id || m.user?.facility_id || facilityId,
                 sync_status: "synced" as const,
                 updated_at: Date.now(),

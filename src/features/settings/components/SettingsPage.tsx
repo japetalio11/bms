@@ -16,6 +16,7 @@ import { toast } from "sonner"
 import { db } from "@/lib/db/bmsDatabase"
 import { syncEngine } from "@/lib/sync/syncEngine"
 import { useSettings } from "@/features/settings/hooks/useSettings"
+import { apiClient } from "@/lib/apiClient"
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -51,6 +52,27 @@ export function SettingsPage() {
   const [officialEmail, setOfficialEmail] = useState("")
   const [completeAddress, setCompleteAddress] = useState("")
 
+  const [storageUsedMB, setStorageUsedMB] = useState<number>(0)
+  const [storageQuotaMB, setStorageQuotaMB] = useState<number>(500)
+  const [storagePercent, setStoragePercent] = useState<number>(0)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [updatingSecurity, setUpdatingSecurity] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && navigator.storage && navigator.storage.estimate) {
+      navigator.storage.estimate().then((estimate) => {
+        if (estimate.usage !== undefined && estimate.quota !== undefined) {
+          const usedMB = Math.round((estimate.usage / (1024 * 1024)) * 100) / 100
+          const quotaMB = Math.round(estimate.quota / (1024 * 1024))
+          const percent = Math.min(100, Math.round((estimate.usage / estimate.quota) * 100))
+          setStorageUsedMB(usedMB)
+          setStorageQuotaMB(quotaMB)
+          setStoragePercent(percent)
+        }
+      }).catch(console.error)
+    }
+  }, [])
+
   useEffect(() => {
     db.userSession.get("current_user").then((userSession) => {
       if (userSession) {
@@ -72,7 +94,21 @@ export function SettingsPage() {
   }, [])
 
   const handleSaveProfile = async () => {
+    setSavingProfile(true)
     try {
+      if (navigator.onLine) {
+        try {
+          await apiClient.put('/api/v1/user/profile', {
+            first_name: firstName,
+            last_name: lastName,
+            phone_number: phoneNumber,
+            email: email
+          })
+        } catch (apiErr: any) {
+          console.warn("Backend profile save warning:", apiErr)
+        }
+      }
+
       const userSession = await db.userSession.get("current_user")
       if (userSession) {
         userSession.first_name = firstName
@@ -86,23 +122,58 @@ export function SettingsPage() {
           userSession.cachedUser.email = email
         }
         await db.userSession.put(userSession)
-        toast.success("Profile updated", { description: "Changes saved to local session." })
       }
-    } catch (e) {
+      toast.success("Profile updated", { description: "Your profile information has been saved." })
+    } catch (e: any) {
+      console.error("Failed to save profile:", e)
       toast.error("Failed to save profile")
+    } finally {
+      setSavingProfile(false)
     }
   }
 
-  const handleUpdateSecurity = () => {
-    if (newPassword && newPassword !== confirmPassword) {
-      toast.error("Passwords do not match")
-      return
+  const handleUpdateSecurity = async () => {
+    if (newPassword) {
+      if (!currentPassword) {
+        toast.error("Current password required", { description: "Please enter your current password to set a new password." })
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        toast.error("Passwords do not match", { description: "New password and confirmation do not match." })
+        return
+      }
+      if (newPassword.length < 6) {
+        toast.error("Password too short", { description: "New password must be at least 6 characters long." })
+        return
+      }
     }
-    updateSettings({ offlinePin })
-    toast.success("Security settings updated")
-    setCurrentPassword("")
-    setNewPassword("")
-    setConfirmPassword("")
+
+    setUpdatingSecurity(true)
+    try {
+      if (newPassword) {
+        await apiClient.post('/api/v1/auth/change-password', {
+          currentPassword,
+          newPassword
+        })
+        toast.success("Password changed successfully", { description: "Your account password has been updated." })
+        setCurrentPassword("")
+        setNewPassword("")
+        setConfirmPassword("")
+      }
+
+      if (offlinePin !== settings.offlinePin) {
+        updateSettings({ offlinePin })
+        toast.success("Security PIN updated", { description: "Local device security settings saved." })
+      } else if (!newPassword) {
+        toast.info("No security changes detected")
+      }
+    } catch (err: any) {
+      console.error("Security update error:", err)
+      const errorMsg = err?.response?.data?.error || err?.message || "Failed to update security settings"
+      toast.error("Security Update Failed", { description: errorMsg })
+    } finally {
+      setUpdatingSecurity(false)
+    }
   }
 
   const handleClearCache = async () => {
@@ -184,8 +255,8 @@ export function SettingsPage() {
                 </div>
               </div>
               <div className="flex justify-end mt-6">
-                <Button size="sm" onClick={handleSaveProfile} className="h-9 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
-                  Save Profile
+                <Button size="sm" onClick={handleSaveProfile} disabled={savingProfile} className="h-9 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+                  {savingProfile ? "Saving..." : "Save Profile"}
                 </Button>
               </div>
             </div>
@@ -227,8 +298,8 @@ export function SettingsPage() {
               </div>
               
               <div className="flex justify-end mt-6 pt-5 border-t border-sidebar-border/50">
-                <Button size="sm" onClick={handleUpdateSecurity} className="h-9 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
-                  Update Security
+                <Button size="sm" onClick={handleUpdateSecurity} disabled={updatingSecurity} className="h-9 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+                  {updatingSecurity ? "Updating..." : "Update Security"}
                 </Button>
               </div>
             </div>
@@ -321,9 +392,9 @@ export function SettingsPage() {
               <div className="flex flex-col gap-2 max-w-xl">
                 <div className="flex justify-between items-end mb-1">
                   <span className="text-xs font-medium text-foreground dark:text-white">Storage Quota</span>
-                  <span className="text-[10px] text-muted-foreground"><strong className="text-foreground dark:text-white">45 MB</strong> / 500 MB Used</span>
+                  <span className="text-[10px] text-muted-foreground"><strong className="text-foreground dark:text-white">{storageUsedMB} MB</strong> / {storageQuotaMB} MB Used</span>
                 </div>
-                <Progress value={9} className="h-2 bg-muted dark:bg-[#222]" />
+                <Progress value={storagePercent} className="h-2 bg-muted dark:bg-[#222]" />
                 <p className="text-[10px] text-muted-foreground mt-2">
                   The browser StorageManager API is currently preventing automatic eviction of cached registry data.
                 </p>

@@ -3,12 +3,13 @@ import { InboxSidebar } from "./InboxSidebar"
 import { ChatArea } from "./ChatArea"
 import { ChatDetailsSidepeek } from "./ChatDetailsSidepeek"
 import { useEffect, useState } from "react"
+import { motherRepository } from "@/lib/repositories/motherRepository"
 import { db } from "@/lib/db/bmsDatabase"
 
 export function MessagesPage() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
 
-  // Sync messages from backend when online
+  // Sync messages and mothers from backend when online
   useEffect(() => {
     const syncMessages = async () => {
       if (navigator.onLine) {
@@ -18,6 +19,11 @@ export function MessagesPage() {
           const currentUser = await db.userSession.get("current_user")
           
           if (!token || !currentUser) return
+
+          // Sync mothers for facility if currentUser is staff
+          if (currentUser.facility_id && currentUser.role !== 'Mother') {
+            motherRepository.getActiveMothers(currentUser.facility_id).catch(() => {})
+          }
 
           const response = await fetch(`${baseUrl}/api/v1/message/getAll`, {
             headers: {

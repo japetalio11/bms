@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Paperclip, Image as ImageIcon, Send, FileText, User as UserIcon, AlertCircle, CheckCircle2, Clock } from "lucide-react"
+import { Paperclip, Image as ImageIcon, Send, FileText, User as UserIcon, AlertCircle, CheckCircle2, Clock, Download, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { clsx } from "clsx"
@@ -16,6 +16,9 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
   const [isOffline, setIsOffline] = React.useState(!navigator.onLine)
   const currentUser = useLiveQuery(() => db.userSession.get("current_user"))
   
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const imageInputRef = React.useRef<HTMLInputElement>(null)
+
   React.useEffect(() => {
     const handleOnline = () => setIsOffline(false)
     const handleOffline = () => setIsOffline(true)
@@ -39,24 +42,111 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
 
   const activeContact = useLiveQuery(async () => {
     if (!activeChatId) return null
-    const mother = await db.mothers.get(activeChatId)
+    let mother = await db.mothers.get(activeChatId)
+    if (!mother) {
+      mother = await db.mothers.where('user_id').equals(activeChatId).first()
+    }
+    if (!mother) {
+      mother = await db.mothers.where('mother_id').equals(activeChatId).first()
+    }
     if (mother) {
+      const firstName = mother.first_name || mother.user?.first_name || ''
+      const lastName = mother.last_name || mother.user?.last_name || ''
+      const photoUrl = mother.photo_url || mother.user?.profile_url || ''
       return {
-        name: `${mother.first_name || ''} ${mother.last_name || ''}`.trim(),
+        name: `${firstName} ${lastName}`.trim() || "Mother",
         role: "Mother",
-        avatar: mother.photo_url
+        avatar: photoUrl
       }
     }
     const msg = await db.messages.filter(m => m.sender_id === activeChatId || m.receiver_id === activeChatId).first()
     if (msg) {
       return {
         name: msg.contact_name || "Contact",
-        role: "Staff",
+        role: "Healthcare Staff",
         avatar: msg.contact_avatar
       }
     }
-    return { name: "Unknown User", role: "Unknown", avatar: "" }
+    return { name: "Healthcare Contact", role: "Contact", avatar: "" }
   }, [activeChatId])
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isImageOnly = false) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentUser || !activeChatId) return
+
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const dataUrl = reader.result as string
+      const now = new Date()
+      const tempId = crypto.randomUUID()
+      const msgType = isImageOnly || file.type.startsWith('image/') ? 'image' : 'file'
+
+      const localMsg = {
+        id: tempId,
+        sender_id: currentUser.user_id,
+        receiver_id: activeChatId,
+        message_content: dataUrl,
+        message_type: msgType,
+        file_name: file.name,
+        file_size: `${(file.size / 1024).toFixed(1)} KB`,
+        message_date: now.toISOString(),
+        is_read: true,
+        contact_name: activeContact?.name,
+        contact_avatar: activeContact?.avatar,
+        sync_status: "pending_create" as const,
+        updated_at: now.getTime()
+      }
+
+      try {
+        await db.transaction('rw', db.messages, db.offlineQueue, async () => {
+          await db.messages.add(localMsg)
+          await db.offlineQueue.add({
+            client_mutation_id: tempId,
+            entity_type: "message",
+            action: "CREATE",
+            endpoint: "/api/v1/message/create",
+            method: "POST",
+            payload: {
+              receiver_id: activeChatId,
+              message_content: localMsg.message_content,
+              message_type: msgType,
+              message_date: localMsg.message_date
+            },
+            retry_count: 0,
+            created_at: now.getTime()
+          })
+        })
+
+        if (!isOffline) {
+          const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+          const token = localStorage.getItem("token")
+          fetch(`${baseUrl}/api/v1/message/create`, {
+            method: 'POST',
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(localMsg)
+          }).then(res => res.json()).then(async (data) => {
+            if (data && data.data) {
+              await db.transaction('rw', db.messages, db.offlineQueue, async () => {
+                await db.messages.update(tempId, { sync_status: "synced", id: data.data.message_id })
+                const queueItem = await db.offlineQueue.where('client_mutation_id').equals(tempId).first()
+                if (queueItem && queueItem.id) {
+                  await db.offlineQueue.delete(queueItem.id)
+                }
+              })
+            }
+          }).catch(err => console.error("Sync failed", err))
+        }
+      } catch (err) {
+        console.error("Failed to send attachment", err)
+      }
+
+      if (e.target) e.target.value = ""
+    }
+    reader.readAsDataURL(file)
+  }
 
   const handleSendMessage = async () => {
     if (!message.trim() || !currentUser || !activeChatId) return
@@ -71,7 +161,7 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
       message_content: message.trim(),
       message_type: "text",
       message_date: now.toISOString(),
-      is_read: true, // We sent it, so it's read by us
+      is_read: true,
       contact_name: activeContact?.name,
       contact_avatar: activeContact?.avatar,
       sync_status: "pending_create" as const,
@@ -99,7 +189,6 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
       })
       setMessage("")
       
-      // Attempt background sync if online (simple immediate sync for messages)
       if (!isOffline) {
         const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
         const token = localStorage.getItem("token")
@@ -112,7 +201,6 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
           body: JSON.stringify(localMsg)
         }).then(res => res.json()).then(async (data) => {
           if (data && data.data) {
-             // Mark synced and delete from offlineQueue
              await db.transaction('rw', db.messages, db.offlineQueue, async () => {
                 await db.messages.update(tempId, { sync_status: "synced", id: data.data.message_id })
                 const queueItem = await db.offlineQueue.where('client_mutation_id').equals(tempId).first()
@@ -121,14 +209,13 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
                 }
              })
           }
-        }).catch(err => console.error("Sync failed, leaving in offline queue", err))
+        }).catch(err => console.error("Sync failed", err))
       }
     } catch (e) {
       console.error("Failed to send message", e)
     }
   }
 
-  // Scroll to bottom helper
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -152,6 +239,10 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
 
   return (
     <div className="flex flex-col flex-1 h-full bg-background dark:bg-black min-w-0 border-r border-sidebar-border">
+      {/* Hidden inputs for attachments */}
+      <input type="file" ref={fileInputRef} className="hidden" accept="*/*" onChange={(e) => handleFileUpload(e, false)} />
+      <input type="file" ref={imageInputRef} className="hidden" accept="image/*,video/*" onChange={(e) => handleFileUpload(e, true)} />
+
       {/* Chat Header */}
       <div className="h-[72px] px-6 py-4 border-b border-sidebar-border shrink-0 bg-background dark:bg-black flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -183,6 +274,9 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
         {chatMessages.map((msg) => {
           const isMe = msg.sender_id === currentUser?.user_id
+          const isImage = msg.message_type === 'image' || (typeof msg.message_content === 'string' && (msg.message_content.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(msg.message_content)))
+          const isFile = msg.message_type === 'file' || (typeof msg.message_content === 'string' && msg.message_content.startsWith('data:application/'))
+
           return (
             <div key={msg.id} className={clsx("flex flex-col gap-1 w-full max-w-[80%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
               <div className={clsx(
@@ -191,7 +285,26 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
                   ? "bg-primary text-primary-foreground rounded-tr-sm" 
                   : "bg-muted dark:bg-[#1a1a1a] border border-sidebar-border text-foreground dark:text-white rounded-tl-sm"
               )}>
-                {msg.message_content}
+                {isImage ? (
+                  <a href={msg.message_content} target="_blank" rel="noreferrer" className="block">
+                    <img src={msg.message_content} alt="Shared Attachment" className="max-w-[260px] max-h-[260px] rounded-lg object-cover" />
+                  </a>
+                ) : isFile ? (
+                  <div className="flex items-center gap-3 p-1">
+                    <div className="h-8 w-8 rounded bg-background/20 flex items-center justify-center shrink-0">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-semibold truncate max-w-[180px]">{msg.file_name || "Document.pdf"}</span>
+                      <span className="text-[10px] opacity-75">{msg.file_size || "File Attachment"}</span>
+                    </div>
+                    <a href={msg.message_content} download={msg.file_name || "file"} className="ml-2 p-1.5 rounded hover:bg-black/10 dark:hover:bg-white/10 shrink-0">
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap break-words">{msg.message_content}</div>
+                )}
               </div>
               <div className="flex items-center gap-1 px-1">
                 <span className="text-[10px] text-muted-foreground">{formatTime(msg.message_date)}</span>
@@ -209,10 +322,22 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
       <div className="px-6 pb-6 pt-4 bg-background dark:bg-black shrink-0 border-t border-transparent flex flex-col gap-2">
         <div className="flex items-end gap-2 bg-muted/50 dark:bg-[#111] border border-sidebar-border p-2 rounded-xl focus-within:ring-1 focus-within:ring-ring transition-shadow w-full">
           <div className="flex items-center gap-1 mb-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <Button 
+              onClick={() => fileInputRef.current?.click()}
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title="Attach File"
+            >
               <Paperclip className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <Button 
+              onClick={() => imageInputRef.current?.click()}
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              title="Attach Photo or Video"
+            >
               <ImageIcon className="h-4 w-4" />
             </Button>
           </div>

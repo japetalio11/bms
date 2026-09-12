@@ -53,16 +53,18 @@ export function TeamManagementPage() {
       const response = await apiClient.get('/api/v1/user/facility')
       const data = response.data
       if (data && data.result) {
-        const mapped = data.result.map((user: any) => ({
-          id: user.user_id,
-          name: `${user.first_name} ${user.middle_name ? user.middle_name + " " : ""}${user.last_name}`,
-          avatar: user.profile_url || "",
-          status: user.is_active ? "Active" : "Deactivated",
-          position: user.role,
-          sector: user.facility?.facility_name || "N/A",
-          email: user.email,
-          phone_number: user.phone_number
-        }))
+        const mapped = data.result
+          .filter((user: any) => user.role !== 'Mother' && user.role !== 'MOTHER')
+          .map((user: any) => ({
+            id: user.user_id,
+            name: `${user.first_name} ${user.middle_name ? user.middle_name + " " : ""}${user.last_name}`,
+            avatar: user.profile_url || "",
+            status: user.is_active ? "Active" : "Deactivated",
+            position: user.role,
+            sector: user.facility?.facility_name || "N/A",
+            email: user.email,
+            phone_number: user.phone_number
+          }))
         setStaffList(mapped)
       }
     } catch (e) {
