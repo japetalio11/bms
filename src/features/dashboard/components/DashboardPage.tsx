@@ -170,7 +170,7 @@ export function DashboardPage() {
     const rows = enrichedAppointments.map(app => [
       `"${app.motherName}"`,
       `"${app.status || 'Scheduled'}"`,
-      `"${app.type || app.appointment_type || 'Prenatal'}"`,
+      `"${app.type || (app as any).appointment_type || 'Prenatal'}"`,
       `"${formatDateTime(app.appointment_date, app.time_slot)}"`,
       `"${app.facility_id || ''}"`
     ])

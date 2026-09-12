@@ -297,18 +297,17 @@ Thank you. 💛`
 
     setLoading(true)
     try {
-      // Ensure pregnancy record exists in backend if not yet created
+      // Ensure pregnancy record exists in local DB / backend if not yet created
       if (!pregIdToUse) {
         try {
-          const newPregRes = await apiClient.post("/api/v1/pregnancy/register", {
+          const createdPreg = await motherRepository.registerPregnancy({
             mother_id: selectedMotherId,
             gravida: 1,
             para: 0,
             lmp: lmp || undefined,
             edd: edc || undefined,
           })
-          const createdPreg = newPregRes.data?.data || newPregRes.data
-          pregIdToUse = createdPreg?.pregnancy_id || createdPreg?._id || createdPreg?.id || `preg-${selectedMotherId}`
+          pregIdToUse = createdPreg?.pregnancy_id || createdPreg?.id || `preg-${selectedMotherId}`
         } catch (pregErr) {
           console.warn("Pregnancy registration notice:", pregErr)
           pregIdToUse = `preg-${selectedMotherId}`

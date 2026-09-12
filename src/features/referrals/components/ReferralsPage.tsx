@@ -17,7 +17,9 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  WifiOff,
+  CloudOff
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -46,6 +48,8 @@ import { ExportReferralModal } from "./ExportReferralModal"
 import { ReferralSuccessModal, type ReferralSuccessData } from "./ReferralSuccessModal"
 import { referralRepository } from "@/lib/repositories/referralRepository"
 import type { LocalReferral } from "@/lib/db/bmsDatabase"
+import { useNetworkStatus } from "@/hooks/useNetworkStatus"
+import { syncEngine } from "@/lib/sync/syncEngine"
 
 export function ReferralsPage() {
   const [activeTab, setActiveTab] = useState("today")
@@ -62,6 +66,7 @@ export function ReferralsPage() {
   const [copyNotification, setCopyNotification] = useState<string>("")
   
   const isMobile = useIsMobile()
+  const { isOnline } = useNetworkStatus()
 
   // Load referrals from repository / backend
   const loadReferrals = async () => {
@@ -78,7 +83,19 @@ export function ReferralsPage() {
 
   useEffect(() => {
     loadReferrals()
+
+    const unsubscribe = syncEngine.subscribe(() => {
+      loadReferrals()
+    })
+
+    return () => unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (isOnline) {
+      loadReferrals()
+    }
+  }, [isOnline])
 
   // Filter referrals based on tab, search query, and risk filters
   const filteredReferrals = useMemo(() => {
@@ -212,6 +229,13 @@ export function ReferralsPage() {
           </div>
 
           {/* Toolbar */}
+          {!isOnline && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs border border-amber-500/20 font-medium">
+              <WifiOff className="h-4 w-4 shrink-0" />
+              <span>Working Offline — Referrals created or updated locally will automatically sync with the server once internet connectivity is restored.</span>
+            </div>
+          )}
+
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
             <div className="flex w-full xl:w-auto flex-wrap items-center gap-2">
               <Input 
@@ -365,13 +389,20 @@ export function ReferralsPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
-                              status === 'Accepted' || status === 'Completed' ? 'bg-green-500/10 text-green-500' : 
-                              status === 'Pending' ? 'bg-amber-500/10 text-amber-500' : 
-                              'bg-blue-500/10 text-blue-500'
-                            }`}>
-                              {status === 'Accepted' || status === 'Completed' ? <CheckCircle2 className="h-3 w-3" /> : status === 'Pending' ? <Clock className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
-                              {status}
+                            <div className="flex flex-col gap-1 items-start">
+                              <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
+                                status === 'Accepted' || status === 'Completed' ? 'bg-green-500/10 text-green-500' : 
+                                status === 'Pending' ? 'bg-amber-500/10 text-amber-500' : 
+                                'bg-blue-500/10 text-blue-500'
+                              }`}>
+                                {status === 'Accepted' || status === 'Completed' ? <CheckCircle2 className="h-3 w-3" /> : status === 'Pending' ? <Clock className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
+                                {status}
+                              </div>
+                              {ref.sync_status && ref.sync_status !== "synced" && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                  <CloudOff className="h-2.5 w-2.5" /> Pending Sync
+                                </span>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
@@ -478,6 +509,11 @@ export function ReferralsPage() {
                           {status === 'Accepted' || status === 'Completed' ? <CheckCircle2 className="h-3 w-3" /> : status === 'Pending' ? <Clock className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
                           {status}
                         </div>
+                        {ref.sync_status && ref.sync_status !== "synced" && (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                            <CloudOff className="h-2.5 w-2.5" /> Pending Sync
+                          </span>
+                        )}
                       </div>
                     </div>
                     

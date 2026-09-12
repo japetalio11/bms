@@ -214,6 +214,8 @@ class SyncEngine {
     if (responseData.mother?.mother_id) return responseData.mother.mother_id
 
     if (responseData.pregnancy?.pregnancy_id) return responseData.pregnancy.pregnancy_id
+    if (responseData.referral?.referral_id) return responseData.referral.referral_id
+    if (responseData.data?.referral_id) return responseData.data.referral_id
     if (responseData.prenatalVisit?.visit_id) return responseData.prenatalVisit.visit_id
     if (responseData.appointment?.appointment_id) return responseData.appointment.appointment_id
     if (responseData.screening?.screening_id) return responseData.screening.screening_id
@@ -335,7 +337,7 @@ class SyncEngine {
   private async reconcileTempId(entityType: string, tempId: string, canonicalId: string, responseData: any) {
     console.log(`[SyncEngine] Reconciling temp ID ${tempId} -> canonical ID ${canonicalId}`)
 
-    await db.transaction("rw", [db.mothers, db.pregnancies, db.prenatalVisits, db.appointments, db.labRecords, db.supplements, db.ehrDocuments, db.offlineQueue], async () => {
+    await db.transaction("rw", [db.mothers, db.pregnancies, db.prenatalVisits, db.appointments, db.labRecords, db.supplements, db.ehrDocuments, db.referrals, db.offlineQueue], async () => {
       let primaryCanonicalId = canonicalId
 
       if (entityType === "mother") {
@@ -423,6 +425,20 @@ class SyncEngine {
             ...existingLocal,
             ...(responseData?.prenatalVisit || responseData),
             id: canonicalId,
+            sync_status: "synced",
+            updated_at: Date.now(),
+          })
+        }
+      } else if (entityType === "referral" || entityType === "custom_request") {
+        const existingLocal = await db.referrals.get(tempId)
+        if (existingLocal) {
+          await db.referrals.delete(tempId)
+          const respObj = responseData?.data || responseData?.result || responseData
+          await db.referrals.put({
+            ...existingLocal,
+            ...(typeof respObj === "object" ? respObj : {}),
+            id: canonicalId,
+            referral_id: canonicalId,
             sync_status: "synced",
             updated_at: Date.now(),
           })
@@ -609,6 +625,50 @@ class SyncEngine {
             created_at: Date.now(),
           })
           queuedTempIds.add(supp.id)
+        }
+      }
+
+      // 5. Recover Unsynced Referrals
+      const referrals = await db.referrals.toArray()
+      for (const ref of referrals) {
+        const isTemp = String(ref.id).startsWith("temp-") || ref.sync_status === "pending_create"
+        if (isTemp && !queuedTempIds.has(ref.id)) {
+          console.log(`[SyncEngine] Auto-recovering offline referral ${ref.id} to outbox queue...`)
+          await db.offlineQueue.add({
+            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            entity_type: "custom_request",
+            action: "CREATE",
+            endpoint: "/api/v1/referral/register",
+            method: "POST",
+            payload: {
+              pregnancy_id: ref.pregnancy_id,
+              from_facility_id: ref.from_facility_id,
+              to_facility_id: ref.to_facility_id,
+              external_facility_name: ref.external_facility_name,
+              reason: ref.reason,
+            },
+            temp_id: ref.id,
+            retry_count: 0,
+            created_at: Date.now(),
+          })
+          queuedTempIds.add(ref.id)
+        } else if (ref.sync_status === "pending_update" && ref.id && !ref.id.startsWith("temp-")) {
+          console.log(`[SyncEngine] Auto-recovering offline referral update ${ref.id} to outbox queue...`)
+          await db.offlineQueue.add({
+            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            entity_type: "custom_request",
+            action: "UPDATE",
+            endpoint: `/api/v1/referral/respond/${ref.referral_id || ref.id}`,
+            method: "PUT",
+            payload: {
+              status: ref.status,
+              response_notes: ref.response_notes,
+              outcome: ref.outcome,
+              is_completed: ref.is_completed,
+            },
+            retry_count: 0,
+            created_at: Date.now(),
+          })
         }
       }
     } catch (err) {

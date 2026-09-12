@@ -16,7 +16,8 @@ import {
   Thermometer, 
   Scale,
   History,
-  CheckCircle2
+  CheckCircle2,
+  CloudOff
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -103,8 +104,13 @@ export function ReferralSidepeek({
               'bg-blue-500/10 text-blue-500'
             }`}>
               {status === 'Accepted' || status === 'Completed' ? <CheckCircle2 className="h-3 w-3" /> : status === 'Pending' ? <Clock className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
-              {status}
             </div>
+            {referral.sync_status && referral.sync_status !== "synced" && (
+              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                <CloudOff className="h-3 w-3" />
+                Pending Offline Sync
+              </div>
+            )}
           </div>
         </div>
         <Button variant="ghost" size="icon" className="hidden md:flex h-6 w-6 text-muted-foreground hover:text-foreground dark:text-white" onClick={onClose}>
