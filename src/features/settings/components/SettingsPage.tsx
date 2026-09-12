@@ -17,6 +17,7 @@ import { db } from "@/lib/db/bmsDatabase"
 import { syncEngine } from "@/lib/sync/syncEngine"
 import { useSettings } from "@/features/settings/hooks/useSettings"
 import { apiClient } from "@/lib/apiClient"
+import { useNetworkStatus } from "@/hooks/useNetworkStatus"
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -35,6 +36,8 @@ import {
 
 export function SettingsPage() {
   const { settings, updateSettings } = useSettings()
+  const { isOnline } = useNetworkStatus()
+  const [pendingQueueCount, setPendingQueueCount] = useState<number>(0)
 
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -57,6 +60,16 @@ export function SettingsPage() {
   const [storagePercent, setStoragePercent] = useState<number>(0)
   const [savingProfile, setSavingProfile] = useState(false)
   const [updatingSecurity, setUpdatingSecurity] = useState(false)
+
+  useEffect(() => {
+    syncEngine.getPendingCount().then(setPendingQueueCount).catch(() => {})
+
+    const unsubscribe = syncEngine.subscribe((status) => {
+      setPendingQueueCount(status.pendingCount)
+    })
+
+    return () => unsubscribe()
+  }, [])
 
   useEffect(() => {
     if (typeof window !== "undefined" && navigator.storage && navigator.storage.estimate) {
@@ -95,18 +108,35 @@ export function SettingsPage() {
 
   const handleSaveProfile = async () => {
     setSavingProfile(true)
+    const profileData = {
+      first_name: firstName,
+      last_name: lastName,
+      phone_number: phoneNumber,
+      email: email,
+    }
+
     try {
-      if (navigator.onLine) {
+      if (syncEngine.isNetworkOnline()) {
         try {
-          await apiClient.put('/api/v1/user/profile', {
-            first_name: firstName,
-            last_name: lastName,
-            phone_number: phoneNumber,
-            email: email
-          })
+          await apiClient.put('/api/v1/user/profile', profileData)
         } catch (apiErr: any) {
-          console.warn("Backend profile save warning:", apiErr)
+          console.warn("Backend profile save warning, queueing offline mutation:", apiErr)
+          await syncEngine.enqueueMutation({
+            entity_type: "custom_request",
+            action: "UPDATE",
+            endpoint: "/api/v1/user/profile",
+            method: "PUT",
+            payload: profileData,
+          })
         }
+      } else {
+        await syncEngine.enqueueMutation({
+          entity_type: "custom_request",
+          action: "UPDATE",
+          endpoint: "/api/v1/user/profile",
+          method: "PUT",
+          payload: profileData,
+        })
       }
 
       const userSession = await db.userSession.get("current_user")
@@ -123,7 +153,11 @@ export function SettingsPage() {
         }
         await db.userSession.put(userSession)
       }
-      toast.success("Profile updated", { description: "Your profile information has been saved." })
+      toast.success("Profile updated", { 
+        description: syncEngine.isNetworkOnline() 
+          ? "Your profile information has been saved." 
+          : "Profile saved locally. Changes will sync once online." 
+      })
     } catch (e: any) {
       console.error("Failed to save profile:", e)
       toast.error("Failed to save profile")
@@ -134,6 +168,12 @@ export function SettingsPage() {
 
   const handleUpdateSecurity = async () => {
     if (newPassword) {
+      if (!syncEngine.isNetworkOnline()) {
+        toast.error("Network Required for Password Change", { 
+          description: "Changing your account password requires an active internet connection." 
+        })
+        return
+      }
       if (!currentPassword) {
         toast.error("Current password required", { description: "Please enter your current password to set a new password." })
         return
@@ -150,7 +190,7 @@ export function SettingsPage() {
 
     setUpdatingSecurity(true)
     try {
-      if (newPassword) {
+      if (newPassword && syncEngine.isNetworkOnline()) {
         await apiClient.post('/api/v1/auth/change-password', {
           currentPassword,
           newPassword
@@ -197,6 +237,10 @@ export function SettingsPage() {
   }
 
   const handleForceSync = () => {
+    if (!syncEngine.isNetworkOnline()) {
+      toast.warning("Network Offline", { description: "Cannot process sync queue while offline. Reconnect to internet." })
+      return
+    }
     toast.info("Starting sync...", { description: "Processing offline queue." })
     syncEngine.processQueue().then(() => {
        toast.success("Sync completed")
@@ -207,6 +251,12 @@ export function SettingsPage() {
 
   return (
     <div className="relative flex flex-col w-full h-full overflow-hidden bg-background dark:bg-black">
+      {!isOnline && (
+        <div className="mx-4 mt-4 p-3 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs border border-amber-500/20 font-medium flex items-center gap-2 shrink-0">
+          <WifiOff className="h-4 w-4 shrink-0" />
+          <span>Working Offline — Profile edits and preferences will save locally and automatically sync when online.</span>
+        </div>
+      )}
       {/* Scrollable Content */}
       <div className="flex-1 flex flex-col p-4 pl-3 pr-4 pb-24 md:pb-4 overflow-y-auto min-w-0">
         <Tabs defaultValue="account" className="w-full flex flex-col gap-6">
@@ -398,6 +448,18 @@ export function SettingsPage() {
                 <p className="text-[10px] text-muted-foreground mt-2">
                   The browser StorageManager API is currently preventing automatic eviction of cached registry data.
                 </p>
+
+                <div className="flex items-center gap-2 mt-3 p-3 rounded-lg bg-muted/40 dark:bg-[#181818] border border-sidebar-border">
+                  <WifiOff className="h-4 w-4 text-amber-500 shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold text-foreground dark:text-white">Offline Outbox Sync Queue</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {pendingQueueCount > 0 
+                        ? `${pendingQueueCount} offline mutation(s) pending background sync.` 
+                        : "All local offline mutations are fully synchronized."}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
