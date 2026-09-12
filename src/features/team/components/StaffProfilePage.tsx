@@ -31,6 +31,8 @@ import {
   SelectValue 
 } from "@/components/ui/select"
 
+import { userRepository } from "@/lib/repositories/userRepository"
+
 export function StaffProfilePage() {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -40,16 +42,16 @@ export function StaffProfilePage() {
   const [role, setRole] = useState("")
 
   const fetchStaffDetails = async () => {
+    if (!id) return
     try {
       setLoading(true)
-      const response = await apiClient.get(`/api/v1/user/${id}`)
-      if (response.data && response.data.result) {
-        setStaff(response.data.result)
-        setRole(response.data.result.role)
+      const data = await userRepository.getStaffProfile(id)
+      if (data) {
+        setStaff(data)
+        setRole(data.role || data.position || "")
       }
     } catch (error) {
-      console.error("Failed to fetch staff details:", error)
-      toast.error("Failed to load staff details")
+      console.error("[StaffProfilePage] Failed to fetch staff details:", error)
     } finally {
       setLoading(false)
     }
@@ -62,8 +64,9 @@ export function StaffProfilePage() {
   }, [id])
 
   const handleSavePermissions = async () => {
+    if (!id) return
     try {
-      await apiClient.put(`/api/v1/user/${id}/role`, { role })
+      await userRepository.updateStaffRole(id, role)
       toast.success("Permissions updated successfully")
       fetchStaffDetails()
     } catch (error) {
@@ -73,10 +76,10 @@ export function StaffProfilePage() {
   }
 
   const handleDeactivate = async () => {
-    if (!staff) return
+    if (!staff || !id) return
     const is_active = !staff.is_active
     try {
-      await apiClient.put(`/api/v1/user/${id}/deactivate`, { is_active })
+      await userRepository.updateStaffStatus(id, is_active)
       toast.success(`Staff account ${is_active ? 'activated' : 'deactivated'} successfully`)
       fetchStaffDetails()
     } catch (error) {

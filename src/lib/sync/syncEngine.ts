@@ -458,6 +458,27 @@ class SyncEngine {
             updated_at: Date.now(),
           })
         }
+      } else if (entityType === "user" || entityType === "custom_request") {
+        try {
+          const cached = await db.userSession.get("facility_staff_cache")
+          if (cached && Array.isArray(cached.data)) {
+            const updated = cached.data.map((u: any) => {
+              if (u.id === tempId || u.user_id === tempId) {
+                return {
+                  ...u,
+                  id: canonicalId,
+                  user_id: canonicalId,
+                  sync_status: "synced",
+                  updated_at: Date.now(),
+                }
+              }
+              return u
+            })
+            await db.userSession.put({ id: "facility_staff_cache", data: updated, updated_at: Date.now() })
+          }
+        } catch (err) {
+          console.warn("[SyncEngine] Failed to reconcile user tempId in cache:", err)
+        }
       }
 
       // Propagate reconciled canonical ID to remaining pending items in offlineQueue
@@ -710,6 +731,37 @@ class SyncEngine {
             created_at: Date.now(),
           })
           queuedTempIds.add(msg.id)
+        }
+      }
+
+      // 7. Recover Unsynced Staff Users
+      const staffCached = await db.userSession.get("facility_staff_cache")
+      if (staffCached && Array.isArray(staffCached.data)) {
+        for (const staff of staffCached.data) {
+          const isTemp = String(staff.id).startsWith("temp-") || staff.sync_status === "pending_create"
+          if (isTemp && !queuedTempIds.has(staff.id)) {
+            console.log(`[SyncEngine] Auto-recovering offline staff creation ${staff.id} to outbox queue...`)
+            await db.offlineQueue.add({
+              client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+              entity_type: "custom_request",
+              action: "CREATE",
+              endpoint: "/api/v1/auth/create-staff",
+              method: "POST",
+              payload: {
+                first_name: staff.first_name,
+                last_name: staff.last_name,
+                email: staff.email,
+                phone_number: staff.phone_number,
+                role: staff.role || staff.position,
+                sector: staff.sector,
+                password: Math.random().toString(36).slice(-8) + "Aa1!",
+              },
+              temp_id: staff.id,
+              retry_count: 0,
+              created_at: Date.now(),
+            })
+            queuedTempIds.add(staff.id)
+          }
         }
       }
     } catch (err) {

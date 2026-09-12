@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select"
 import { toast } from "sonner"
 
+import { userRepository } from "@/lib/repositories/userRepository"
+
 export function InviteTeamMemberModal({ children, onInviteSuccess }: { children: React.ReactNode, onInviteSuccess?: () => void }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -45,28 +47,12 @@ export function InviteTeamMemberModal({ children, onInviteSuccess }: { children:
 
     setLoading(true)
     try {
-      const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
-      const token = localStorage.getItem("token")
-      
       const payload = {
         ...formData,
-        password: generatePassword(), // Auto-generated password
+        password: generatePassword(),
       }
 
-      const response = await fetch(`${baseUrl}/api/v1/auth/create-staff`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to invite team member.")
-      }
+      await userRepository.inviteStaff(payload)
 
       toast.success("Team member invited successfully!")
       setOpen(false)
@@ -79,7 +65,6 @@ export function InviteTeamMemberModal({ children, onInviteSuccess }: { children:
         sector: ""
       })
       if (onInviteSuccess) onInviteSuccess()
-
     } catch (error: any) {
       toast.error(error.message || "An unexpected error occurred.")
     } finally {

@@ -16,7 +16,9 @@ import {
   ChevronRight,
   ChevronsRight,
   PlusCircle,
-  UserPlus
+  UserPlus,
+  WifiOff,
+  CloudOff
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -39,6 +41,10 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { InviteTeamMemberModal } from "./InviteTeamMemberModal"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { userRepository } from "@/lib/repositories/userRepository"
+import { useNetworkStatus } from "@/hooks/useNetworkStatus"
+import { syncEngine } from "@/lib/sync/syncEngine"
 
 export function TeamManagementPage() {
   const [activeTab, setActiveTab] = useState("all")
@@ -46,30 +52,16 @@ export function TeamManagementPage() {
   const [staffList, setStaffList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
+  const { isOnline } = useNetworkStatus()
 
   const fetchStaff = async () => {
     setLoading(true)
     try {
-      const response = await apiClient.get('/api/v1/user/facility')
-      const data = response.data
-      if (data && data.result) {
-        const mapped = data.result
-          .filter((user: any) => user.role !== 'Mother' && user.role !== 'MOTHER')
-          .map((user: any) => ({
-            id: user.user_id,
-            name: `${user.first_name} ${user.middle_name ? user.middle_name + " " : ""}${user.last_name}`,
-            avatar: user.profile_url || "",
-            status: user.is_active ? "Active" : "Deactivated",
-            position: user.role,
-            sector: user.facility?.facility_name || "N/A",
-            email: user.email,
-            phone_number: user.phone_number
-          }))
-        setStaffList(mapped)
-      }
+      const data = await userRepository.getFacilityStaff()
+      setStaffList(data)
     } catch (e) {
-      console.error("Failed to fetch staff:", e)
-      toast.error("Failed to load team members")
+      console.error("[TeamManagementPage] Failed to fetch staff:", e)
     } finally {
       setLoading(false)
     }
@@ -77,9 +69,9 @@ export function TeamManagementPage() {
 
   const handleDeactivate = async (id: string, currentStatus: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    const is_active = currentStatus !== "Active" // Toggle status
+    const is_active = currentStatus !== "Active"
     try {
-      await apiClient.put(`/api/v1/user/${id}/deactivate`, { is_active })
+      await userRepository.updateStaffStatus(id, is_active)
       toast.success(`Staff account ${is_active ? 'activated' : 'deactivated'} successfully`)
       fetchStaff()
     } catch (e) {
@@ -90,7 +82,19 @@ export function TeamManagementPage() {
 
   useEffect(() => {
     fetchStaff()
+
+    const unsubscribe = syncEngine.subscribe(() => {
+      fetchStaff()
+    })
+
+    return () => unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (isOnline) {
+      fetchStaff()
+    }
+  }, [isOnline])
 
   // Filter staffList based on activeTab and searchQuery
   const filteredStaff = staffList.filter((staff) => {
@@ -172,6 +176,13 @@ export function TeamManagementPage() {
           </div>
 
           {/* Toolbar */}
+          {!isOnline && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs border border-amber-500/20 font-medium">
+              <WifiOff className="h-4 w-4 shrink-0" />
+              <span>Working Offline — Team member accounts created or updated locally will automatically sync once internet connection is restored.</span>
+            </div>
+          )}
+
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
             <div className="flex w-full xl:w-auto flex-wrap items-center gap-2">
               <Input 
@@ -292,16 +303,23 @@ export function TeamManagementPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
-                          staff.status === 'Active' ? 'bg-green-500/10 text-green-500' : 
-                          staff.status === 'Pending' ? 'bg-amber-500/10 text-amber-500' : 
-                          'bg-zinc-500/10 text-zinc-500'
-                        }`}>
-                          {staff.status === 'Active' ? <CheckCircle2 className="h-3 w-3" /> : 
-                           staff.status === 'Pending' ? <Clock className="h-3 w-3" /> : 
-                           <Activity className="h-3 w-3" />}
-                          {staff.status}
-                        </Badge>
+                        <div className="flex flex-col gap-1 items-start">
+                          <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
+                            staff.status === 'Active' ? 'bg-green-500/10 text-green-500' : 
+                            staff.status === 'Pending' ? 'bg-amber-500/10 text-amber-500' : 
+                            'bg-zinc-500/10 text-zinc-500'
+                          }`}>
+                            {staff.status === 'Active' ? <CheckCircle2 className="h-3 w-3" /> : 
+                             staff.status === 'Pending' ? <Clock className="h-3 w-3" /> : 
+                             <Activity className="h-3 w-3" />}
+                            {staff.status}
+                          </Badge>
+                          {staff.sync_status && staff.sync_status !== "synced" && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                              <CloudOff className="h-2.5 w-2.5" /> Pending Sync
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
                         <div className="w-fit bg-muted dark:bg-[#222] px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap">
@@ -392,12 +410,19 @@ export function TeamManagementPage() {
                     </div>
                     <h3 className="text-sm font-semibold text-foreground dark:text-white">{staff.name}</h3>
                   </div>
-                  <div className={`inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium text-white whitespace-nowrap border ${
-                    staff.status === 'Active' ? 'bg-[#22C55E] border-[#22C55E]/20' : 
-                    staff.status === 'Pending' ? 'bg-amber-500 border-amber-500/20' : 
-                    'bg-zinc-500 border-zinc-500/20'
-                  }`}>
-                    {staff.status}
+                  <div className="flex flex-col items-end gap-1">
+                    <div className={`inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium text-white whitespace-nowrap border ${
+                      staff.status === 'Active' ? 'bg-[#22C55E] border-[#22C55E]/20' : 
+                      staff.status === 'Pending' ? 'bg-amber-500 border-amber-500/20' : 
+                      'bg-zinc-500 border-zinc-500/20'
+                    }`}>
+                      {staff.status}
+                    </div>
+                    {staff.sync_status && staff.sync_status !== "synced" && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        <CloudOff className="h-2.5 w-2.5" /> Pending Sync
+                      </span>
+                    )}
                   </div>
                 </div>
                 
