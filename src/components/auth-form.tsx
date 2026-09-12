@@ -8,6 +8,7 @@ import headerImage from "@/assets/header.svg"
 import { db } from "@/lib/db/bmsDatabase"
 import { TermsOfServiceModal } from "@/components/TermsOfServiceModal"
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal"
+import { usePhoneAuth } from "@/hooks/usePhoneAuth"
 
 declare global {
   interface Window {
@@ -100,6 +101,26 @@ export function AuthForm() {
   const [address, setAddress] = useState("")
   const [timer, setTimer] = useState(0)
 
+  // Single Auth Method Priority state: "email" | "firebase_sms" | null
+  const [activeOtpMethod, setActiveOtpMethod] = useState<"email" | "firebase_sms" | null>(null)
+
+  // Firebase Phone Auth hook with visible reCAPTCHA ("I'm not a robot" checkbox)
+  const {
+    sendOtp: sendFirebaseOtp,
+    verifyOtp: verifyFirebaseOtp,
+    resetAuth: resetFirebaseAuth,
+    cooldown: firebaseCooldown,
+    isSubmitting: firebaseSubmitting,
+    isOtpSent: firebaseOtpSent,
+    isVerified: firebaseVerified,
+    statusMessage: firebaseStatusMsg,
+    statusType: firebaseStatusType,
+  } = usePhoneAuth({
+    containerId: "auth-recaptcha-container",
+    recaptchaSize: "normal",
+    cooldownDuration: 60
+  })
+
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -109,6 +130,8 @@ export function AuthForm() {
     setError(null)
     setOtpMessage(null)
     setTimer(0)
+    setActiveOtpMethod(null)
+    resetFirebaseAuth()
   }, [location.pathname, regType, isForgotPassword])
 
   useEffect(() => {
@@ -138,12 +161,28 @@ export function AuthForm() {
     fetchFacilities()
   }, [])
 
+  // Priority-based Single Auth Method Handler:
+  // Priority 1: Email OTP (if email provided)
+  // Priority 2: Firebase SMS OTP with visible reCAPTCHA (if phone number only)
   const handleSendOtp = async (overrideIdentifier?: string, purpose = "registration") => {
-    if (timer > 0) return false
+    if (timer > 0 || firebaseCooldown > 0) return false
 
-    const identifier = overrideIdentifier || email || phoneNumber
-    if (!identifier) {
-      setError("Please provide an email or phone number to receive OTP")
+    // Determine target identifier and priority method
+    let targetIdentifier = overrideIdentifier?.trim() || ""
+    let isEmailMethod = false
+
+    if (targetIdentifier) {
+      isEmailMethod = targetIdentifier.includes("@")
+    } else if (email.trim()) {
+      targetIdentifier = email.trim()
+      isEmailMethod = true
+    } else if (phoneNumber.trim()) {
+      targetIdentifier = phoneNumber.trim()
+      isEmailMethod = false
+    }
+
+    if (!targetIdentifier) {
+      setError("Please provide an email address or phone number to receive OTP")
       return false
     }
     
@@ -151,41 +190,63 @@ export function AuthForm() {
     setError(null)
     setOtpMessage(null)
 
-    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
-    const isEmail = identifier.includes("@")
+    if (isEmailMethod) {
+      // Priority 1: Email OTP via Backend
+      setActiveOtpMethod("email")
+      const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
-    try {
-      const response = await fetch(`${baseUrl}/api/v1/send/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          identifier: identifier.trim(),
-          type: isEmail ? "email" : "sms",
-          purpose,
-          provider: isEmail ? "email" : "sms"
+      try {
+        const response = await fetch(`${baseUrl}/api/v1/send/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            identifier: targetIdentifier,
+            type: "email",
+            purpose,
+            provider: "email"
+          })
         })
-      })
 
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to send OTP")
+        const data = await response.json()
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to send verification email.")
+        }
+
+        setTimer(60)
+        setOtpMessage(`Verification code sent via Email to ${targetIdentifier}`)
+        return true
+      } catch (err: any) {
+        setError(err.message || "Failed to send verification email.")
+        return false
+      } finally {
+        setOtpLoading(false)
       }
-
-      setTimer(60)
-      setOtpMessage(`Verification code sent to ${identifier}`)
-      return true
-    } catch (err: any) {
-      setError(err.message)
-      return false
-    } finally {
-      setOtpLoading(false)
+    } else {
+      // Priority 2: Firebase SMS OTP with Visible reCAPTCHA
+      setActiveOtpMethod("firebase_sms")
+      try {
+        const sent = await sendFirebaseOtp(targetIdentifier)
+        if (sent) {
+          setTimer(60)
+          setOtpMessage(`SMS OTP sent via Firebase to ${targetIdentifier}`)
+          return true
+        } else {
+          setError(firebaseStatusMsg || "Failed to send SMS OTP. Please solve the reCAPTCHA box below.")
+          return false
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to send SMS OTP.")
+        return false
+      } finally {
+        setOtpLoading(false)
+      }
     }
   }
 
   const handleSendForgotOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!forgotIdentifier) {
-      setError("Please enter your email or phone number")
+      setError("Please enter your registered email or phone number")
       return
     }
 
@@ -213,6 +274,18 @@ export function AuthForm() {
     setIsLoading(true)
     setError(null)
 
+    // If using Firebase SMS OTP, verify code client-side first
+    let finalOtpCode = forgotOtp.trim()
+    if (activeOtpMethod === "firebase_sms") {
+      const verified = await verifyFirebaseOtp(forgotOtp)
+      if (!verified) {
+        setError(firebaseStatusMsg || "Invalid or expired Firebase SMS OTP code.")
+        setIsLoading(false)
+        return
+      }
+      finalOtpCode = "FIREBASE_VERIFIED"
+    }
+
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
@@ -221,7 +294,7 @@ export function AuthForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           identifier: forgotIdentifier.trim(),
-          otp: forgotOtp.trim(),
+          otp: finalOtpCode,
           newPassword
         })
       })
@@ -274,7 +347,19 @@ export function AuthForm() {
 
     setIsLoading(true)
     setError(null)
-    
+
+    // If using Firebase SMS OTP, verify code client-side first
+    let finalOtpCode = otp.trim()
+    if (activeOtpMethod === "firebase_sms") {
+      const verified = await verifyFirebaseOtp(otp)
+      if (!verified) {
+        setError(firebaseStatusMsg || "Invalid or expired Firebase SMS OTP code.")
+        setIsLoading(false)
+        return
+      }
+      finalOtpCode = "FIREBASE_VERIFIED"
+    }
+
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
@@ -291,7 +376,7 @@ export function AuthForm() {
         phone_number: phoneNumber,
         email: email,
         password: password,
-        otp: otp
+        otp: finalOtpCode
       }
 
       const response = await fetch(endpoint, {
@@ -321,28 +406,6 @@ export function AuthForm() {
       setIsLoading(false)
     }
   }
-
-const loadGoogleScript = (): Promise<void> => {
-  return new Promise((resolve) => {
-    if (window.google?.accounts?.id) {
-      resolve()
-      return
-    }
-    const existingScript = document.getElementById("google-gsi-script")
-    if (existingScript) {
-      existingScript.addEventListener("load", () => resolve())
-      resolve()
-      return
-    }
-    const script = document.createElement("script")
-    script.id = "google-gsi-script"
-    script.src = "https://accounts.google.com/gsi/client"
-    script.async = true
-    script.defer = true
-    script.onload = () => resolve()
-    document.body.appendChild(script)
-  })
-}
 
   const handleGoogleLogin = async () => {
     setIsLoading(true)
@@ -568,6 +631,21 @@ const loadGoogleScript = (): Promise<void> => {
                 {otpMessage}
               </div>
             )}
+            {firebaseStatusMsg && activeOtpMethod === "firebase_sms" && (
+              <div className={`rounded p-2 text-center text-xs border ${
+                firebaseStatusType === "success"
+                  ? "bg-green-500/10 border-green-500/50 text-green-600 dark:text-green-400"
+                  : firebaseStatusType === "error"
+                  ? "bg-destructive/10 border-destructive/50 text-destructive"
+                  : "bg-blue-500/10 border-blue-500/50 text-blue-600 dark:text-blue-400"
+              }`}>
+                {firebaseStatusMsg}
+              </div>
+            )}
+            <div
+              id="auth-recaptcha-container"
+              className={activeOtpMethod === "firebase_sms" ? "flex justify-center items-center my-2 min-h-[78px] w-full" : "hidden"}
+            />
 
             {/* FORGOT PASSWORD WORKFLOW */}
             {isForgotPassword ? (
