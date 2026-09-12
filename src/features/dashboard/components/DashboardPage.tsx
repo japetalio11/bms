@@ -17,6 +17,7 @@ import { db } from "@/lib/db/bmsDatabase"
 import { isToday, isFuture, parseISO, format } from "date-fns"
 import { appointmentRepository } from "@/lib/repositories/appointmentRepository"
 import { motherRepository } from "@/lib/repositories/motherRepository"
+import { extractRiskLevel } from "@/lib/riskUtils"
 
 export function DashboardPage() {
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
@@ -137,9 +138,7 @@ export function DashboardPage() {
       if (!remoteSuccess) {
         try {
           const mothers = await db.mothers.toArray()
-          const localHighRisk = mothers.filter(m => 
-            m.risk_level === 'High Risk' || m.risk_level === 'High' || m.risk === 'High' || m.risk_flag === 'High Risk'
-          ).length
+          const localHighRisk = mothers.filter(m => extractRiskLevel(m) === 'High Risk').length
           setHighRiskCount(localHighRisk)
         } catch {
           setHighRiskCount(0)
