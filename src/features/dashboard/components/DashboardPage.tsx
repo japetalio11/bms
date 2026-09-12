@@ -7,27 +7,49 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 import { AppointmentSidepeek } from "./AppointmentSidepeek"
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useLiveQuery } from "dexie-react-hooks"
 import { db } from "@/lib/db/bmsDatabase"
 import { isToday, isFuture, parseISO, format } from "date-fns"
+import { appointmentRepository } from "@/lib/repositories/appointmentRepository"
+import { motherRepository } from "@/lib/repositories/motherRepository"
 
 export function DashboardPage() {
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
   const isMobile = useIsMobile()
+  const navigate = useNavigate()
 
   // 1. Fetch current user
   const currentUser = useLiveQuery(() => db.userSession.get("current_user"))
   const firstName = currentUser?.first_name || "User"
   const facilityId = currentUser?.facility_id
 
+  // Automatically load initial appointments & mothers for facility on mount
+  useEffect(() => {
+    const initDashboardData = async () => {
+      try {
+        await Promise.all([
+          motherRepository.getActiveMothers(facilityId).catch(() => {}),
+          appointmentRepository.getAllFacilityAppointments(facilityId).catch(() => {})
+        ])
+      } catch (err) {
+        console.warn("[DashboardPage] Initial sync warning:", err)
+      }
+    }
+    initDashboardData()
+  }, [facilityId])
+
   // 2. Local Metrics
-  const activePregnanciesCount = useLiveQuery(
-    () => db.pregnancies.count(), 
-    []
-  ) ?? 0
+  const activePregnanciesCount = useLiveQuery(async () => {
+    const pCount = await db.pregnancies.count()
+    if (pCount > 0) return pCount
+    const mCount = await db.mothers.count()
+    return mCount
+  }, []) ?? 0
 
   const pendingSyncsCount = useLiveQuery(
     () => db.offlineQueue.count(), 
@@ -38,43 +60,61 @@ export function DashboardPage() {
   const enrichedAppointments = useLiveQuery(async () => {
     const apps = await db.appointments.toArray();
     return Promise.all(apps.map(async (app) => {
-      let motherName = "Unknown Patient"
-      if (app.mother_id) {
-        const mother = await db.mothers.get(app.mother_id)
-        if (mother) {
-          motherName = `${mother.first_name || ""} ${mother.last_name || ""}`.trim()
+      let motherName = ""
+      const targetId = app.mother_id || app.user_id
+      if (targetId) {
+        let mother = await db.mothers.get(targetId)
+        if (!mother) {
+          mother = await db.mothers.where('user_id').equals(targetId).first()
         }
+        if (!mother) {
+          mother = await db.mothers.where('mother_id').equals(targetId).first()
+        }
+        if (mother) {
+          motherName = `${mother.first_name || mother.user?.first_name || ""} ${mother.last_name || mother.user?.last_name || ""}`.trim()
+        }
+      }
+      if (!motherName && app.user) {
+        motherName = `${app.user.first_name || ""} ${app.user.last_name || ""}`.trim()
+      }
+      if (!motherName) {
+        motherName = app.patient_name || app.motherName || "Patient"
       }
       return { ...app, motherName }
     }))
   }, []) ?? []
 
   const todayAppointments = enrichedAppointments.filter(app => {
-    if (!app.appointment_date) return false;
+    if (!app.appointment_date || app.status === 'cancelled' || app.status === 'Cancelled') return false;
     try {
-      return isToday(parseISO(app.appointment_date))
+      const dateStr = app.appointment_date.split('T')[0]
+      const todayStr = new Date().toISOString().split('T')[0]
+      return dateStr === todayStr || isToday(parseISO(app.appointment_date))
     } catch {
       return false
     }
   })
 
   const upcomingAppointments = enrichedAppointments.filter(app => {
-    if (!app.appointment_date) return false;
+    if (!app.appointment_date || app.status === 'cancelled' || app.status === 'Cancelled' || app.status === 'completed' || app.status === 'Completed') return false;
     try {
-      return isFuture(parseISO(app.appointment_date)) && app.status !== "cancelled" && app.status !== "completed"
+      const dateStr = app.appointment_date.split('T')[0]
+      const todayStr = new Date().toISOString().split('T')[0]
+      return dateStr > todayStr || (isFuture(parseISO(app.appointment_date)) && !isToday(parseISO(app.appointment_date)))
     } catch {
       return false
     }
   })
 
-  const completedAppointments = enrichedAppointments.filter(app => app.status === "completed")
-  const cancelledAppointments = enrichedAppointments.filter(app => app.status === "cancelled")
+  const completedAppointments = enrichedAppointments.filter(app => app.status === "completed" || app.status === "Completed")
+  const cancelledAppointments = enrichedAppointments.filter(app => app.status === "cancelled" || app.status === "Cancelled")
 
-  // 4. High-Risk Profiles from Backend
+  // 4. High-Risk Profiles (Backend with local IndexedDB fallback)
   const [highRiskCount, setHighRiskCount] = useState<number>(0)
   
   useEffect(() => {
     const fetchHighRiskProfiles = async () => {
+      let remoteSuccess = false
       if (navigator.onLine && facilityId) {
         try {
           const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
@@ -86,15 +126,75 @@ export function DashboardPage() {
           })
           if (response.ok) {
             const data = await response.json()
-            setHighRiskCount(data.count || data.length || 0)
+            setHighRiskCount(data.count || (Array.isArray(data.data) ? data.data.length : 0))
+            remoteSuccess = true
           }
         } catch (error) {
-          console.error("Failed to fetch high-risk profiles", error)
+          console.warn("CDSS high-risk remote query error", error)
+        }
+      }
+
+      if (!remoteSuccess) {
+        try {
+          const mothers = await db.mothers.toArray()
+          const localHighRisk = mothers.filter(m => 
+            m.risk_level === 'High Risk' || m.risk_level === 'High' || m.risk === 'High' || m.risk_flag === 'High Risk'
+          ).length
+          setHighRiskCount(localHighRisk)
+        } catch {
+          setHighRiskCount(0)
         }
       }
     }
     fetchHighRiskProfiles()
   }, [facilityId])
+
+  const handleRefresh = async () => {
+    toast.info("Refreshing dashboard data...")
+    try {
+      await Promise.all([
+        motherRepository.getActiveMothers(facilityId).catch(() => {}),
+        appointmentRepository.getAllFacilityAppointments(facilityId).catch(() => {})
+      ])
+      toast.success("Dashboard refreshed")
+    } catch (err) {
+      toast.error("Failed to refresh data")
+    }
+  }
+
+  const handleExportCSV = () => {
+    if (enrichedAppointments.length === 0) {
+      toast.info("No appointments to export")
+      return
+    }
+    const headers = ["Mother Name", "Status", "Type", "Date & Time", "Facility ID"]
+    const rows = enrichedAppointments.map(app => [
+      `"${app.motherName}"`,
+      `"${app.status || 'Scheduled'}"`,
+      `"${app.type || app.appointment_type || 'Prenatal'}"`,
+      `"${formatDateTime(app.appointment_date, app.time_slot)}"`,
+      `"${app.facility_id || ''}"`
+    ])
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `Appointments_Export_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success("Appointments exported to CSV")
+  }
+
+  const handleCancelAppointment = async (appId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    try {
+      await appointmentRepository.cancelAppointment(appId)
+      toast.success("Appointment cancelled")
+    } catch (err) {
+      toast.error("Failed to cancel appointment")
+    }
+  }
 
   const formatDateTime = (dateStr?: string, timeStr?: string) => {
     if (!dateStr) return "N/A"
@@ -161,9 +261,23 @@ export function DashboardPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-[200px] rounded-xl border-border shadow-md">
-                    <DropdownMenuItem className="text-xs cursor-pointer rounded-md">View Profile</DropdownMenuItem>
-                    <DropdownMenuItem className="text-xs cursor-pointer rounded-md">Edit Appointment</DropdownMenuItem>
-                    <DropdownMenuItem className="text-xs text-[#ff7373] focus:text-[#ff7373] focus:bg-[#ff7373]/10 cursor-pointer rounded-md">Cancel</DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="text-xs cursor-pointer rounded-md"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const targetId = app.mother_id || app.user_id
+                        if (targetId) navigate(`/dashboard/mothers/${targetId}`)
+                        else toast.info("No mother profile associated")
+                      }}
+                    >
+                      View Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      className="text-xs text-[#ff7373] focus:text-[#ff7373] focus:bg-[#ff7373]/10 cursor-pointer rounded-md"
+                      onClick={(e) => handleCancelAppointment(app.id, e)}
+                    >
+                      Cancel
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -208,9 +322,23 @@ export function DashboardPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-[200px] rounded-xl border-border shadow-md">
-                        <DropdownMenuItem className="text-xs cursor-pointer rounded-md">View Profile</DropdownMenuItem>
-                        <DropdownMenuItem className="text-xs cursor-pointer rounded-md">Edit Appointment</DropdownMenuItem>
-                        <DropdownMenuItem className="text-xs text-[#ff7373] focus:text-[#ff7373] focus:bg-[#ff7373]/10 cursor-pointer rounded-md">Cancel</DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-xs cursor-pointer rounded-md"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const targetId = app.mother_id || app.user_id
+                            if (targetId) navigate(`/dashboard/mothers/${targetId}`)
+                            else toast.info("No mother profile associated")
+                          }}
+                        >
+                          View Profile
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-xs text-[#ff7373] focus:text-[#ff7373] focus:bg-[#ff7373]/10 cursor-pointer rounded-md"
+                          onClick={(e) => handleCancelAppointment(app.id, e)}
+                        >
+                          Cancel
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -334,11 +462,11 @@ export function DashboardPage() {
             </TabsList>
             
             <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
-              <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-foreground dark:text-white dark:hover:text-foreground dark:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
+              <Button onClick={handleExportCSV} variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-foreground dark:text-white dark:hover:text-foreground dark:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
                 <Download className="h-3.5 w-3.5" />
                 Export
               </Button>
-              <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-foreground dark:text-white dark:hover:text-foreground dark:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
+              <Button onClick={handleRefresh} variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-foreground dark:text-white dark:hover:text-foreground dark:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
                 <RefreshCw className="h-3.5 w-3.5" />
                 Refresh
               </Button>
