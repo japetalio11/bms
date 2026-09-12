@@ -6,6 +6,8 @@ import { clsx } from "clsx"
 import { useLiveQuery } from "dexie-react-hooks"
 import { db } from "@/lib/db/bmsDatabase"
 import { format, parseISO } from "date-fns"
+import { messageRepository } from "@/lib/repositories/messageRepository"
+import { useNetworkStatus } from "@/hooks/useNetworkStatus"
 
 interface ChatAreaProps {
   activeChatId: string | null
@@ -13,22 +15,12 @@ interface ChatAreaProps {
 
 export function ChatArea({ activeChatId }: ChatAreaProps) {
   const [message, setMessage] = React.useState("")
-  const [isOffline, setIsOffline] = React.useState(!navigator.onLine)
+  const { isOnline } = useNetworkStatus()
+  const isOffline = !isOnline
   const currentUser = useLiveQuery(() => db.userSession.get("current_user"))
   
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const imageInputRef = React.useRef<HTMLInputElement>(null)
-
-  React.useEffect(() => {
-    const handleOnline = () => setIsOffline(false)
-    const handleOffline = () => setIsOffline(true)
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
 
   const chatMessages = useLiveQuery(() => {
     if (!currentUser || !activeChatId) return []
@@ -77,68 +69,18 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
     const reader = new FileReader()
     reader.onload = async () => {
       const dataUrl = reader.result as string
-      const now = new Date()
-      const tempId = crypto.randomUUID()
       const msgType = isImageOnly || file.type.startsWith('image/') ? 'image' : 'file'
 
-      const localMsg = {
-        id: tempId,
-        sender_id: currentUser.user_id,
-        receiver_id: activeChatId,
-        message_content: dataUrl,
-        message_type: msgType,
-        file_name: file.name,
-        file_size: `${(file.size / 1024).toFixed(1)} KB`,
-        message_date: now.toISOString(),
-        is_read: true,
-        contact_name: activeContact?.name,
-        contact_avatar: activeContact?.avatar,
-        sync_status: "pending_create" as const,
-        updated_at: now.getTime()
-      }
-
       try {
-        await db.transaction('rw', db.messages, db.offlineQueue, async () => {
-          await db.messages.add(localMsg)
-          await db.offlineQueue.add({
-            client_mutation_id: tempId,
-            entity_type: "message",
-            action: "CREATE",
-            endpoint: "/api/v1/message/create",
-            method: "POST",
-            payload: {
-              receiver_id: activeChatId,
-              message_content: localMsg.message_content,
-              message_type: msgType,
-              message_date: localMsg.message_date
-            },
-            retry_count: 0,
-            created_at: now.getTime()
-          })
+        await messageRepository.sendMessage({
+          receiver_id: activeChatId,
+          message_content: dataUrl,
+          message_type: msgType,
+          file_name: file.name,
+          file_size: `${(file.size / 1024).toFixed(1)} KB`,
+          contact_name: activeContact?.name,
+          contact_avatar: activeContact?.avatar,
         })
-
-        if (!isOffline) {
-          const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
-          const token = localStorage.getItem("token")
-          fetch(`${baseUrl}/api/v1/message/create`, {
-            method: 'POST',
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(localMsg)
-          }).then(res => res.json()).then(async (data) => {
-            if (data && data.data) {
-              await db.transaction('rw', db.messages, db.offlineQueue, async () => {
-                await db.messages.update(tempId, { sync_status: "synced", id: data.data.message_id })
-                const queueItem = await db.offlineQueue.where('client_mutation_id').equals(tempId).first()
-                if (queueItem && queueItem.id) {
-                  await db.offlineQueue.delete(queueItem.id)
-                }
-              })
-            }
-          }).catch(err => console.error("Sync failed", err))
-        }
       } catch (err) {
         console.error("Failed to send attachment", err)
       }
@@ -150,67 +92,17 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
 
   const handleSendMessage = async () => {
     if (!message.trim() || !currentUser || !activeChatId) return
-    
-    const tempId = crypto.randomUUID()
-    const now = new Date()
-    
-    const localMsg = {
-      id: tempId,
-      sender_id: currentUser.user_id,
-      receiver_id: activeChatId,
-      message_content: message.trim(),
-      message_type: "text",
-      message_date: now.toISOString(),
-      is_read: true,
-      contact_name: activeContact?.name,
-      contact_avatar: activeContact?.avatar,
-      sync_status: "pending_create" as const,
-      updated_at: now.getTime()
-    }
-    
+    const content = message.trim()
+    setMessage("")
+
     try {
-      await db.transaction('rw', db.messages, db.offlineQueue, async () => {
-        await db.messages.add(localMsg)
-        await db.offlineQueue.add({
-          client_mutation_id: tempId,
-          entity_type: "message",
-          action: "CREATE",
-          endpoint: "/api/v1/message/create",
-          method: "POST",
-          payload: {
-            receiver_id: activeChatId,
-            message_content: localMsg.message_content,
-            message_type: "text",
-            message_date: localMsg.message_date
-          },
-          retry_count: 0,
-          created_at: now.getTime()
-        })
+      await messageRepository.sendMessage({
+        receiver_id: activeChatId,
+        message_content: content,
+        message_type: "text",
+        contact_name: activeContact?.name,
+        contact_avatar: activeContact?.avatar,
       })
-      setMessage("")
-      
-      if (!isOffline) {
-        const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
-        const token = localStorage.getItem("token")
-        fetch(`${baseUrl}/api/v1/message/create`, {
-          method: 'POST',
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(localMsg)
-        }).then(res => res.json()).then(async (data) => {
-          if (data && data.data) {
-             await db.transaction('rw', db.messages, db.offlineQueue, async () => {
-                await db.messages.update(tempId, { sync_status: "synced", id: data.data.message_id })
-                const queueItem = await db.offlineQueue.where('client_mutation_id').equals(tempId).first()
-                if (queueItem && queueItem.id) {
-                  await db.offlineQueue.delete(queueItem.id)
-                }
-             })
-          }
-        }).catch(err => console.error("Sync failed", err))
-      }
     } catch (e) {
       console.error("Failed to send message", e)
     }
@@ -309,7 +201,9 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
               <div className="flex items-center gap-1 px-1">
                 <span className="text-[10px] text-muted-foreground">{formatTime(msg.message_date)}</span>
                 {isMe && msg.sync_status === "pending_create" && (
-                  <Clock className="h-2.5 w-2.5 text-muted-foreground" />
+                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-500 font-medium">
+                    <Clock className="h-2.5 w-2.5 animate-pulse" /> Pending Sync
+                  </span>
                 )}
               </div>
             </div>

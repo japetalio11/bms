@@ -214,6 +214,8 @@ class SyncEngine {
     if (responseData.mother?.mother_id) return responseData.mother.mother_id
 
     if (responseData.pregnancy?.pregnancy_id) return responseData.pregnancy.pregnancy_id
+    if (responseData.message?.message_id) return responseData.message.message_id
+    if (responseData.data?.message_id) return responseData.data.message_id
     if (responseData.referral?.referral_id) return responseData.referral.referral_id
     if (responseData.data?.referral_id) return responseData.data.referral_id
     if (responseData.prenatalVisit?.visit_id) return responseData.prenatalVisit.visit_id
@@ -337,7 +339,7 @@ class SyncEngine {
   private async reconcileTempId(entityType: string, tempId: string, canonicalId: string, responseData: any) {
     console.log(`[SyncEngine] Reconciling temp ID ${tempId} -> canonical ID ${canonicalId}`)
 
-    await db.transaction("rw", [db.mothers, db.pregnancies, db.prenatalVisits, db.appointments, db.labRecords, db.supplements, db.ehrDocuments, db.referrals, db.offlineQueue], async () => {
+    await db.transaction("rw", [db.mothers, db.pregnancies, db.prenatalVisits, db.appointments, db.labRecords, db.supplements, db.ehrDocuments, db.messages, db.referrals, db.offlineQueue], async () => {
       let primaryCanonicalId = canonicalId
 
       if (entityType === "mother") {
@@ -439,6 +441,19 @@ class SyncEngine {
             ...(typeof respObj === "object" ? respObj : {}),
             id: canonicalId,
             referral_id: canonicalId,
+            sync_status: "synced",
+            updated_at: Date.now(),
+          })
+        }
+      } else if (entityType === "message") {
+        const existingLocal = await db.messages.get(tempId)
+        if (existingLocal) {
+          await db.messages.delete(tempId)
+          const respObj = responseData?.data || responseData?.result || responseData
+          await db.messages.put({
+            ...existingLocal,
+            ...(typeof respObj === "object" ? respObj : {}),
+            id: canonicalId,
             sync_status: "synced",
             updated_at: Date.now(),
           })
@@ -669,6 +684,32 @@ class SyncEngine {
             retry_count: 0,
             created_at: Date.now(),
           })
+        }
+      }
+
+      // 6. Recover Unsynced Messages
+      const msgs = await db.messages.toArray()
+      for (const msg of msgs) {
+        const isTemp = String(msg.id).startsWith("temp-") || msg.sync_status === "pending_create"
+        if (isTemp && !queuedTempIds.has(msg.id)) {
+          console.log(`[SyncEngine] Auto-recovering offline message ${msg.id} to outbox queue...`)
+          await db.offlineQueue.add({
+            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            entity_type: "message",
+            action: "CREATE",
+            endpoint: "/api/v1/message/create",
+            method: "POST",
+            payload: {
+              receiver_id: msg.receiver_id,
+              message_content: msg.message_content,
+              message_type: msg.message_type || "text",
+              message_date: msg.message_date || new Date().toISOString(),
+            },
+            temp_id: msg.id,
+            retry_count: 0,
+            created_at: Date.now(),
+          })
+          queuedTempIds.add(msg.id)
         }
       }
     } catch (err) {
