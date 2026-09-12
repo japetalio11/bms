@@ -590,7 +590,7 @@ export function AuthForm() {
       <div className="flex w-full max-w-md flex-col items-center gap-6">
         {/* Logo */}
         <div className="flex items-center justify-center mb-2">
-          <img src={headerImage} alt="Header Logo" className="h-14 w-auto" />
+          <img src={headerImage} alt="BMS Logo" className="h-14 w-auto dark:invert" />
         </div>
 
         {/* Form Card */}
