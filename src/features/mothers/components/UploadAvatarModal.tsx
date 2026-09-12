@@ -118,7 +118,7 @@ export function UploadAvatarModal({
               type="button"
               variant="outline"
               disabled={uploading || success}
-              className="w-full h-9 text-xs font-medium border-sidebar-border gap-2 pointer-events-none bg-background dark:bg-black"
+              className="w-full h-9 text-xs font-medium border-border gap-2 pointer-events-none bg-card text-card-foreground"
             >
               <Upload className="h-3.5 w-3.5" />
               {selectedFile ? selectedFile.name : "Choose New Photo (PNG, JPG)"}
@@ -127,14 +127,14 @@ export function UploadAvatarModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 w-full pt-3 border-t border-sidebar-border mt-1">
+        <div className="flex justify-end gap-2 w-full pt-3 border-t border-border mt-1">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={uploading} className="h-8 text-xs">
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={!selectedFile || uploading || success}
-            className="h-8 text-xs bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 font-medium"
+            className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
           >
             {uploading ? (
               <>

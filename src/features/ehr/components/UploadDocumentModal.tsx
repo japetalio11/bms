@@ -236,9 +236,9 @@ export function UploadDocumentModal({
             {/* File Dropzone */}
             <div className="flex flex-col gap-1.5">
               <Label className="text-xs font-medium">Attachment File (PDF, DOCX, PNG)</Label>
-              <label htmlFor="file-upload" className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-sidebar-border rounded-lg cursor-pointer hover:bg-accent/50 dark:hover:bg-white/5 transition-colors">
+              <label htmlFor="file-upload" className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-accent/50 transition-colors bg-card">
                 <UploadCloud className="h-6 w-6 text-muted-foreground mb-1" />
-                <span className="text-xs font-medium text-foreground">
+                <span className="text-xs font-medium text-card-foreground">
                   {file ? file.name : "Click or drag file to upload"}
                 </span>
                 <span className="text-[10px] text-muted-foreground mt-0.5">
@@ -249,11 +249,11 @@ export function UploadDocumentModal({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-sidebar-border">
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
               <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} className="flex-1 h-9 text-xs">
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="flex-1 h-9 text-xs bg-primary text-primary-foreground dark:bg-white dark:text-black">
+              <Button type="submit" disabled={isSubmitting} className="flex-1 h-9 text-xs bg-primary text-primary-foreground hover:bg-primary/90">
                 {isSubmitting ? "Uploading..." : "Save Record"}
               </Button>
             </div>

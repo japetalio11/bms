@@ -104,11 +104,11 @@ export function DetailSideSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" showCloseButton={false} className="w-full sm:max-w-[450px] bg-background dark:bg-[#0a0a0a] border-l border-sidebar-border p-0 flex flex-col">
+      <SheetContent side="right" showCloseButton={false} className="w-full sm:max-w-[450px] bg-card text-card-foreground border-l border-border p-0 flex flex-col">
         {/* Header */}
-        <div className="shrink-0 p-4 border-b border-sidebar-border flex items-start justify-between">
+        <div className="shrink-0 p-4 border-b border-border flex items-start justify-between">
           <div className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium text-foreground dark:text-white">
+            <h2 className="text-sm font-semibold text-foreground">
               {getHeaderTitle()}
             </h2>
             <div className="flex items-center gap-2">
@@ -148,7 +148,7 @@ export function DetailSideSheet({
               </Badge>
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground dark:text-white" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => onOpenChange(false)}>
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -159,56 +159,56 @@ export function DetailSideSheet({
           {/* PREGNANCY VIEW */}
           {type === "pregnancy" && (
             <>
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Obstetric Summary</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Obstetric Summary</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Baby className="h-3.5 w-3.5" />
                       <span className="text-xs">Gravida / Parity</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">G{data.gravida ?? 0} P{data.parity ?? 0}</span>
+                    <span className="text-xs text-foreground flex-1">G{data.gravida ?? 0} P{data.parity ?? 0}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Calendar className="h-3.5 w-3.5" />
                       <span className="text-xs">LMP Date</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{formatDate(data.lmp_date || data.lmp)}</span>
+                    <span className="text-xs text-foreground flex-1">{formatDate(data.lmp_date || data.lmp)}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Clock className="h-3.5 w-3.5" />
                       <span className="text-xs">Registration Date</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{formatDate(data.date_of_registration)}</span>
+                    <span className="text-xs text-foreground flex-1">{formatDate(data.date_of_registration)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Clinical Assessment</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Clinical Assessment</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <ActivitySquare className="h-3.5 w-3.5" />
                       <span className="text-xs">1st Trimester BMI</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.bmi_1st_trimester ?? "N/A"} ({data.bmi_category || "Normal"})</span>
+                    <span className="text-xs text-foreground flex-1">{data.bmi_1st_trimester ?? "N/A"} ({data.bmi_category || "Normal"})</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <ShieldAlert className="h-3.5 w-3.5" />
                       <span className="text-xs">Co-morbidities</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.co_morbidities || "None recorded"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.co_morbidities || "None recorded"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <History className="h-3.5 w-3.5" />
                       <span className="text-xs">Previous Deliveries</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.previous_delivery_history || "None recorded"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.previous_delivery_history || "None recorded"}</span>
                   </div>
                 </div>
               </div>
@@ -218,35 +218,35 @@ export function DetailSideSheet({
           {/* VISITATION VIEW */}
           {type === "visitation" && (
             <>
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Visit Details</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Visit Details</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Calendar className="h-3.5 w-3.5" />
                       <span className="text-xs">Visit Date</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{formatDate(data.visit_date)}</span>
+                    <span className="text-xs text-foreground flex-1">{formatDate(data.visit_date)}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Stethoscope className="h-3.5 w-3.5" />
                       <span className="text-xs">Visit Number</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">Visit #{data.visit_number || 1}</span>
+                    <span className="text-xs text-foreground flex-1">Visit #{data.visit_number || 1}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Maternal Vitals</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Maternal Vitals</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <HeartPulse className="h-3.5 w-3.5" />
                       <span className="text-xs">Blood Pressure</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">
+                    <span className="text-xs text-foreground flex-1">
                       {data.bp_systolic && data.bp_diastolic ? `${data.bp_systolic}/${data.bp_diastolic} mmHg` : "N/A"}
                     </span>
                   </div>
@@ -255,48 +255,48 @@ export function DetailSideSheet({
                       <ActivitySquare className="h-3.5 w-3.5" />
                       <span className="text-xs">Pulse Rate</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.pulse_rate_bpm ? `${data.pulse_rate_bpm} bpm` : "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.pulse_rate_bpm ? `${data.pulse_rate_bpm} bpm` : "N/A"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Thermometer className="h-3.5 w-3.5" />
                       <span className="text-xs">Body Temp</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.temperature_celsius ? `${data.temperature_celsius} °C` : "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.temperature_celsius ? `${data.temperature_celsius} °C` : "N/A"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Weight className="h-3.5 w-3.5" />
                       <span className="text-xs">Weight</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.weight_kg ? `${data.weight_kg} kg` : "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.weight_kg ? `${data.weight_kg} kg` : "N/A"}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Fetal & Visit Metrics</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Fetal & Visit Metrics</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Baby className="h-3.5 w-3.5" />
                       <span className="text-xs">Gestational Age</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.age_of_gestation_weeks ? `${data.age_of_gestation_weeks} Weeks` : "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.age_of_gestation_weeks ? `${data.age_of_gestation_weeks} Weeks` : "N/A"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <HeartPulse className="h-3.5 w-3.5" />
                       <span className="text-xs">Fetal Heart Tone</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.fetal_heart_tone_bpm ? `${data.fetal_heart_tone_bpm} bpm` : "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.fetal_heart_tone_bpm ? `${data.fetal_heart_tone_bpm} bpm` : "N/A"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Ruler className="h-3.5 w-3.5" />
                       <span className="text-xs">Fundic Height</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.fundic_height_cm ? `${data.fundic_height_cm} cm` : "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.fundic_height_cm ? `${data.fundic_height_cm} cm` : "N/A"}</span>
                   </div>
                 </div>
               </div>
@@ -306,15 +306,15 @@ export function DetailSideSheet({
           {/* APPOINTMENT VIEW */}
           {type === "appointment" && (
             <>
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Visit Details</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Visit Details</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Calendar className="h-3.5 w-3.5" />
                       <span className="text-xs">Date & Time</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">
+                    <span className="text-xs text-foreground flex-1">
                       {formatDate(data.appointment_date)} {data.appointment_time || ""}
                     </span>
                   </div>
@@ -323,14 +323,14 @@ export function DetailSideSheet({
                       <Stethoscope className="h-3.5 w-3.5" />
                       <span className="text-xs">Purpose</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.appointment_type || data.type || "Prenatal Checkup"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.appointment_type || data.type || "Prenatal Checkup"}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Notes & Reason</h3>
-                <p className="text-xs text-foreground dark:text-white leading-relaxed">
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Notes & Reason</h3>
+                <p className="text-xs text-foreground leading-relaxed">
                   {data.reason || "No additional notes provided for this appointment."}
                 </p>
               </div>
@@ -340,29 +340,29 @@ export function DetailSideSheet({
           {/* LABORATORY VIEW */}
           {type === "laboratory" && (
             <>
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Screening Summary</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Screening Summary</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <FlaskConical className="h-3.5 w-3.5" />
                       <span className="text-xs">Screening Type</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.screening_type || "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.screening_type || "N/A"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Calendar className="h-3.5 w-3.5" />
                       <span className="text-xs">Date of Screening</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{formatDate(data.date_of_screening)}</span>
+                    <span className="text-xs text-foreground flex-1">{formatDate(data.date_of_screening)}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <FileText className="h-3.5 w-3.5" />
                       <span className="text-xs">Result</span>
                     </div>
-                    <span className="text-xs font-medium text-foreground dark:text-white flex-1">{data.result || "N/A"}</span>
+                    <span className="text-xs font-medium text-foreground flex-1">{data.result || "N/A"}</span>
                   </div>
                   {data.file_url && (
                     <div className="flex items-center">
@@ -384,9 +384,9 @@ export function DetailSideSheet({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Remarks</h3>
-                <p className="text-xs text-foreground dark:text-white leading-relaxed">
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Remarks</h3>
+                <p className="text-xs text-foreground leading-relaxed">
                   {data.remarks || "No clinical remarks logged for this screening."}
                 </p>
               </div>
@@ -396,29 +396,29 @@ export function DetailSideSheet({
           {/* PRESCRIPTION VIEW */}
           {type === "prescription" && (
             <>
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Medication Summary</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Medication Summary</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Pill className="h-3.5 w-3.5" />
                       <span className="text-xs">Supplement Type</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.supplement_type || "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.supplement_type || "N/A"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <ActivitySquare className="h-3.5 w-3.5" />
                       <span className="text-xs">Tablets Given</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.tablets_given_count ?? "N/A"} tablets</span>
+                    <span className="text-xs text-foreground flex-1">{data.tablets_given_count ?? "N/A"} tablets</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Calendar className="h-3.5 w-3.5" />
                       <span className="text-xs">Date Given</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{formatDate(data.date_given)}</span>
+                    <span className="text-xs text-foreground flex-1">{formatDate(data.date_given)}</span>
                   </div>
                 </div>
               </div>
@@ -428,17 +428,17 @@ export function DetailSideSheet({
           {/* Activity Log */}
           <div className="flex flex-col gap-4 p-4 pb-6">
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-semibold text-foreground dark:text-white">Activity Log</h3>
+              <h3 className="text-xs font-semibold text-foreground">Activity Log</h3>
               <History className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
             <p className="text-xs text-muted-foreground">Recent actions performed for this record.</p>
             
             <div className="flex gap-3 mt-1">
               <div className="flex flex-col items-center mt-1.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-foreground dark:bg-white shrink-0" />
+                <div className="h-1.5 w-1.5 rounded-full bg-foreground shrink-0" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-foreground dark:text-white">Record registered in system</span>
+                <span className="text-xs font-medium text-foreground">Record registered in system</span>
                 <span className="text-[10px] text-muted-foreground">{formatDate(data.updated_at || data.created_at || new Date())}</span>
               </div>
             </div>
@@ -446,10 +446,10 @@ export function DetailSideSheet({
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 p-4 pb-8 md:pb-4 border-t border-sidebar-border flex flex-col gap-2">
+        <div className="shrink-0 p-4 pb-8 md:pb-4 border-t border-border flex flex-col gap-2">
           <Button
             onClick={() => setEditModalOpen(true)}
-            className="w-full h-8 text-xs font-medium bg-[#111] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+            className="w-full h-8 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Edit className="mr-1.5 h-3.5 w-3.5" />
             Edit Record
@@ -458,7 +458,7 @@ export function DetailSideSheet({
             variant="outline"
             disabled={deleting}
             onClick={handleDelete}
-            className="w-full h-8 text-xs font-medium border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-600 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/20"
+            className="w-full h-8 text-xs font-medium border-red-500/20 text-red-500 hover:bg-red-500/10 hover:text-red-600"
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" />
             {deleting ? "Deleting..." : "Delete Record"}

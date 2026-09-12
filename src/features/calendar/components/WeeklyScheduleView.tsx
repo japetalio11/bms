@@ -29,13 +29,13 @@ export function WeeklyScheduleView({ viewDate, selectedDate, events, isMobile, o
   const days = Array.from({ length: 7 }).map((_, i) => addDays(startDate, i))
 
   return (
-    <div className="flex-1 w-full flex bg-background dark:bg-[#000000] border-t border-l border-sidebar-border overflow-hidden">
+    <div className="flex-1 w-full flex bg-background border-t border-l border-border overflow-hidden">
       <div ref={scrollRef} className="flex w-full h-full overflow-y-auto overflow-x-auto relative">
         <div className="flex min-w-max h-max w-full">
 
           {/* Sticky Time Gutter */}
-          <div className="w-12 md:w-16 shrink-0 border-r border-sidebar-border bg-background dark:bg-black sticky left-0 z-30 flex flex-col">
-            <div className="h-20 shrink-0 border-b border-sidebar-border bg-background dark:bg-black sticky top-0 z-40"></div>
+          <div className="w-12 md:w-16 shrink-0 border-r border-border bg-background sticky left-0 z-30 flex flex-col">
+            <div className="h-20 shrink-0 border-b border-border bg-background sticky top-0 z-40"></div>
             <div className="relative h-[1440px] shrink-0">
               {Array.from({ length: 24 }).map((_, i) => {
                 const hour = i;
@@ -72,17 +72,17 @@ export function WeeklyScheduleView({ viewDate, selectedDate, events, isMobile, o
               return (
                 <div
                   key={idx}
-                  className={`flex-1 flex flex-col border-r border-sidebar-border relative min-w-0 transition-colors ${isActiveDay ? 'bg-white/5 dark:bg-white/10' : 'hover:bg-white/5'}`}
+                  className={`flex-1 flex flex-col border-r border-border relative min-w-0 transition-colors ${isActiveDay ? 'bg-primary/5' : 'hover:bg-accent/40'}`}
                 >
                   {/* Header (Sticky) */}
                   <div
                     onClick={() => onSelectDate(day)}
-                    className="flex flex-col items-center py-4 shrink-0 h-20 border-b border-sidebar-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 dark:bg-black/95 sticky top-0 z-20 cursor-pointer relative"
+                    className="flex flex-col items-center py-4 shrink-0 h-20 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 cursor-pointer relative"
                   >
-                    <span className={`text-xs font-medium ${isWeekend ? 'text-muted-foreground' : 'text-foreground dark:text-white/70'}`}>
+                    <span className={`text-xs font-medium ${isWeekend ? 'text-muted-foreground' : 'text-foreground'}`}>
                       {format(day, 'E')}
                     </span>
-                    <div className={`mt-1 flex items-center justify-center w-9 h-9 shrink-0 rounded-full text-lg font-semibold ${isActiveDay ? 'bg-black text-white dark:bg-white dark:text-black' : isWeekend ? 'text-muted-foreground' : 'text-foreground dark:text-white'}`}>
+                    <div className={`mt-1 flex items-center justify-center w-9 h-9 shrink-0 rounded-full text-lg font-semibold ${isActiveDay ? 'bg-primary text-primary-foreground' : isWeekend ? 'text-muted-foreground' : 'text-foreground'}`}>
                       {format(day, 'd')}
                     </div>
                   </div>

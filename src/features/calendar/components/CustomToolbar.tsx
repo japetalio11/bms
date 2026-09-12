@@ -77,18 +77,18 @@ export function CustomToolbar(props: CustomToolbarProps) {
   }
 
   return (
-    <div className="flex flex-col gap-4 text-foreground dark:text-white">
+    <div className="flex flex-col gap-4 text-foreground">
       {/* Top Row */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
           <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="icon" onClick={goToBack} className="h-8 w-8 bg-transparent border-sidebar-border hover:bg-accent dark:hover:bg-white/5 shrink-0">
+            <Button variant="outline" size="icon" onClick={goToBack} className="h-8 w-8 bg-transparent border-border hover:bg-accent shrink-0">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" onClick={goToCurrent} className="h-8 px-3 text-xs font-medium bg-transparent border-sidebar-border hover:bg-accent dark:hover:bg-white/5 shrink-0">
+            <Button variant="outline" onClick={goToCurrent} className="h-8 px-3 text-xs font-medium bg-transparent border-border hover:bg-accent shrink-0">
               Today
             </Button>
-            <Button variant="outline" size="icon" onClick={goToNext} className="h-8 w-8 bg-transparent border-sidebar-border hover:bg-accent dark:hover:bg-white/5 shrink-0">
+            <Button variant="outline" size="icon" onClick={goToNext} className="h-8 w-8 bg-transparent border-border hover:bg-accent shrink-0">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -97,14 +97,14 @@ export function CustomToolbar(props: CustomToolbarProps) {
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full md:w-auto">
           <Tabs value={view} onValueChange={(v) => handleViewChange(v)} className="w-full md:w-max">
-            <TabsList className="bg-muted dark:bg-[#1e1e1e] border-none h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
+            <TabsList className="bg-muted border border-border h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
               <TabsTrigger value="month" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">Month Grid</TabsTrigger>
               <TabsTrigger value="week" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">Weekly Schedule</TabsTrigger>
             </TabsList>
           </Tabs>
           
           <CreateAppointmentModal onSuccess={onRefresh}>
-            <Button className="w-full md:w-auto h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
+            <Button className="w-full md:w-auto h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
               <PlusCircle className="h-3.5 w-3.5" />
               Create Appointment
             </Button>
@@ -119,7 +119,7 @@ export function CustomToolbar(props: CustomToolbarProps) {
           {/* Appointment Type Filter */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground dark:!bg-black dark:text-white shrink-0">
+              <Button variant="outline" className="flex h-8 px-2 text-xs font-medium gap-2 border-border border-dashed bg-card text-card-foreground hover:bg-accent shrink-0">
                 <PlusCircle className="h-3.5 w-3.5" />
                 Appointment Type {selectedTypeFilters.length > 0 && `(${selectedTypeFilters.length})`}
               </Button>
@@ -149,7 +149,7 @@ export function CustomToolbar(props: CustomToolbarProps) {
           {/* Status Filter */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground dark:!bg-black dark:text-white shrink-0">
+              <Button variant="outline" className="flex h-8 px-2 text-xs font-medium gap-2 border-border border-dashed bg-card text-card-foreground hover:bg-accent shrink-0">
                 <PlusCircle className="h-3.5 w-3.5" />
                 Status {selectedStatusFilters.length > 0 && `(${selectedStatusFilters.length})`}
               </Button>
@@ -179,7 +179,7 @@ export function CustomToolbar(props: CustomToolbarProps) {
           {/* Risk Filter */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground dark:!bg-black dark:text-white shrink-0">
+              <Button variant="outline" className="flex h-8 px-2 text-xs font-medium gap-2 border-border border-dashed bg-card text-card-foreground hover:bg-accent shrink-0">
                 <PlusCircle className="h-3.5 w-3.5" />
                 Risk Flag {selectedRiskFilters.length > 0 && `(${selectedRiskFilters.length})`}
               </Button>
@@ -210,14 +210,14 @@ export function CustomToolbar(props: CustomToolbarProps) {
         {/* Actions */}
         <div className="flex w-full md:w-auto overflow-x-auto no-scrollbar items-center gap-2 pb-1 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 justify-end md:justify-start">
           <ExportCalendarModal events={events}>
-            <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-white shrink-0">
+            <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-card-foreground hover:bg-accent shrink-0">
               <Download className="h-3.5 w-3.5" />
               <span>Export</span>
             </Button>
           </ExportCalendarModal>
           
           <CheckAvailabilityModal events={events} date={date}>
-            <Button variant="outline" className="flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-white shrink-0">
+            <Button variant="outline" className="flex h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-card-foreground hover:bg-accent shrink-0">
               <CalendarCheck className="h-3.5 w-3.5" />
               Check Available Slots
             </Button>
@@ -226,7 +226,7 @@ export function CustomToolbar(props: CustomToolbarProps) {
           <Button 
             variant="outline" 
             onClick={onRefresh} 
-            className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-white shrink-0"
+            className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-card-foreground hover:bg-accent shrink-0"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Refresh</span>

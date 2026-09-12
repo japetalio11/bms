@@ -157,7 +157,7 @@ export const notificationRepository = {
       const updatedList = allLocal.map((n) => ({
         ...n,
         is_read: true,
-        sync_status: (syncEngine.isNetworkOnline() ? "synced" : "pending_update") as const,
+        sync_status: (syncEngine.isNetworkOnline() ? "synced" : "pending_update") as "synced" | "pending_update",
         updated_at: nowMs,
       }))
       if (updatedList.length > 0) {

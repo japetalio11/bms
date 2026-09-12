@@ -74,18 +74,18 @@ export function ExportCalendarModal({
       <div className="flex flex-col gap-5 py-2">
         {/* File Format */}
         <div className="flex flex-col gap-3">
-          <h4 className="text-xs font-medium text-foreground dark:text-white">File Format</h4>
+          <h4 className="text-xs font-medium text-foreground">File Format</h4>
           <RadioGroup value={fileFormat} onValueChange={setFileFormat} className="gap-2.5">
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="csv" id="format-csv" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white h-3.5 w-3.5" />
+              <RadioGroupItem value="csv" id="format-csv" className="border-border data-[state=checked]:border-primary h-3.5 w-3.5" />
               <Label htmlFor="format-csv" className="text-xs font-normal">
-                <span className="text-foreground dark:text-white">CSV</span> <span className="text-muted-foreground">- Standard schedule data</span>
+                <span className="text-foreground">CSV</span> <span className="text-muted-foreground">- Standard schedule data</span>
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="pdf" id="format-pdf" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white h-3.5 w-3.5" />
+              <RadioGroupItem value="pdf" id="format-pdf" className="border-border data-[state=checked]:border-primary h-3.5 w-3.5" />
               <Label htmlFor="format-pdf" className="text-xs font-normal">
-                <span className="text-foreground dark:text-white">PDF Summary</span> <span className="text-muted-foreground">- Print report</span>
+                <span className="text-foreground">PDF Summary</span> <span className="text-muted-foreground">- Print report</span>
               </Label>
             </div>
           </RadioGroup>
@@ -93,18 +93,18 @@ export function ExportCalendarModal({
 
         {/* Data Scope */}
         <div className="flex flex-col gap-3">
-          <h4 className="text-xs font-medium text-foreground dark:text-white">Data Scope</h4>
+          <h4 className="text-xs font-medium text-foreground">Data Scope</h4>
           <div className="text-xs text-muted-foreground">
-            Exporting <strong className="text-foreground dark:text-white">{events.length}</strong> event(s) currently loaded in calendar view.
+            Exporting <strong className="text-foreground">{events.length}</strong> event(s) currently loaded in calendar view.
           </div>
         </div>
       </div>
       
-      <div className="flex items-center gap-2 mt-2 pt-3 border-t border-sidebar-border">
-        <Button variant="ghost" onClick={() => handleOpenChange(false)} className="flex-1 text-xs font-medium border-sidebar-border text-foreground hover:bg-accent dark:hover:bg-white/5 h-8">
+      <div className="flex items-center gap-2 mt-2 pt-3 border-t border-border">
+        <Button variant="ghost" onClick={() => handleOpenChange(false)} className="flex-1 text-xs font-medium border-border text-foreground hover:bg-accent h-8">
           Cancel
         </Button>
-        <Button onClick={handleExport} className="flex-1 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 h-8">
+        <Button onClick={handleExport} className="flex-1 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-8">
           Export Calendar
         </Button>
       </div>

@@ -84,11 +84,11 @@ export function ReferralSidepeek({
   }
 
   return (
-    <div className="flex flex-col h-full bg-background dark:bg-[#0a0a0a] border-l border-sidebar-border w-full xl:w-[450px]">
+    <div className="flex flex-col h-full bg-card text-card-foreground border-l border-border w-full xl:w-[450px]">
       {/* Header */}
-      <div className="shrink-0 p-4 pb-4 border-b border-sidebar-border flex items-start justify-between">
+      <div className="shrink-0 p-4 pb-4 border-b border-border flex items-start justify-between">
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-foreground dark:text-white">{motherName}</h2>
+          <h2 className="text-base font-semibold text-foreground">{motherName}</h2>
           <div className="flex flex-wrap items-center gap-2">
             <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
               riskFlag === 'High Risk' ? 'bg-red-500/10 text-red-500' : 
@@ -106,14 +106,14 @@ export function ReferralSidepeek({
               {status === 'Accepted' || status === 'Completed' ? <CheckCircle2 className="h-3 w-3" /> : status === 'Pending' ? <Clock className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
             </div>
             {referral.sync_status && referral.sync_status !== "synced" && (
-              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-amber-500/15 text-amber-600 border border-amber-500/20">
                 <CloudOff className="h-3 w-3" />
                 Pending Offline Sync
               </div>
             )}
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="hidden md:flex h-6 w-6 text-muted-foreground hover:text-foreground dark:text-white" onClick={onClose}>
+        <Button variant="ghost" size="icon" className="hidden md:flex h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -122,32 +122,32 @@ export function ReferralSidepeek({
       <div className="flex-1 overflow-y-auto flex flex-col">
         
         {/* Handoff Summary */}
-        <div className="flex flex-col gap-3 p-4 border-b border-sidebar-border">
-          <h3 className="text-xs font-semibold text-foreground dark:text-white">Clinical Referral Handoff Summary</h3>
-          <div className="text-xs text-foreground dark:text-white whitespace-pre-wrap leading-relaxed font-mono p-3 rounded-lg bg-card dark:bg-[#111] border border-sidebar-border">
+        <div className="flex flex-col gap-3 p-4 border-b border-border">
+          <h3 className="text-xs font-semibold text-foreground">Clinical Referral Handoff Summary</h3>
+          <div className="text-xs text-foreground whitespace-pre-wrap leading-relaxed font-mono p-3 rounded-lg bg-muted/40 border border-border">
             {reasonText}
           </div>
         </div>
 
         {/* Destination Hospital */}
-        <div className="flex flex-col gap-3 p-4 border-b border-sidebar-border">
-          <h3 className="text-xs font-semibold text-foreground dark:text-white">Destination Facility</h3>
-          <div className="flex items-center justify-between h-8 px-3 rounded-md border border-sidebar-border bg-background dark:bg-[#0a0a0a] text-xs text-foreground dark:text-white">
+        <div className="flex flex-col gap-3 p-4 border-b border-border">
+          <h3 className="text-xs font-semibold text-foreground">Destination Facility</h3>
+          <div className="flex items-center justify-between h-8 px-3 rounded-md border border-border bg-card text-xs text-foreground">
             <span>{destination}</span>
             <ChevronDown className="h-4 w-4 opacity-50" />
           </div>
         </div>
 
         {/* Transfer Patient Record Link */}
-        <div className="flex flex-col gap-3 p-4 border-b border-sidebar-border">
-          <h3 className="text-xs font-semibold text-foreground dark:text-white">Transfer Patient Record Link</h3>
+        <div className="flex flex-col gap-3 p-4 border-b border-border">
+          <h3 className="text-xs font-semibold text-foreground">Transfer Patient Record Link</h3>
           <div className="flex items-center gap-2">
-            <Input readOnly value={recordLink} className="h-8 text-xs bg-background dark:bg-[#0a0a0a] border-sidebar-border text-foreground dark:text-white" />
+            <Input readOnly value={recordLink} className="h-8 text-xs bg-card border-border text-foreground" />
             <Button 
               variant="outline" 
               size="icon" 
               onClick={() => handleCopy(recordLink, "link")}
-              className="h-8 w-8 shrink-0 border-sidebar-border text-foreground dark:text-white hover:bg-accent dark:hover:bg-[#1a1a1a]"
+              className="h-8 w-8 shrink-0 border-border text-foreground hover:bg-accent"
             >
               <Copy className="h-3.5 w-3.5" />
             </Button>
@@ -156,15 +156,15 @@ export function ReferralSidepeek({
         </div>
 
         {/* Transfer Code */}
-        <div className="flex flex-col gap-3 p-4 border-b border-sidebar-border">
-          <h3 className="text-xs font-semibold text-foreground dark:text-white">Transfer PIN / Code</h3>
+        <div className="flex flex-col gap-3 p-4 border-b border-border">
+          <h3 className="text-xs font-semibold text-foreground">Transfer PIN / Code</h3>
           <div className="flex items-center gap-2">
-            <Input readOnly value={transferCode} className="h-8 text-xs bg-background dark:bg-[#0a0a0a] border-sidebar-border text-foreground dark:text-white" />
+            <Input readOnly value={transferCode} className="h-8 text-xs bg-card border-border text-foreground" />
             <Button 
               variant="outline" 
               size="icon" 
               onClick={() => handleCopy(transferCode, "code")}
-              className="h-8 w-8 shrink-0 border-sidebar-border text-foreground dark:text-white hover:bg-accent dark:hover:bg-[#1a1a1a]"
+              className="h-8 w-8 shrink-0 border-border text-foreground hover:bg-accent"
             >
               <Copy className="h-3.5 w-3.5" />
             </Button>
@@ -173,8 +173,8 @@ export function ReferralSidepeek({
         </div>
 
         {/* Properties */}
-        <div className="flex flex-col gap-5 p-4 border-b border-sidebar-border">
-          <h3 className="text-xs font-semibold text-foreground dark:text-white">Properties</h3>
+        <div className="flex flex-col gap-5 p-4 border-b border-border">
+          <h3 className="text-xs font-semibold text-foreground">Properties</h3>
           
           <div className="flex flex-col gap-3">
             <span className="text-[10px] text-muted-foreground font-medium">Patient Demographic</span>
@@ -184,7 +184,7 @@ export function ReferralSidepeek({
                 <User className="h-3.5 w-3.5" />
                 <span className="text-xs">Patient Name</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">{motherName}</span>
+              <span className="text-xs text-foreground flex-1">{motherName}</span>
             </div>
             
             <div className="flex items-center">
@@ -192,7 +192,7 @@ export function ReferralSidepeek({
                 <Calendar className="h-3.5 w-3.5" />
                 <span className="text-xs">Gestational Age</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">{gestationalAge}</span>
+              <span className="text-xs text-foreground flex-1">{gestationalAge}</span>
             </div>
           </div>
 
@@ -204,7 +204,7 @@ export function ReferralSidepeek({
                 <Send className="h-3.5 w-3.5" />
                 <span className="text-xs">Referred By</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">{referredBy}</span>
+              <span className="text-xs text-foreground flex-1">{referredBy}</span>
             </div>
             
             <div className="flex items-center">
@@ -212,7 +212,7 @@ export function ReferralSidepeek({
                 <Building2 className="h-3.5 w-3.5" />
                 <span className="text-xs">Destination Facility</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">{destination}</span>
+              <span className="text-xs text-foreground flex-1">{destination}</span>
             </div>
 
             <div className="flex items-center">
@@ -220,7 +220,7 @@ export function ReferralSidepeek({
                 <Clock className="h-3.5 w-3.5" />
                 <span className="text-xs">Initiated At</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">{initiatedAt}</span>
+              <span className="text-xs text-foreground flex-1">{initiatedAt}</span>
             </div>
           </div>
         </div>
@@ -228,17 +228,17 @@ export function ReferralSidepeek({
         {/* Activity Log */}
         <div className="flex flex-col gap-4 p-4 pb-6">
           <div className="flex items-center gap-2">
-            <h3 className="text-xs font-semibold text-foreground dark:text-white">Activity Log</h3>
+            <h3 className="text-xs font-semibold text-foreground">Activity Log</h3>
             <History className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           
           {referral.date_responded && (
             <div className="flex gap-3 mt-1">
               <div className="flex flex-col items-center mt-1.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-foreground dark:bg-white shrink-0" />
+                <div className="h-1.5 w-1.5 rounded-full bg-foreground shrink-0" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-foreground dark:text-white">Status updated to {status}</span>
+                <span className="text-xs font-medium text-foreground">Status updated to {status}</span>
                 <span className="text-[10px] text-muted-foreground">{new Date(referral.date_responded).toLocaleString()}</span>
               </div>
             </div>
@@ -246,10 +246,10 @@ export function ReferralSidepeek({
 
           <div className="flex gap-3 mt-1">
             <div className="flex flex-col items-center mt-1.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-foreground dark:bg-white shrink-0" />
+              <div className="h-1.5 w-1.5 rounded-full bg-foreground shrink-0" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-foreground dark:text-white">Initiated referral to {destination}</span>
+              <span className="text-xs font-medium text-foreground">Initiated referral to {destination}</span>
               <span className="text-[10px] text-muted-foreground">{initiatedAt}</span>
             </div>
           </div>
@@ -257,12 +257,12 @@ export function ReferralSidepeek({
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 p-4 pb-8 md:pb-4 border-t border-sidebar-border flex flex-col gap-2">
+      <div className="shrink-0 p-4 pb-8 md:pb-4 border-t border-border flex flex-col gap-2">
         {status === "Pending" && (
           <Button 
             disabled={actionLoading}
             onClick={() => handleStatusChange("accepted")}
-            className="w-full h-8 text-xs font-medium bg-green-600 text-white hover:bg-green-700 border-none"
+            className="w-full h-8 text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 border-none"
           >
             Accept Referral Transfer
           </Button>
@@ -270,7 +270,7 @@ export function ReferralSidepeek({
         <Button 
           disabled={actionLoading}
           onClick={() => handleStatusChange("cancelled")}
-          className="w-full h-8 text-xs font-medium bg-[#ef4444] text-white hover:bg-[#dc2626] border-none"
+          className="w-full h-8 text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 border-none"
         >
           Cancel Transfer
         </Button>

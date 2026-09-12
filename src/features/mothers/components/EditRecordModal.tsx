@@ -161,30 +161,30 @@ export function EditRecordModal({
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium text-foreground dark:text-white">Gravida</Label>
+                <Label className="text-xs font-medium text-foreground">Gravida</Label>
                 <Input
                   type="number"
                   value={formData.gravida ?? 1}
                   onChange={(e) => handleChange("gravida", e.target.value)}
-                  className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                  className="!h-9 bg-card border-border text-xs text-card-foreground"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium text-foreground dark:text-white">Parity</Label>
+                <Label className="text-xs font-medium text-foreground">Parity</Label>
                 <Input
                   type="number"
                   value={formData.parity ?? 0}
                   onChange={(e) => handleChange("parity", e.target.value)}
-                  className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                  className="!h-9 bg-card border-border text-xs text-card-foreground"
                 />
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">LMP Date</Label>
+              <Label className="text-xs font-medium text-foreground">LMP Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full !h-9 justify-start text-left font-normal bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs", !dateVal && "text-muted-foreground")}>
+                  <Button variant="outline" className={cn("w-full !h-9 justify-start text-left font-normal bg-card border-border text-xs", !dateVal && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-3.5 w-3.5" />
                     {dateVal ? format(dateVal, "PPP") : <span>Pick Date</span>}
                   </Button>
@@ -196,9 +196,9 @@ export function EditRecordModal({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Status</Label>
+              <Label className="text-xs font-medium text-foreground">Status</Label>
               <Select value={formData.pregnancy_status || "Active"} onValueChange={(v) => handleChange("pregnancy_status", v)}>
-                <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs">
+                <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -210,23 +210,23 @@ export function EditRecordModal({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Co-morbidities</Label>
+              <Label className="text-xs font-medium text-foreground">Co-morbidities</Label>
               <Input
                 type="text"
                 placeholder="e.g. Hypertension, Diabetes, Asthma"
                 value={formData.co_morbidities || ""}
                 onChange={(e) => handleChange("co_morbidities", e.target.value)}
-                className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                className="!h-9 bg-card border-border text-xs text-card-foreground"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Previous Delivery History</Label>
+              <Label className="text-xs font-medium text-foreground">Previous Delivery History</Label>
               <Textarea
                 placeholder="Notes on past deliveries..."
                 value={formData.previous_delivery_history || ""}
                 onChange={(e) => handleChange("previous_delivery_history", e.target.value)}
-                className="resize-none h-[65px] bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                className="resize-none h-[65px] bg-card border-border text-xs text-card-foreground"
               />
             </div>
           </div>
@@ -237,66 +237,66 @@ export function EditRecordModal({
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium text-foreground dark:text-white">BP Systolic (mmHg)</Label>
+                <Label className="text-xs font-medium text-foreground">BP Systolic (mmHg)</Label>
                 <Input
                   type="number"
                   value={formData.bp_systolic ?? ""}
                   onChange={(e) => handleChange("bp_systolic", e.target.value)}
-                  className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                  className="!h-9 bg-card border-border text-xs text-card-foreground"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium text-foreground dark:text-white">BP Diastolic (mmHg)</Label>
+                <Label className="text-xs font-medium text-foreground">BP Diastolic (mmHg)</Label>
                 <Input
                   type="number"
                   value={formData.bp_diastolic ?? ""}
                   onChange={(e) => handleChange("bp_diastolic", e.target.value)}
-                  className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                  className="!h-9 bg-card border-border text-xs text-card-foreground"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium text-foreground dark:text-white">Weight (kg)</Label>
+                <Label className="text-xs font-medium text-foreground">Weight (kg)</Label>
                 <Input
                   type="number"
                   step="0.1"
                   value={formData.weight_kg ?? ""}
                   onChange={(e) => handleChange("weight_kg", e.target.value)}
-                  className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                  className="!h-9 bg-card border-border text-xs text-card-foreground"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium text-foreground dark:text-white">Pulse Rate (bpm)</Label>
+                <Label className="text-xs font-medium text-foreground">Pulse Rate (bpm)</Label>
                 <Input
                   type="number"
                   value={formData.pulse_rate_bpm ?? ""}
                   onChange={(e) => handleChange("pulse_rate_bpm", e.target.value)}
-                  className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                  className="!h-9 bg-card border-border text-xs text-card-foreground"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium text-foreground dark:text-white">Body Temp (°C)</Label>
+                <Label className="text-xs font-medium text-foreground">Body Temp (°C)</Label>
                 <Input
                   type="number"
                   step="0.1"
                   value={formData.temperature_celsius ?? ""}
                   onChange={(e) => handleChange("temperature_celsius", e.target.value)}
-                  className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                  className="!h-9 bg-card border-border text-xs text-card-foreground"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium text-foreground dark:text-white">Fundic Height (cm)</Label>
+                <Label className="text-xs font-medium text-foreground">Fundic Height (cm)</Label>
                 <Input
                   type="number"
                   step="0.1"
                   value={formData.fundic_height_cm ?? ""}
                   onChange={(e) => handleChange("fundic_height_cm", e.target.value)}
-                  className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                  className="!h-9 bg-card border-border text-xs text-card-foreground"
                 />
               </div>
             </div>
@@ -307,10 +307,10 @@ export function EditRecordModal({
         {type === "appointment" && (
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Appointment Date</Label>
+              <Label className="text-xs font-medium text-foreground">Appointment Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full !h-9 justify-start text-left font-normal bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs", !dateVal && "text-muted-foreground")}>
+                  <Button variant="outline" className={cn("w-full !h-9 justify-start text-left font-normal bg-card border-border text-xs", !dateVal && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-3.5 w-3.5" />
                     {dateVal ? format(dateVal, "PPP") : <span>Pick Date</span>}
                   </Button>
@@ -322,19 +322,19 @@ export function EditRecordModal({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Appointment Time</Label>
+              <Label className="text-xs font-medium text-foreground">Appointment Time</Label>
               <Input
                 type="text"
                 value={formData.appointment_time || ""}
                 onChange={(e) => handleChange("appointment_time", e.target.value)}
-                className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                className="!h-9 bg-card border-border text-xs text-card-foreground"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Status</Label>
+              <Label className="text-xs font-medium text-foreground">Status</Label>
               <Select value={formData.status || "scheduled"} onValueChange={(v) => handleChange("status", v)}>
-                <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs">
+                <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -346,11 +346,11 @@ export function EditRecordModal({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Reason</Label>
+              <Label className="text-xs font-medium text-foreground">Reason</Label>
               <Textarea
                 value={formData.reason || ""}
                 onChange={(e) => handleChange("reason", e.target.value)}
-                className="resize-none h-[65px] bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                className="resize-none h-[65px] bg-card border-border text-xs text-card-foreground"
               />
             </div>
           </div>
@@ -360,18 +360,18 @@ export function EditRecordModal({
         {type === "laboratory" && (
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Screening Result</Label>
+              <Label className="text-xs font-medium text-foreground">Screening Result</Label>
               <Input
                 type="text"
                 value={formData.result || ""}
                 onChange={(e) => handleChange("result", e.target.value)}
-                className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                className="!h-9 bg-card border-border text-xs text-card-foreground"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Document / Lab Attachment (Optional)</Label>
-              <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-sidebar-border bg-muted/30 dark:bg-[#0a0a0a]">
+              <Label className="text-xs font-medium text-foreground">Document / Lab Attachment (Optional)</Label>
+              <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-border bg-muted/40">
                 <label className="cursor-pointer flex-1">
                   <input
                     type="file"
@@ -384,7 +384,7 @@ export function EditRecordModal({
                     type="button"
                     variant="outline"
                     disabled={uploading}
-                    className="w-full h-9 px-3 text-xs font-medium border-sidebar-border gap-2 pointer-events-none bg-background dark:bg-black"
+                    className="w-full h-9 px-3 text-xs font-medium border-border gap-2 pointer-events-none bg-card text-card-foreground"
                   >
                     {uploading ? (
                       <>
@@ -406,18 +406,18 @@ export function EditRecordModal({
                 </label>
               </div>
               {formData.file_url && (
-                <span className="text-[10px] text-green-600 dark:text-green-400 font-medium truncate">
+                <span className="text-[10px] text-emerald-600 font-medium truncate">
                   Attached: {formData.file_url.split('/').pop()}
                 </span>
               )}
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Remarks</Label>
+              <Label className="text-xs font-medium text-foreground">Remarks</Label>
               <Textarea
                 value={formData.remarks || ""}
                 onChange={(e) => handleChange("remarks", e.target.value)}
-                className="resize-none h-[65px] bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                className="resize-none h-[65px] bg-card border-border text-xs text-card-foreground"
               />
             </div>
           </div>
@@ -427,19 +427,19 @@ export function EditRecordModal({
         {type === "prescription" && (
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Tablets Given Count</Label>
+              <Label className="text-xs font-medium text-foreground">Tablets Given Count</Label>
               <Input
                 type="number"
                 value={formData.tablets_given_count ?? ""}
                 onChange={(e) => handleChange("tablets_given_count", e.target.value)}
-                className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs"
+                className="!h-9 bg-card border-border text-xs text-card-foreground"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Status</Label>
+              <Label className="text-xs font-medium text-foreground">Status</Label>
               <Select value={formData.is_completed ? "completed" : "in_progress"} onValueChange={(v) => handleChange("is_completed", v === "completed")}>
-                <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs">
+                <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -451,14 +451,14 @@ export function EditRecordModal({
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-sidebar-border mt-1">
+        <div className="flex justify-end gap-2 pt-3 border-t border-border mt-1">
           <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-8 text-xs">
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={loading}
-            className="h-8 text-xs bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 font-medium"
+            className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
           >
             {loading ? "Saving..." : "Save Changes"}
           </Button>

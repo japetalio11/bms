@@ -175,16 +175,16 @@ export function MothersPage() {
     <div className="relative flex items-start w-full h-full overflow-hidden">
       {/* Main Content Area */}
       <div className="flex flex-col w-full h-full text-foreground min-w-0 overflow-y-auto relative">
-        <div className="sticky top-0 z-10 flex flex-col gap-4 bg-background dark:bg-black p-4 pl-3 pr-4 pb-4 border-b md:border-none border-sidebar-border">
+        <div className="sticky top-0 z-10 flex flex-col gap-4 bg-background p-4 pl-3 pr-4 pb-4 border-b md:border-none border-border">
 
           {/* Tabs */}
           <div className="w-full overflow-x-auto shrink-0 pb-2 -mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-max">
-              <TabsList className="bg-muted dark:bg-[#1e1e1e] border-none h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
-                <TabsTrigger value="all" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">All Mothers</TabsTrigger>
-                <TabsTrigger value="high-risk" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">High Risk Profiles</TabsTrigger>
-                <TabsTrigger value="triage" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">Pending Triage</TabsTrigger>
-                <TabsTrigger value="postpartum" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">Postpartum</TabsTrigger>
+              <TabsList className="bg-muted border border-border h-9 w-full md:w-max justify-start rounded-lg p-1 gap-1 *:flex-1 md:*:flex-initial">
+                <TabsTrigger value="all" className="text-xs font-medium data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground rounded-md px-3 py-1 h-full transition-all">All Mothers</TabsTrigger>
+                <TabsTrigger value="high-risk" className="text-xs font-medium data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground rounded-md px-3 py-1 h-full transition-all">High Risk Profiles</TabsTrigger>
+                <TabsTrigger value="triage" className="text-xs font-medium data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground rounded-md px-3 py-1 h-full transition-all">Pending Triage</TabsTrigger>
+                <TabsTrigger value="postpartum" className="text-xs font-medium data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground rounded-md px-3 py-1 h-full transition-all">Postpartum</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -199,10 +199,10 @@ export function MothersPage() {
                     placeholder="Search mothers..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-8 pl-8 pr-2 w-full text-xs font-normal bg-background dark:bg-black border-sidebar-border"
+                    className="h-8 pl-8 pr-2 w-full text-xs font-normal bg-card border-border"
                   />
                 </div>
-                <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 shrink-0 md:hidden border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-foreground dark:text-white dark:hover:text-foreground dark:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
+                <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 shrink-0 md:hidden border-border bg-card text-foreground hover:bg-muted">
                   <Filter className="h-3.5 w-3.5" />
                   Filter & Export
                 </Button>
@@ -211,7 +211,7 @@ export function MothersPage() {
               {/* Risk Flag Filter */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={`hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-foreground dark:text-white dark:hover:bg-white/5 ${selectedRiskFilters.length > 0 ? "border-solid border-primary text-primary" : ""}`}>
+                  <Button variant="outline" className={`hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border border-dashed bg-card text-foreground hover:bg-muted ${selectedRiskFilters.length > 0 ? "border-solid border-primary text-primary" : ""}`}>
                     <PlusCircle className="h-3.5 w-3.5" />
                     Risk Flag
                     {selectedRiskFilters.length > 0 && (
@@ -237,9 +237,9 @@ export function MothersPage() {
                                 setSelectedRiskFilters((prev) => prev.filter((item) => item !== option))
                               }
                             }}
-                            className="border-sidebar-border data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:border-white dark:data-[state=checked]:bg-white dark:data-[state=checked]:text-black h-3.5 w-3.5 rounded-[4px]"
+                            className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground h-3.5 w-3.5 rounded-[4px]"
                           />
-                          <label htmlFor={`filter-risk-${option}`} className="text-xs font-normal text-foreground dark:text-white leading-none cursor-pointer">
+                          <label htmlFor={`filter-risk-${option}`} className="text-xs font-normal text-foreground leading-none cursor-pointer">
                             {option}
                           </label>
                         </div>
@@ -261,7 +261,7 @@ export function MothersPage() {
               {/* Barangay Filter */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className={`hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-foreground dark:text-white dark:hover:bg-white/5 ${selectedBarangayFilters.length > 0 ? "border-solid border-primary text-primary" : ""}`}>
+                  <Button variant="outline" className={`hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border border-dashed bg-card text-foreground hover:bg-muted ${selectedBarangayFilters.length > 0 ? "border-solid border-primary text-primary" : ""}`}>
                     <PlusCircle className="h-3.5 w-3.5" />
                     Barangay / Address
                     {selectedBarangayFilters.length > 0 && (
@@ -287,9 +287,9 @@ export function MothersPage() {
                                 setSelectedBarangayFilters((prev) => prev.filter((item) => item !== option))
                               }
                             }}
-                            className="border-sidebar-border data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:border-white dark:data-[state=checked]:bg-white dark:data-[state=checked]:text-black h-3.5 w-3.5 rounded-[4px]"
+                            className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground h-3.5 w-3.5 rounded-[4px]"
                           />
-                          <label htmlFor={`filter-brgy-${option}`} className="text-xs font-normal text-foreground dark:text-white leading-none cursor-pointer">
+                          <label htmlFor={`filter-brgy-${option}`} className="text-xs font-normal text-foreground leading-none cursor-pointer">
                             {option}
                           </label>
                         </div>
@@ -310,12 +310,12 @@ export function MothersPage() {
             </div>
             <div className="flex w-full xl:w-auto items-center gap-2">
               <ExportMaternalDataModal>
-                <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-foreground dark:text-white dark:hover:text-foreground dark:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
+                <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-foreground hover:bg-muted">
                   <Download className="h-3.5 w-3.5" />
                   Export
                 </Button>
               </ExportMaternalDataModal>
-              <Button onClick={fetchMothers} variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-foreground dark:text-white dark:hover:text-foreground dark:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
+              <Button onClick={fetchMothers} variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-foreground hover:bg-muted">
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
@@ -323,7 +323,7 @@ export function MothersPage() {
                 <QrCode className="h-3.5 w-3.5" />
                 Connect Mother (QR/Code)
               </Button>
-              <Button onClick={() => setRegisterModalOpen(true)} className="w-full md:w-auto h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
+              <Button onClick={() => setRegisterModalOpen(true)} className="w-full md:w-auto h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
                 <PlusCircle className="h-3.5 w-3.5" />
                 Register Mother
               </Button>
@@ -403,26 +403,26 @@ export function MothersPage() {
             </div>
 
             {/* Desktop Data Table */}
-            <div className="hidden md:block rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-black">
+            <div className="hidden md:block rounded-xl border border-border overflow-x-auto bg-card shadow-xs">
               <div className="min-w-[900px]">
                 <Table>
-                  <TableHeader className="bg-card dark:bg-[#111]">
-                    <TableRow className="border-sidebar-border hover:bg-transparent">
+                  <TableHeader className="bg-muted/40">
+                    <TableRow className="border-border hover:bg-transparent">
                       <TableHead className="w-12 text-center pl-4">
-                        <Checkbox className="border-sidebar-border" />
+                        <Checkbox className="border-border" />
                       </TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Mother Name</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Risk Flag</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Gestational Age (Weeks)</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Estimated Due Date</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Address</TableHead>
+                      <TableHead className="text-xs font-medium text-foreground whitespace-nowrap">Mother Name</TableHead>
+                      <TableHead className="text-xs font-medium text-foreground whitespace-nowrap">Risk Flag</TableHead>
+                      <TableHead className="text-xs font-medium text-foreground whitespace-nowrap">Gestational Age (Weeks)</TableHead>
+                      <TableHead className="text-xs font-medium text-foreground whitespace-nowrap">Estimated Due Date</TableHead>
+                      <TableHead className="text-xs font-medium text-foreground whitespace-nowrap">Address</TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading && displayedMothers.length === 0 ? (
                       [...Array(5)].map((_, i) => (
-                        <TableRow key={`mother-skel-${i}`} className="border-sidebar-border">
+                        <TableRow key={`mother-skel-${i}`} className="border-border">
                           <TableCell className="pl-4"><Skeleton className="h-4 w-4 rounded" /></TableCell>
                           <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                           <TableCell><Skeleton className="h-5 w-20 rounded-sm" /></TableCell>
@@ -442,21 +442,21 @@ export function MothersPage() {
                       displayedMothers.map((mother: any) => (
                         <TableRow
                           key={mother.id}
-                          className="border-sidebar-border cursor-pointer transition-colors group hover:bg-accent dark:hover:bg-white/5"
+                          className="border-border cursor-pointer transition-colors group hover:bg-muted/50"
                           onClick={() => navigate(`/dashboard/mothers/${mother.id}`)}
                         >
                           <TableCell className="pl-4">
-                            <Checkbox className="border-sidebar-border data-[state=checked]:bg-primary dark:data-[state=checked]:bg-white data-[state=checked]:text-primary-foreground dark:data-[state=checked]:text-black" />
+                            <Checkbox className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" />
                           </TableCell>
-                          <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">{mother.name}</TableCell>
+                          <TableCell className="text-xs font-medium text-foreground whitespace-nowrap">{mother.name}</TableCell>
                           <TableCell>{getRiskBadge(mother.risk)}</TableCell>
-                          <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.gestationalAge}</TableCell>
-                          <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.edd}</TableCell>
-                          <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{mother.station}</TableCell>
+                          <TableCell className="text-xs text-foreground whitespace-nowrap">{mother.gestationalAge}</TableCell>
+                          <TableCell className="text-xs text-foreground whitespace-nowrap">{mother.edd}</TableCell>
+                          <TableCell className="text-xs text-foreground whitespace-nowrap">{mother.station}</TableCell>
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-foreground dark:text-white group-hover:text-foreground dark:text-foreground dark:text-white" onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground" onClick={(e) => e.stopPropagation()}>
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>

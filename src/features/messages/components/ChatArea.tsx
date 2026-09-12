@@ -123,27 +123,27 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
 
   if (!activeChatId) {
     return (
-      <div className="flex flex-col flex-1 h-full bg-background dark:bg-black items-center justify-center border-r border-sidebar-border text-muted-foreground">
+      <div className="flex flex-col flex-1 h-full bg-background items-center justify-center border-r border-border text-muted-foreground">
         Select a conversation from the sidebar to view messages.
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col flex-1 h-full bg-background dark:bg-black min-w-0 border-r border-sidebar-border">
+    <div className="flex flex-col flex-1 h-full bg-background min-w-0 border-r border-border">
       {/* Hidden inputs for attachments */}
       <input type="file" ref={fileInputRef} className="hidden" accept="*/*" onChange={(e) => handleFileUpload(e, false)} />
       <input type="file" ref={imageInputRef} className="hidden" accept="image/*,video/*" onChange={(e) => handleFileUpload(e, true)} />
 
       {/* Chat Header */}
-      <div className="h-[72px] px-6 py-4 border-b border-sidebar-border shrink-0 bg-background dark:bg-black flex items-center justify-between">
+      <div className="h-[72px] px-6 py-4 border-b border-border shrink-0 bg-card flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 border border-sidebar-border">
+          <Avatar className="h-10 w-10 border border-border">
             <AvatarImage src={activeContact?.avatar || ""} />
             <AvatarFallback className="bg-primary/10 text-primary text-xs">{(activeContact?.name || "U").charAt(0)}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <h2 className="text-sm font-semibold text-foreground dark:text-white">{activeContact?.name || "Loading..."}</h2>
+            <h2 className="text-sm font-semibold text-card-foreground">{activeContact?.name || "Loading..."}</h2>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[10px] text-muted-foreground font-medium">{activeContact?.role}</span>
             </div>
@@ -151,7 +151,7 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 text-xs font-medium gap-1.5 border-sidebar-border">
+          <Button variant="outline" size="sm" className="h-8 text-xs font-medium gap-1.5 border-border bg-card text-card-foreground hover:bg-accent">
             <UserIcon className="h-3.5 w-3.5" />
             View Profile
           </Button>
@@ -175,7 +175,7 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
                 "p-3 rounded-2xl text-sm leading-relaxed",
                 isMe 
                   ? "bg-primary text-primary-foreground rounded-tr-sm" 
-                  : "bg-muted dark:bg-[#1a1a1a] border border-sidebar-border text-foreground dark:text-white rounded-tl-sm"
+                  : "bg-card border border-border text-card-foreground rounded-tl-sm shadow-xs"
               )}>
                 {isImage ? (
                   <a href={msg.message_content} target="_blank" rel="noreferrer" className="block">
@@ -183,14 +183,14 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
                   </a>
                 ) : isFile ? (
                   <div className="flex items-center gap-3 p-1">
-                    <div className="h-8 w-8 rounded bg-background/20 flex items-center justify-center shrink-0">
+                    <div className="h-8 w-8 rounded bg-muted/60 flex items-center justify-center shrink-0">
                       <FileText className="h-4 w-4" />
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="text-xs font-semibold truncate max-w-[180px]">{msg.file_name || "Document.pdf"}</span>
                       <span className="text-[10px] opacity-75">{msg.file_size || "File Attachment"}</span>
                     </div>
-                    <a href={msg.message_content} download={msg.file_name || "file"} className="ml-2 p-1.5 rounded hover:bg-black/10 dark:hover:bg-white/10 shrink-0">
+                    <a href={msg.message_content} download={msg.file_name || "file"} className="ml-2 p-1.5 rounded hover:bg-muted/80 shrink-0">
                       <Download className="h-4 w-4" />
                     </a>
                   </div>
@@ -213,8 +213,8 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
       </div>
 
       {/* Input Area */}
-      <div className="px-6 pb-6 pt-4 bg-background dark:bg-black shrink-0 border-t border-transparent flex flex-col gap-2">
-        <div className="flex items-end gap-2 bg-muted/50 dark:bg-[#111] border border-sidebar-border p-2 rounded-xl focus-within:ring-1 focus-within:ring-ring transition-shadow w-full">
+      <div className="px-6 pb-6 pt-4 bg-background shrink-0 border-t border-transparent flex flex-col gap-2">
+        <div className="flex items-end gap-2 bg-card border border-border p-2 rounded-xl focus-within:ring-1 focus-within:ring-ring transition-shadow w-full shadow-xs">
           <div className="flex items-center gap-1 mb-1 shrink-0">
             <Button 
               onClick={() => fileInputRef.current?.click()}
@@ -246,7 +246,7 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
               }
             }}
             placeholder="Type your message..."
-            className="flex-1 max-h-32 min-h-[40px] resize-none bg-transparent border-none focus:outline-none focus:ring-0 text-sm py-2.5 px-2 text-foreground dark:text-white placeholder:text-muted-foreground"
+            className="flex-1 max-h-32 min-h-[40px] resize-none bg-transparent border-none focus:outline-none focus:ring-0 text-sm py-2.5 px-2 text-card-foreground placeholder:text-muted-foreground"
             rows={1}
           />
           

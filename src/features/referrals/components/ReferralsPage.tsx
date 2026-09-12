@@ -201,7 +201,7 @@ export function ReferralsPage() {
   }
 
   return (
-    <div className="relative flex items-start w-full h-full overflow-hidden bg-background dark:bg-black">
+    <div className="relative flex items-start w-full h-full overflow-hidden bg-background">
       {copyNotification && (
         <div className="fixed bottom-4 right-4 z-[100] px-3 py-2 text-xs bg-foreground text-background font-medium rounded-md shadow-lg transition-all">
           {copyNotification}
@@ -214,23 +214,23 @@ export function ReferralsPage() {
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEndHandler}
       >
-        <div className="sticky top-0 z-10 flex flex-col gap-4 bg-background dark:bg-black p-4 pl-3 pr-4 pb-4 border-b md:border-none border-sidebar-border">
+        <div className="sticky top-0 z-10 flex flex-col gap-4 bg-background p-4 pl-3 pr-4 pb-4 border-b md:border-none border-border">
           {/* Tabs */}
           <div className="w-full overflow-x-auto shrink-0 pb-2 -mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-max">
-              <TabsList className="bg-muted dark:bg-[#1e1e1e] border-none h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
-                <TabsTrigger value="today" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">Today's Queue</TabsTrigger>
-                <TabsTrigger value="accepted" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">Accepted</TabsTrigger>
-                <TabsTrigger value="pending" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">Pending</TabsTrigger>
-                <TabsTrigger value="in-transit" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">In Transit</TabsTrigger>
-                <TabsTrigger value="admitted" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">Admitted</TabsTrigger>
+              <TabsList className="bg-muted border border-border h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
+                <TabsTrigger value="today" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">Today's Queue</TabsTrigger>
+                <TabsTrigger value="accepted" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">Accepted</TabsTrigger>
+                <TabsTrigger value="pending" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">Pending</TabsTrigger>
+                <TabsTrigger value="in-transit" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">In Transit</TabsTrigger>
+                <TabsTrigger value="admitted" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">Admitted</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
 
           {/* Toolbar */}
           {!isOnline && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs border border-amber-500/20 font-medium">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 text-amber-600 text-xs border border-amber-500/20 font-medium">
               <WifiOff className="h-4 w-4 shrink-0" />
               <span>Working Offline — Referrals created or updated locally will automatically sync with the server once internet connectivity is restored.</span>
             </div>
@@ -242,13 +242,13 @@ export function ReferralsPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search referrals..." 
-                className="h-8 px-2 w-full sm:w-[250px] text-xs font-normal bg-background dark:bg-black border-sidebar-border" 
+                className="h-8 px-2 w-full sm:w-[250px] text-xs font-normal bg-card border-border text-card-foreground" 
               />
               
               {/* Filter 1: ML Risk Level */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:text-white dark:hover:bg-white/5">
+                  <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border border-dashed bg-card text-card-foreground hover:bg-accent">
                     <PlusCircle className="h-3.5 w-3.5" />
                     Risk Level {selectedRiskFilters.length > 0 ? `(${selectedRiskFilters.length})` : ""}
                   </Button>
@@ -264,9 +264,9 @@ export function ReferralsPage() {
                             if (checked) setSelectedRiskFilters([...selectedRiskFilters, option])
                             else setSelectedRiskFilters(selectedRiskFilters.filter((r) => r !== option))
                           }}
-                          className="border-sidebar-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground h-3.5 w-3.5 rounded-[4px]" 
+                          className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground h-3.5 w-3.5 rounded-[4px]" 
                         />
-                        <label htmlFor={`filter-risk-${option}`} className="text-xs font-normal cursor-pointer text-foreground dark:text-white">
+                        <label htmlFor={`filter-risk-${option}`} className="text-xs font-normal cursor-pointer text-foreground">
                           {option}
                         </label>
                       </div>
@@ -285,15 +285,15 @@ export function ReferralsPage() {
             </div>
 
             <div className="flex w-full xl:w-auto items-center gap-2">
-              <Button variant="outline" onClick={() => setIsExportOpen(true)} className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
+              <Button variant="outline" onClick={() => setIsExportOpen(true)} className="h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-card-foreground hover:bg-accent">
                 <Download className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Export</span>
               </Button>
-              <Button variant="outline" onClick={loadReferrals} className="h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:bg-white/5">
+              <Button variant="outline" onClick={loadReferrals} className="h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-card-foreground hover:bg-accent">
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                 <span className="hidden sm:inline">Refresh</span>
               </Button>
-              <Button onClick={() => setIsCreateOpen(true)} className="h-8 text-xs font-medium gap-1.5 bg-foreground text-background hover:bg-foreground/90">
+              <Button onClick={() => setIsCreateOpen(true)} className="h-8 text-xs font-medium gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90">
                 <Plus className="h-3.5 w-3.5" />
                 Create Referral
               </Button>
@@ -311,13 +311,13 @@ export function ReferralsPage() {
 
           {/* Empty State */}
           {!loading && filteredReferrals.length === 0 && (
-            <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-sidebar-border rounded-xl bg-card/50">
+            <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-border rounded-xl bg-card/50">
               <FileSpreadsheet className="h-8 w-8 text-muted-foreground mb-3 opacity-50" />
-              <h3 className="text-sm font-semibold text-foreground dark:text-white">No Referrals Found</h3>
+              <h3 className="text-sm font-semibold text-card-foreground">No Referrals Found</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm">
                 No active e-Referral transfers match your current filter criteria. Initiate a new inter-clinic referral to get started.
               </p>
-              <Button onClick={() => setIsCreateOpen(true)} className="mt-4 h-8 text-xs bg-foreground text-background hover:bg-foreground/90">
+              <Button onClick={() => setIsCreateOpen(true)} className="mt-4 h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90">
                 <Plus className="h-3.5 w-3.5 mr-1.5" /> Initiate First Referral
               </Button>
             </div>
@@ -325,25 +325,25 @@ export function ReferralsPage() {
 
           {/* Desktop Data Table */}
           {!loading && filteredReferrals.length > 0 && (
-            <div className="hidden md:block rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-[#0a0a0a]">
+            <div className="hidden md:block rounded-md border border-border overflow-x-auto bg-card">
               <div className="min-w-[1100px]">
                 <Table>
-                  <TableHeader className="bg-card dark:bg-[#111]">
-                    <TableRow className="border-sidebar-border hover:bg-transparent">
+                  <TableHeader className="bg-muted/50">
+                    <TableRow className="border-border hover:bg-transparent">
                       <TableHead className="w-12 text-center pl-4">
                         <Checkbox 
                           checked={selectedRowIds.size === filteredReferrals.length && filteredReferrals.length > 0}
                           onCheckedChange={toggleSelectAll}
-                          className="border-sidebar-border" 
+                          className="border-border" 
                         />
                       </TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Mother Name</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Initiated At</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Risk Flag</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Status</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Transfer Record Link</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Transfer Code</TableHead>
-                      <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Destination Facility</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Mother Name</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Initiated At</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Risk Flag</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Status</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Transfer Record Link</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Transfer Code</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Destination Facility</TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -362,20 +362,20 @@ export function ReferralsPage() {
                       return (
                         <TableRow 
                           key={ref.id} 
-                          className={`border-sidebar-border cursor-pointer transition-colors group ${selectedReferral?.id === ref.id ? 'bg-accent dark:bg-white/10' : 'hover:bg-accent dark:hover:bg-white/5'}`}
+                          className={`border-border cursor-pointer transition-colors group ${selectedReferral?.id === ref.id ? 'bg-accent' : 'hover:bg-accent/50'}`}
                           onClick={() => setSelectedReferral(ref)}
                         >
                           <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
                             <Checkbox 
                               checked={selectedRowIds.has(ref.id)}
                               onCheckedChange={() => toggleSelectRow(ref.id)}
-                              className="border-sidebar-border data-[state=checked]:bg-primary dark:data-[state=checked]:bg-white data-[state=checked]:text-primary-foreground dark:data-[state=checked]:text-black" 
+                              className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" 
                             />
                           </TableCell>
-                          <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">
+                          <TableCell className="text-xs font-medium text-card-foreground whitespace-nowrap">
                             {motherName}
                           </TableCell>
-                          <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
+                          <TableCell className="text-xs text-card-foreground whitespace-nowrap">
                             {initiatedAt}
                           </TableCell>
                           <TableCell>
@@ -405,7 +405,7 @@ export function ReferralsPage() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
+                          <TableCell className="text-xs text-card-foreground whitespace-nowrap">
                             <div className="flex items-center gap-2">
                               {recordLink !== "N/A" ? (
                                 <a href={recordLink} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{recordLink}</a>
@@ -417,7 +417,7 @@ export function ReferralsPage() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-xs font-mono text-foreground dark:text-white whitespace-nowrap">
+                          <TableCell className="text-xs font-mono text-card-foreground whitespace-nowrap">
                             <div className="flex items-center gap-2">
                               {transferCode}
                               {transferCode !== "N/A" && (
@@ -425,13 +425,13 @@ export function ReferralsPage() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
+                          <TableCell className="text-xs text-card-foreground whitespace-nowrap">
                             {destination}
                           </TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white group-hover:text-foreground dark:text-white">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground hover:bg-accent">
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -484,12 +484,12 @@ export function ReferralsPage() {
                 return (
                   <div 
                     key={ref.id} 
-                    className={`flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-[#111] gap-4 cursor-pointer transition-colors ${selectedReferral?.id === ref.id ? 'ring-1 ring-ring dark:ring-white/20' : 'hover:bg-accent dark:hover:bg-white/5'}`}
+                    className={`flex flex-col p-4 rounded-xl border border-border bg-card gap-4 cursor-pointer transition-colors ${selectedReferral?.id === ref.id ? 'ring-1 ring-ring' : 'hover:bg-accent/50'}`}
                     onClick={() => setSelectedReferral(ref)}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex flex-col gap-1">
-                        <h3 className="text-sm font-semibold text-foreground dark:text-white">{motherName}</h3>
+                        <h3 className="text-sm font-semibold text-card-foreground">{motherName}</h3>
                         <span className="text-xs text-muted-foreground">{initiatedAt}</span>
                       </div>
                       <div className="flex flex-col items-end gap-1">
@@ -520,11 +520,11 @@ export function ReferralsPage() {
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">Destination</span>
-                        <span className="text-xs text-foreground dark:text-white text-right">{destination}</span>
+                        <span className="text-xs text-card-foreground text-right">{destination}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">Transfer Code</span>
-                        <div className="flex items-center gap-2 text-xs font-mono text-foreground dark:text-white text-right">
+                        <div className="flex items-center gap-2 text-xs font-mono text-card-foreground text-right">
                           {transferCode}
                           {transferCode !== "N/A" && (
                             <Copy className="h-3 w-3 text-muted-foreground cursor-pointer" onClick={(e) => handleCopyText(transferCode, "PIN Code", e)} />
@@ -533,10 +533,10 @@ export function ReferralsPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end pt-3 border-t border-sidebar-border" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end pt-3 border-t border-border" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -576,7 +576,7 @@ export function ReferralsPage() {
       {/* Mobile Sidepeek Drawer (from underneath with drag-to-dismiss) */}
       {isMobile && (
         <Drawer open={!!selectedReferral} onOpenChange={(open) => !open && setSelectedReferral(null)}>
-          <DrawerContent className="p-0 bg-background dark:bg-[#0a0a0a] border-t border-sidebar-border border-x-0 border-b-0 before:hidden rounded-t-xl overflow-hidden !h-[85dvh] flex flex-col focus-visible:outline-none">
+          <DrawerContent className="p-0 bg-card border-t border-border border-x-0 border-b-0 before:hidden rounded-t-xl overflow-hidden !h-[85dvh] flex flex-col focus-visible:outline-none">
             <div className="sr-only">
               <DrawerTitle>Referral Details</DrawerTitle>
             </div>

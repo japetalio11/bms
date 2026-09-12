@@ -266,16 +266,16 @@ export function AppointmentListPage() {
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEndHandler}
       >
-        <div className="sticky top-0 z-10 flex flex-col gap-4 bg-background dark:bg-black p-4 pl-3 pr-4 pb-4 border-b md:border-none border-sidebar-border">
+        <div className="sticky top-0 z-10 flex flex-col gap-4 bg-background p-4 pl-3 pr-4 pb-4 border-b md:border-none border-border">
           
           {/* Tabs */}
           <div className="w-full overflow-x-auto shrink-0 pb-2 -mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val); setCurrentPage(1); }} className="w-full md:w-max">
-              <TabsList className="bg-muted dark:bg-[#1e1e1e] border-none h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
-                <TabsTrigger value="all" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">All / Queue</TabsTrigger>
-                <TabsTrigger value="upcoming" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">Upcoming</TabsTrigger>
-                <TabsTrigger value="completed" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">Completed</TabsTrigger>
-                <TabsTrigger value="cancelled" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">Cancelled</TabsTrigger>
+              <TabsList className="bg-muted border border-border h-9 w-full md:w-max justify-start rounded-lg p-1 gap-1 *:flex-1 md:*:flex-initial">
+                <TabsTrigger value="all" className="text-xs font-medium data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground rounded-md px-3 py-1 h-full transition-all">All / Queue</TabsTrigger>
+                <TabsTrigger value="upcoming" className="text-xs font-medium data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground rounded-md px-3 py-1 h-full transition-all">Upcoming</TabsTrigger>
+                <TabsTrigger value="completed" className="text-xs font-medium data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground rounded-md px-3 py-1 h-full transition-all">Completed</TabsTrigger>
+                <TabsTrigger value="cancelled" className="text-xs font-medium data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground rounded-md px-3 py-1 h-full transition-all">Cancelled</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -288,14 +288,14 @@ export function AppointmentListPage() {
                   placeholder="Search appointments..." 
                   value={searchQuery}
                   onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                  className="h-8 px-2 w-full sm:w-[250px] text-xs font-normal bg-background dark:bg-black border-sidebar-border" 
+                  className="h-8 px-2 w-full sm:w-[250px] text-xs font-normal bg-card border-border" 
                 />
               </div>
 
               {/* Status Filter */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground dark:!bg-black dark:text-white">
+                  <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border border-dashed bg-card text-foreground hover:bg-muted">
                     <PlusCircle className="h-3.5 w-3.5" />
                     Appointment Status {selectedStatusFilters.length > 0 && `(${selectedStatusFilters.length})`}
                   </Button>
@@ -325,7 +325,7 @@ export function AppointmentListPage() {
               {/* Risk Filter */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground dark:!bg-black dark:text-white">
+                  <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border border-dashed bg-card text-foreground hover:bg-muted">
                     <PlusCircle className="h-3.5 w-3.5" />
                     Risk Flag {selectedRiskFilters.length > 0 && `(${selectedRiskFilters.length})`}
                   </Button>
@@ -355,7 +355,7 @@ export function AppointmentListPage() {
               {/* Type Filter */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground dark:!bg-black dark:text-white">
+                  <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border border-dashed bg-card text-foreground hover:bg-muted">
                     <PlusCircle className="h-3.5 w-3.5" />
                     Type {selectedTypeFilters.length > 0 && `(${selectedTypeFilters.length})`}
                   </Button>
@@ -385,7 +385,7 @@ export function AppointmentListPage() {
 
             <div className="flex w-full xl:w-auto items-center gap-2">
               <ExportAppointmentsDataModal appointments={filteredAppointments}>
-                <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground dark:!bg-black dark:text-white">
+                <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-foreground hover:bg-muted">
                   <Download className="h-3.5 w-3.5" />
                   Export
                 </Button>
@@ -394,14 +394,14 @@ export function AppointmentListPage() {
               <Button 
                 variant="outline" 
                 onClick={fetchAppointments} 
-                className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground dark:!bg-black dark:text-white"
+                className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-foreground hover:bg-muted"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
                 Refresh
               </Button>
 
               <CreateAppointmentModal onSuccess={fetchAppointments}>
-                <Button className="w-full md:w-auto h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
+                <Button className="w-full md:w-auto h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
                   <PlusCircle className="h-3.5 w-3.5" />
                   New Appointment
                 </Button>
@@ -467,7 +467,7 @@ export function AppointmentListPage() {
                 <div className="flex md:hidden flex-col gap-4">
                   {isLoading && filteredAppointments.length === 0
                     ? [...Array(3)].map((_, i) => (
-                        <div key={`appointment-skel-card-${i}`} className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-[#111] gap-3">
+                        <div key={`appointment-skel-card-${i}`} className="flex flex-col p-4 rounded-xl border border-border bg-card text-card-foreground gap-3">
                           <div className="flex items-center justify-between">
                             <Skeleton className="h-4 w-32" />
                             <Skeleton className="h-5 w-16 rounded-sm" />
@@ -481,11 +481,11 @@ export function AppointmentListPage() {
                     : paginatedAppointments.map((appointment) => (
                         <div 
                           key={appointment.id} 
-                          className={`flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-[#111] gap-4 cursor-pointer transition-colors ${selectedAppointment?.id === appointment.id ? 'ring-1 ring-ring dark:ring-white/20' : 'hover:bg-accent dark:hover:bg-white/5'}`}
+                          className={`flex flex-col p-4 rounded-xl border border-border bg-card text-card-foreground gap-4 cursor-pointer transition-colors ${selectedAppointment?.id === appointment.id ? 'ring-1 ring-ring' : 'hover:bg-accent'}`}
                           onClick={() => setSelectedAppointment(appointment)}
                         >
                           <div className="flex items-start justify-between gap-2">
-                            <h3 className="text-sm font-semibold text-foreground dark:text-white">{appointment.name}</h3>
+                            <h3 className="text-sm font-semibold text-foreground">{appointment.name}</h3>
                             <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${appointment.risk.toLowerCase().includes('high') ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
                               <Activity className="h-3 w-3" />
                               {appointment.risk}
@@ -502,18 +502,18 @@ export function AppointmentListPage() {
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-muted-foreground">Type</span>
-                              <span className="text-xs text-foreground dark:text-white">{appointment.type}</span>
+                              <span className="text-xs text-foreground">{appointment.type}</span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-muted-foreground">Date & Time</span>
-                              <span className="text-xs text-foreground dark:text-white">{appointment.date}</span>
+                              <span className="text-xs text-foreground">{appointment.date}</span>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-end pt-3 border-t border-sidebar-border">
+                          <div className="flex items-center justify-end pt-3 border-t border-border">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white" onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground" onClick={(e) => e.stopPropagation()}>
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -538,26 +538,26 @@ export function AppointmentListPage() {
                 </div>
 
                 {/* Desktop Data Table */}
-                <div className="hidden md:block rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-black">
+                <div className="hidden md:block rounded-xl border border-border overflow-x-auto bg-card shadow-xs">
                   <div className="min-w-[900px]">
                     <Table>
-                      <TableHeader className="bg-card dark:bg-[#111]">
-                        <TableRow className="border-sidebar-border hover:bg-transparent">
+                      <TableHeader className="bg-muted/40">
+                        <TableRow className="border-border hover:bg-transparent">
                           <TableHead className="w-12 text-center pl-4">
-                            <Checkbox className="border-sidebar-border" />
+                            <Checkbox className="border-border" />
                           </TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Mother Name</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Risk Flag</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Appointment Status</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Type</TableHead>
-                          <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Date & Time</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground whitespace-nowrap">Mother Name</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground whitespace-nowrap">Risk Flag</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground whitespace-nowrap">Appointment Status</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground whitespace-nowrap">Type</TableHead>
+                          <TableHead className="text-xs font-medium text-foreground whitespace-nowrap">Date & Time</TableHead>
                           <TableHead className="w-12"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {isLoading && filteredAppointments.length === 0
                           ? [...Array(5)].map((_, i) => (
-                              <TableRow key={`appointment-skel-${i}`} className="border-sidebar-border">
+                              <TableRow key={`appointment-skel-${i}`} className="border-border">
                                 <TableCell className="pl-4"><Skeleton className="h-4 w-4 rounded" /></TableCell>
                                 <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                                 <TableCell><Skeleton className="h-5 w-20 rounded-sm" /></TableCell>
@@ -570,13 +570,13 @@ export function AppointmentListPage() {
                           : paginatedAppointments.map((appointment) => (
                               <TableRow 
                                 key={appointment.id} 
-                                className={`border-sidebar-border cursor-pointer transition-colors group ${selectedAppointment?.id === appointment.id ? 'bg-accent dark:bg-white/10' : 'hover:bg-accent dark:hover:bg-white/5'}`}
+                                className={`border-border cursor-pointer transition-colors group ${selectedAppointment?.id === appointment.id ? 'bg-muted/70' : 'hover:bg-muted/50'}`}
                                 onClick={() => setSelectedAppointment(appointment)}
                               >
                                 <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
-                                  <Checkbox className="border-sidebar-border" />
+                                  <Checkbox className="border-border" />
                                 </TableCell>
-                                <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">
+                                <TableCell className="text-xs font-medium text-foreground whitespace-nowrap">
                                   {appointment.name}
                                 </TableCell>
                                 <TableCell>
@@ -591,16 +591,16 @@ export function AppointmentListPage() {
                                     {appointment.status}
                                   </Badge>
                                 </TableCell>
-                                <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
                                   {appointment.type}
                                 </TableCell>
-                                <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
+                                <TableCell className="text-xs text-foreground whitespace-nowrap">
                                   {appointment.date}
                                 </TableCell>
                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground">
                                         <MoreVertical className="h-4 w-4" />
                                       </Button>
                                     </DropdownMenuTrigger>
@@ -713,7 +713,7 @@ export function AppointmentListPage() {
       {/* Mobile Sidepeek Drawer */}
       {isMobile && (
         <Drawer open={!!selectedAppointment} onOpenChange={(open) => !open && setSelectedAppointment(null)}>
-          <DrawerContent className="p-0 bg-background dark:bg-[#0a0a0a] border-t border-sidebar-border border-x-0 border-b-0 before:hidden rounded-t-xl overflow-hidden !h-[80dvh] flex flex-col focus-visible:outline-none">
+          <DrawerContent className="p-0 bg-card text-card-foreground border-t border-border border-x-0 border-b-0 before:hidden rounded-t-xl overflow-hidden !h-[80dvh] flex flex-col focus-visible:outline-none shadow-2xl">
             <div className="sr-only">
               <DrawerTitle>Appointment Details</DrawerTitle>
             </div>

@@ -83,59 +83,59 @@ export function InviteTeamMemberModal({ children, onInviteSuccess }: { children:
         <div className="flex flex-col gap-4 py-2">
           <div className="flex gap-4">
             <div className="flex flex-col gap-2 flex-1">
-              <Label htmlFor="first_name" className="text-xs font-medium text-foreground dark:text-white">First Name *</Label>
+              <Label htmlFor="first_name" className="text-xs font-medium text-foreground">First Name *</Label>
               <Input 
                 id="first_name" 
                 placeholder="Juan" 
                 value={formData.first_name}
                 onChange={handleInputChange}
-                className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white placeholder:text-muted-foreground"
+                className="!h-8 bg-card border-border text-xs text-card-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div className="flex flex-col gap-2 flex-1">
-              <Label htmlFor="last_name" className="text-xs font-medium text-foreground dark:text-white">Last Name *</Label>
+              <Label htmlFor="last_name" className="text-xs font-medium text-foreground">Last Name *</Label>
               <Input 
                 id="last_name" 
                 placeholder="Dela Cruz" 
                 value={formData.last_name}
                 onChange={handleInputChange}
-                className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white placeholder:text-muted-foreground"
+                className="!h-8 bg-card border-border text-xs text-card-foreground placeholder:text-muted-foreground"
               />
             </div>
           </div>
 
           <div className="flex gap-4">
             <div className="flex flex-col gap-2 flex-1">
-              <Label htmlFor="email" className="text-xs font-medium text-foreground dark:text-white">Email Address *</Label>
+              <Label htmlFor="email" className="text-xs font-medium text-foreground">Email Address *</Label>
               <Input 
                 id="email" 
                 placeholder="name@example.com" 
                 type="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white placeholder:text-muted-foreground"
+                className="!h-8 bg-card border-border text-xs text-card-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div className="flex flex-col gap-2 flex-1">
-              <Label htmlFor="phone_number" className="text-xs font-medium text-foreground dark:text-white">Phone Number</Label>
+              <Label htmlFor="phone_number" className="text-xs font-medium text-foreground">Phone Number</Label>
               <Input 
                 id="phone_number" 
                 placeholder="09123456789" 
                 value={formData.phone_number}
                 onChange={handleInputChange}
-                className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white placeholder:text-muted-foreground"
+                className="!h-8 bg-card border-border text-xs text-card-foreground placeholder:text-muted-foreground"
               />
             </div>
           </div>
 
           <div className="flex gap-4">
             <div className="flex flex-col gap-2 flex-1">
-              <Label htmlFor="role" className="text-xs font-medium text-foreground dark:text-white">Role *</Label>
+              <Label htmlFor="role" className="text-xs font-medium text-foreground">Role *</Label>
               <Select value={formData.role} onValueChange={(val) => handleSelectChange('role', val)}>
-                <SelectTrigger id="role" className="!h-8 w-full bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-muted-foreground">
+                <SelectTrigger id="role" className="!h-8 w-full bg-card border-border text-xs text-card-foreground">
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
-                <SelectContent position="popper" side="bottom" className="bg-background dark:bg-[#0a0a0a] border-sidebar-border text-foreground dark:text-white">
+                <SelectContent position="popper" side="bottom" className="bg-popover border-border text-popover-foreground">
                   <SelectItem value="Admin" className="text-xs">Administrator</SelectItem>
                   <SelectItem value="Manager" className="text-xs">Manager</SelectItem>
                   <SelectItem value="Doctor" className="text-xs">Doctor</SelectItem>
@@ -147,12 +147,12 @@ export function InviteTeamMemberModal({ children, onInviteSuccess }: { children:
             </div>
 
             <div className="flex flex-col gap-2 flex-1">
-              <Label htmlFor="sector" className="text-xs font-medium text-foreground dark:text-white">Sector</Label>
+              <Label htmlFor="sector" className="text-xs font-medium text-foreground">Sector</Label>
               <Select value={formData.sector} onValueChange={(val) => handleSelectChange('sector', val)}>
-                <SelectTrigger id="sector" className="!h-8 w-full bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-muted-foreground">
+                <SelectTrigger id="sector" className="!h-8 w-full bg-card border-border text-xs text-card-foreground">
                   <SelectValue placeholder="Select sector" />
                 </SelectTrigger>
-                <SelectContent position="popper" side="bottom" className="bg-background dark:bg-[#0a0a0a] border-sidebar-border text-foreground dark:text-white">
+                <SelectContent position="popper" side="bottom" className="bg-popover border-border text-popover-foreground">
                   <SelectItem value="Local Government Unit" className="text-xs">Local Government Unit</SelectItem>
                   <SelectItem value="NGO" className="text-xs">NGO</SelectItem>
                   <SelectItem value="Private Sector" className="text-xs">Private Sector</SelectItem>
@@ -167,14 +167,14 @@ export function InviteTeamMemberModal({ children, onInviteSuccess }: { children:
             variant="outline" 
             onClick={() => setOpen(false)}
             disabled={loading}
-            className="flex-1 text-xs font-medium border-sidebar-border text-foreground hover:bg-accent dark:bg-[#1e1e1e] dark:hover:bg-[#1e1e1e]/80 dark:text-white dark:border-sidebar-border"
+            className="flex-1 text-xs font-medium border-border text-foreground hover:bg-accent"
           >
             Cancel
           </Button>
           <Button 
             onClick={handleInvite}
             disabled={loading}
-            className="flex-1 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+            className="flex-1 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {loading ? "Sending..." : "Send Invite"}
           </Button>

@@ -249,18 +249,18 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
     )
   }
 
-  const tabTriggerClass = "text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all"
+  const tabTriggerClass = "text-xs font-medium data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground rounded-md px-3 py-1 h-full transition-all"
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center w-full h-full p-8 text-xs text-muted-foreground bg-background dark:bg-black">
+      <div className="flex items-center justify-center w-full h-full p-8 text-xs text-muted-foreground bg-background">
         Loading mother profile...
       </div>
     )
   }
 
   return (
-    <div className="relative flex items-start w-full h-full overflow-hidden bg-background dark:bg-black">
+    <div className="relative flex items-start w-full h-full overflow-hidden bg-background">
       {/* Main Content Area */}
       <div className="flex flex-col w-full h-full text-foreground min-w-0 overflow-y-auto relative">
         
@@ -276,14 +276,14 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
           </div>
 
           {/* Section A: Profile Header */}
-          <div className="flex flex-col gap-6 p-5 rounded-xl border border-sidebar-border bg-card dark:bg-[#111] shadow-sm relative">
+          <div className="flex flex-col gap-6 p-5 rounded-xl border border-border bg-card text-card-foreground shadow-xs relative">
             
             {/* Top Tier: Identity & Action Bar */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 w-full">
               {/* Left Side: Avatar & Name */}
               <div className="flex items-center gap-4">
                 <div className="relative group">
-                  <Avatar className="h-14 w-14 border border-sidebar-border shadow-sm">
+                  <Avatar className="h-14 w-14 border border-border shadow-xs">
                     {(motherData?.user?.profile_url || motherData?.profile_url || motherData?.photo_url || motherData?.user?.photo_url) && (
                       <AvatarImage src={motherData?.user?.profile_url || motherData?.profile_url || motherData?.photo_url || motherData?.user?.photo_url} alt={mother.name} className="object-cover" />
                     )}
@@ -294,24 +294,24 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                   <button
                     type="button"
                     onClick={() => setAvatarModalOpen(true)}
-                    className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-foreground text-background dark:bg-white dark:text-black flex items-center justify-center shadow-md hover:scale-110 transition-transform"
+                    className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs hover:scale-110 transition-transform"
                     title="Upload Profile Picture"
                   >
                     <Pencil className="h-2.5 w-2.5" />
                   </button>
                 </div>
                 <div className="flex items-center gap-3">
-                  <h2 className="text-2xl font-bold text-foreground dark:text-white leading-none">{mother.name}</h2>
+                  <h2 className="text-2xl font-bold text-foreground leading-none">{mother.name}</h2>
                   {getRiskBadge(mother.risk)}
                 </div>
               </div>
 
               {/* Right Side: Global Actions */}
               <div className="flex items-center gap-2 w-full md:w-auto">
-                <Button onClick={() => setEditModalOpen(true)} variant="outline" size="sm" className="flex-1 md:flex-none h-9 px-4 text-xs font-medium border-sidebar-border bg-transparent hover:bg-muted dark:hover:bg-[#1a1a1a]">
+                <Button onClick={() => setEditModalOpen(true)} variant="outline" size="sm" className="flex-1 md:flex-none h-9 px-4 text-xs font-medium border-border bg-card text-foreground hover:bg-muted">
                   Edit Profile
                 </Button>
-                <Button size="sm" onClick={() => setLogVitalsModalOpen(true)} className="flex-1 md:flex-none h-9 px-4 text-xs font-medium bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-none">
+                <Button size="sm" onClick={() => setLogVitalsModalOpen(true)} className="flex-1 md:flex-none h-9 px-4 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs">
                   Log Vitals
                 </Button>
               </div>
@@ -321,24 +321,24 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 w-full">
               
               {/* Block A: Pregnancy Progress */}
-              <div className="flex flex-col gap-4 p-5 rounded-lg bg-muted/50 dark:bg-[#1a1a1a]/50 border border-transparent dark:border-sidebar-border/30">
+              <div className="flex flex-col gap-4 p-5 rounded-xl bg-muted/40 border border-border">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between w-full">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                       <Baby className="h-3.5 w-3.5" />
                       Pregnancy Progress
                     </span>
-                    <span className="text-xs font-medium text-foreground dark:text-white bg-background dark:bg-black px-2 py-0.5 rounded-sm border border-sidebar-border/50">
+                    <span className="text-xs font-medium text-foreground bg-card px-2 py-0.5 rounded-sm border border-border">
                       {mother.trimester}
                     </span>
                   </div>
-                  <span className="text-2xl font-bold text-foreground dark:text-white mt-1">{mother.gestationalAge}</span>
+                  <span className="text-2xl font-bold text-foreground mt-1">{mother.gestationalAge}</span>
                 </div>
                 
                 {/* Progress Bar */}
                 <div className="flex flex-col gap-1.5 mt-auto">
-                  <div className="h-1.5 w-full bg-sidebar-border dark:bg-[#333] rounded-full overflow-hidden">
-                    <div className="h-full bg-primary dark:bg-white rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
+                  <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden border border-border/50">
+                    <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
                   </div>
                   <div className="flex items-center justify-between text-[10px] font-medium text-muted-foreground">
                     <span>Week 0</span>
@@ -348,7 +348,7 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
               </div>
 
               {/* Block B: Obstetric Baseline */}
-              <div className="flex flex-col gap-4 p-5 rounded-lg bg-muted/50 dark:bg-[#1a1a1a]/50 border border-transparent dark:border-sidebar-border/30">
+              <div className="flex flex-col gap-4 p-5 rounded-xl bg-muted/40 border border-border">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mb-1">
                   <Activity className="h-3.5 w-3.5" />
                   Obstetric Baseline
@@ -359,34 +359,34 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                       <Baby className="h-3 w-3 opacity-70" />
                       Gravida / Parity
                     </span>
-                    <span className="text-sm font-semibold text-foreground dark:text-white">G{mother.gravida} P{mother.parity}</span>
+                    <span className="text-sm font-semibold text-foreground">G{mother.gravida} P{mother.parity}</span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                       <Calendar className="h-3 w-3 opacity-70" />
                       LMP
                     </span>
-                    <span className="text-sm font-semibold text-foreground dark:text-white">{mother.lmp}</span>
+                    <span className="text-sm font-semibold text-foreground">{mother.lmp}</span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                       <Calendar className="h-3 w-3 opacity-70" />
                       EDD
                     </span>
-                    <span className="text-sm font-semibold text-foreground dark:text-white">{mother.edd}</span>
+                    <span className="text-sm font-semibold text-foreground">{mother.edd}</span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                       <Droplet className="h-3 w-3 opacity-70" />
                       BMI / Blood Type
                     </span>
-                    <span className="text-sm font-semibold text-foreground dark:text-white">{mother.bmi} | {mother.bloodType}</span>
+                    <span className="text-sm font-semibold text-foreground">{mother.bmi} | {mother.bloodType}</span>
                   </div>
                 </div>
               </div>
 
               {/* Block C: Demographics & Contact */}
-              <div className="flex flex-col gap-4 p-5 rounded-lg bg-muted/50 dark:bg-[#1a1a1a]/50 border border-transparent dark:border-sidebar-border/30">
+              <div className="flex flex-col gap-4 p-5 rounded-xl bg-muted/40 border border-border">
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5 mb-1">
                   <User className="h-3.5 w-3.5" />
                   Demographics & Contact
@@ -397,28 +397,28 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
                       <Calendar className="h-3 w-3 opacity-70" />
                       Age / DOB
                     </span>
-                    <span className="text-sm font-semibold text-foreground dark:text-white">{mother.ageDisplay} <span className="text-xs font-normal text-muted-foreground ml-1">({mother.dob})</span></span>
+                    <span className="text-sm font-semibold text-foreground">{mother.ageDisplay} <span className="text-xs font-normal text-muted-foreground ml-1">({mother.dob})</span></span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                       <Phone className="h-3 w-3 opacity-70" />
                       Phone
                     </span>
-                    <span className="text-sm font-semibold text-foreground dark:text-white">{mother.phone}</span>
+                    <span className="text-sm font-semibold text-foreground">{mother.phone}</span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                       <Hash className="h-3 w-3 opacity-70" />
                       Serial No.
                     </span>
-                    <span className="text-sm font-mono font-medium text-foreground dark:text-white">{mother.fsn}</span>
+                    <span className="text-sm font-mono font-medium text-foreground">{mother.fsn}</span>
                   </div>
                   <div className="flex flex-col gap-1 col-span-2 mt-[-4px]">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                       <MapPin className="h-3 w-3 opacity-70" />
                       Address
                     </span>
-                    <span className="text-sm font-semibold text-foreground dark:text-white truncate">{mother.address}</span>
+                    <span className="text-sm font-semibold text-foreground truncate">{mother.address}</span>
                   </div>
                 </div>
               </div>
@@ -427,9 +427,9 @@ export function MotherProfilePage({motherId} : {motherId?: string}) {
           </div>
 
           {/* Tabs Container */}
-          <div className="sticky top-0 z-10 w-full overflow-x-auto shrink-0 pb-2 -mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-background dark:bg-black pt-2">
+          <div className="sticky top-0 z-10 w-full overflow-x-auto shrink-0 pb-2 -mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-background pt-2">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-max">
-              <TabsList className="bg-muted dark:bg-[#1e1e1e] border-none h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
+              <TabsList className="bg-muted border border-border h-9 w-full md:w-max justify-start rounded-lg p-1 gap-1 *:flex-1 md:*:flex-initial">
                 <TabsTrigger value="pregnancy" className={tabTriggerClass}>Pregnancy</TabsTrigger>
                 <TabsTrigger value="encounters" className={tabTriggerClass}>Visitation</TabsTrigger>
                 <TabsTrigger value="appointments" className={tabTriggerClass}>Appointments</TabsTrigger>

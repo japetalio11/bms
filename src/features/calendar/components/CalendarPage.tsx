@@ -294,7 +294,7 @@ export function CalendarPage() {
 
   return (
     <div 
-      className="flex flex-col h-full bg-background dark:bg-black p-4 text-foreground relative min-h-0 w-full overflow-hidden"
+      className="flex flex-col h-full bg-background p-4 text-foreground relative min-h-0 w-full overflow-hidden"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEndHandler}
@@ -416,7 +416,7 @@ export function CalendarPage() {
       {/* Mobile Sidepeek Drawer */}
       {isMobile && (
         <Drawer open={!!selectedAppointment} onOpenChange={(open) => !open && setSelectedAppointment(null)}>
-          <DrawerContent className="p-0 bg-background dark:bg-[#0a0a0a] border-t border-sidebar-border border-x-0 border-b-0 before:hidden rounded-t-xl overflow-hidden !h-[80dvh] flex flex-col focus-visible:outline-none">
+          <DrawerContent className="p-0 bg-card text-card-foreground border-t border-border border-x-0 border-b-0 before:hidden rounded-t-xl overflow-hidden !h-[80dvh] flex flex-col focus-visible:outline-none">
             <div className="sr-only">
               <DrawerTitle>Appointment Details</DrawerTitle>
             </div>

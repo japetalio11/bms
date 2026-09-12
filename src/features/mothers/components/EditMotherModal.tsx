@@ -111,28 +111,28 @@ export function EditMotherModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="editFirstName" className="text-xs font-medium text-foreground dark:text-white">First Name</Label>
-            <Input id="editFirstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white" />
+            <Label htmlFor="editFirstName" className="text-xs font-medium text-foreground">First Name</Label>
+            <Input id="editFirstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="!h-8 bg-card border-border text-xs text-card-foreground" />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="editLastName" className="text-xs font-medium text-foreground dark:text-white">Last Name</Label>
-            <Input id="editLastName" value={lastName} onChange={(e) => setLastName(e.target.value)} className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white" />
+            <Label htmlFor="editLastName" className="text-xs font-medium text-foreground">Last Name</Label>
+            <Input id="editLastName" value={lastName} onChange={(e) => setLastName(e.target.value)} className="!h-8 bg-card border-border text-xs text-card-foreground" />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="editMiddleName" className="text-xs font-medium text-foreground dark:text-white">Middle Name</Label>
-            <Input id="editMiddleName" value={middleName} onChange={(e) => setMiddleName(e.target.value)} className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white" />
+            <Label htmlFor="editMiddleName" className="text-xs font-medium text-foreground">Middle Name</Label>
+            <Input id="editMiddleName" value={middleName} onChange={(e) => setMiddleName(e.target.value)} className="!h-8 bg-card border-border text-xs text-card-foreground" />
           </div>
           <div className="flex flex-col gap-2">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Date of Birth</Label>
+            <Label className="text-xs font-medium text-foreground">Date of Birth</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full !h-8 justify-start text-left font-normal bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs",
+                    "w-full !h-8 justify-start text-left font-normal bg-card border-border text-xs",
                     !dob && "text-muted-foreground"
                   )}
                 >
@@ -153,24 +153,24 @@ export function EditMotherModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="editPhone" className="text-xs font-medium text-foreground dark:text-white">Phone Number</Label>
-            <Input id="editPhone" value={phone} onChange={(e) => setPhone(e.target.value)} className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white" />
+            <Label htmlFor="editPhone" className="text-xs font-medium text-foreground">Phone Number</Label>
+            <Input id="editPhone" value={phone} onChange={(e) => setPhone(e.target.value)} className="!h-8 bg-card border-border text-xs text-card-foreground" />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="editEmail" className="text-xs font-medium text-foreground dark:text-white">Email</Label>
-            <Input id="editEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white" />
+            <Label htmlFor="editEmail" className="text-xs font-medium text-foreground">Email</Label>
+            <Input id="editEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="!h-8 bg-card border-border text-xs text-card-foreground" />
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="editFamilySerialNo" className="text-xs font-medium text-foreground dark:text-white">Serial No.</Label>
-            <Input id="editFamilySerialNo" value={familySerialNo} onChange={(e) => setFamilySerialNo(e.target.value)} className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white" />
+            <Label htmlFor="editFamilySerialNo" className="text-xs font-medium text-foreground">Serial No.</Label>
+            <Input id="editFamilySerialNo" value={familySerialNo} onChange={(e) => setFamilySerialNo(e.target.value)} className="!h-8 bg-card border-border text-xs text-card-foreground" />
           </div>
           <div className="flex flex-col gap-2">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Civil Status</Label>
+            <Label className="text-xs font-medium text-foreground">Civil Status</Label>
             <Select value={civilStatus} onValueChange={setCivilStatus}>
-              <SelectTrigger className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+              <SelectTrigger className="!h-8 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Civil status" />
               </SelectTrigger>
               <SelectContent>
@@ -182,9 +182,9 @@ export function EditMotherModal({
             </Select>
           </div>
           <div className="flex flex-col gap-2">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Blood Type</Label>
+            <Label className="text-xs font-medium text-foreground">Blood Type</Label>
             <Select value={bloodType} onValueChange={setBloodType}>
-              <SelectTrigger className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+              <SelectTrigger className="!h-8 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Blood type" />
               </SelectTrigger>
               <SelectContent>
@@ -202,20 +202,20 @@ export function EditMotherModal({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="editAddress" className="text-xs font-medium text-foreground dark:text-white">Address</Label>
+          <Label htmlFor="editAddress" className="text-xs font-medium text-foreground">Address</Label>
           <Textarea
             id="editAddress"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="resize-none h-[70px] bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+            className="resize-none h-[70px] bg-card border-border text-xs text-card-foreground"
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t border-sidebar-border mt-2">
+        <div className="flex justify-end gap-2 pt-4 border-t border-border mt-2">
           <Button variant="ghost" onClick={() => onOpenChange?.(false)} className="h-8 text-xs">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={loading} className="h-8 text-xs bg-[#111] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+          <Button onClick={handleSave} disabled={loading} className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
             {loading ? "Saving..." : "Save Changes"}
           </Button>
         </div>

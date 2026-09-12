@@ -125,12 +125,12 @@ export function EhrPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-background dark:bg-black text-foreground p-4 md:p-6 overflow-y-auto space-y-4">
+    <div className="flex flex-col h-full bg-background text-foreground p-4 md:p-6 overflow-y-auto space-y-4">
       {/* Control Bar: Tabs, Search, Popover Filters & Upload Button */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
-            <TabsList className="bg-muted dark:bg-[#1e1e1e] border-none h-9 w-full md:w-max justify-start rounded-md p-1 gap-1">
+            <TabsList className="bg-muted border border-border h-9 w-full md:w-max justify-start rounded-md p-1 gap-1">
               <TabsTrigger value="all" className="text-xs px-2.5 py-1">All Records</TabsTrigger>
               <TabsTrigger value="protocols" className="text-xs px-2.5 py-1">Protocols</TabsTrigger>
               <TabsTrigger value="labs" className="text-xs px-2.5 py-1">Lab Archives</TabsTrigger>
@@ -146,14 +146,14 @@ export function EhrPage() {
                 placeholder="Search EHR records..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 h-9 text-xs border-sidebar-border"
+                className="pl-8 h-9 text-xs border-border bg-card text-card-foreground"
               />
             </div>
 
             {/* Category Filter Popover */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="h-9 px-2 text-xs font-medium gap-1.5 border-sidebar-border shrink-0 !bg-background dark:!bg-black">
+                <Button variant="outline" className="h-9 px-2 text-xs font-medium gap-1.5 border-border shrink-0 bg-card text-card-foreground hover:bg-accent">
                   <PlusCircle className="h-3.5 w-3.5" />
                   Category {selectedCategoryFilters.length > 0 && `(${selectedCategoryFilters.length})`}
                 </Button>
@@ -165,19 +165,19 @@ export function EhrPage() {
                       id={`filter-cat-${cat}`}
                       checked={selectedCategoryFilters.includes(cat)}
                       onCheckedChange={() => toggleFilter(selectedCategoryFilters, setSelectedCategoryFilters, cat)}
-                      className="h-3.5 w-3.5"
+                      className="h-3.5 w-3.5 border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                     />
-                    <label htmlFor={`filter-cat-${cat}`} className="text-xs cursor-pointer">{cat}</label>
+                    <label htmlFor={`filter-cat-${cat}`} className="text-xs cursor-pointer text-foreground">{cat}</label>
                   </div>
                 ))}
                 {selectedCategoryFilters.length > 0 && (
-                  <Button onClick={() => setSelectedCategoryFilters([])} className="h-7 text-xs mt-1">Clear</Button>
+                  <Button onClick={() => setSelectedCategoryFilters([])} className="h-7 text-xs mt-1 bg-primary text-primary-foreground">Clear</Button>
                 )}
               </PopoverContent>
             </Popover>
 
             <UploadDocumentModal open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen} onSuccess={handleAddDocument}>
-              <Button className="h-9 px-3 text-xs font-medium gap-2 bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200 shrink-0">
+              <Button className="h-9 px-3 text-xs font-medium gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0">
                 <Upload className="h-4 w-4" />
                 Upload Document
               </Button>
@@ -191,14 +191,14 @@ export function EhrPage() {
         {/* Mobile List View (Hidden on MD and up) */}
         <div className="flex md:hidden flex-col gap-4">
           {filteredDocuments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-8 text-center border border-sidebar-border rounded-xl bg-card dark:bg-black">
+            <div className="flex flex-col items-center justify-center p-8 text-center border border-border rounded-xl bg-card">
               <p className="text-xs text-muted-foreground">No EHR records found</p>
             </div>
           ) : (
             filteredDocuments.map((doc) => (
               <div
                 key={doc.id}
-                className="flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-black gap-3 cursor-pointer hover:border-foreground/20 transition-colors"
+                className="flex flex-col p-4 rounded-xl border border-border bg-card gap-3 cursor-pointer hover:bg-accent/50 transition-colors"
                 onClick={() => setViewingDoc(doc)}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -206,7 +206,7 @@ export function EhrPage() {
                     {doc.format === "PDF" && <FileText className="h-4 w-4 text-red-400 shrink-0" />}
                     {doc.format === "CSV" && <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />}
                     {doc.format !== "PDF" && doc.format !== "CSV" && <FileCheck className="h-4 w-4 text-blue-400 shrink-0" />}
-                    <h3 className="text-sm font-semibold text-foreground dark:text-white truncate">{doc.title}</h3>
+                    <h3 className="text-sm font-semibold text-card-foreground truncate">{doc.title}</h3>
                   </div>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
                     doc.securityLevel === 'Public' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
@@ -220,19 +220,19 @@ export function EhrPage() {
                 <div className="flex flex-col gap-1.5 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Category</span>
-                    <span className="text-foreground dark:text-white font-medium">{doc.category}</span>
+                    <span className="text-card-foreground font-medium">{doc.category}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Scope / Patient</span>
-                    <span className="text-foreground dark:text-white font-medium">{doc.patientName}</span>
+                    <span className="text-card-foreground font-medium">{doc.patientName}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Date Uploaded</span>
-                    <span className="text-foreground dark:text-white">{doc.dateUploaded}</span>
+                    <span className="text-card-foreground">{doc.dateUploaded}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end pt-2 border-t border-sidebar-border gap-2">
+                <div className="flex items-center justify-end pt-2 border-t border-border gap-2">
                   <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); setViewingDoc(doc); }}>View</Button>
                   <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); handleDownload(doc); }}>Download</Button>
                 </div>
@@ -242,20 +242,20 @@ export function EhrPage() {
         </div>
 
         {/* Desktop Data Table */}
-        <div className="hidden md:block rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-black">
+        <div className="hidden md:block rounded-md border border-border overflow-x-auto bg-card">
           <div className="min-w-[900px]">
             <Table>
-              <TableHeader className="bg-card dark:bg-[#111]">
-                <TableRow className="border-sidebar-border hover:bg-transparent">
+              <TableHeader className="bg-muted/50">
+                <TableRow className="border-border hover:bg-transparent">
                   <TableHead className="w-12 text-center pl-4">
-                    <Checkbox className="border-sidebar-border" />
+                    <Checkbox className="border-border" />
                   </TableHead>
-                  <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Document Title</TableHead>
-                  <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Category</TableHead>
-                  <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Scope / Patient</TableHead>
-                  <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Security Level</TableHead>
-                  <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Format & Size</TableHead>
-                  <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Date Uploaded</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Document Title</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Category</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Scope / Patient</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Security Level</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Format & Size</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Date Uploaded</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -270,7 +270,7 @@ export function EhrPage() {
                   filteredDocuments.map((doc) => (
                     <TableRow
                       key={doc.id}
-                      className="border-sidebar-border cursor-pointer transition-colors group hover:bg-accent dark:hover:bg-white/5"
+                      className="border-border cursor-pointer transition-colors group hover:bg-accent/50"
                       onClick={() => {
                         const idx = filteredDocuments.findIndex(d => d.id === doc.id)
                         setPreviewDocIndex(idx >= 0 ? idx : 0)
@@ -278,29 +278,29 @@ export function EhrPage() {
                       }}
                     >
                       <TableCell className="pl-4" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox className="border-sidebar-border data-[state=checked]:bg-primary dark:data-[state=checked]:bg-white data-[state=checked]:text-primary-foreground dark:data-[state=checked]:text-black" />
+                        <Checkbox className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" />
                       </TableCell>
-                      <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">
+                      <TableCell className="text-xs font-medium text-card-foreground whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           {doc.fileUrl && (doc.format === "PNG" || doc.format === "JPG" || doc.format === "JPEG" || doc.format === "WEBP" || doc.format === "GIF" || doc.format === "BMP") ? (
-                            <div className="relative h-12 w-12 rounded-lg overflow-hidden border border-sidebar-border shrink-0 bg-black/40 shadow-sm hover:scale-105 transition-transform">
+                            <div className="relative h-12 w-12 rounded-lg overflow-hidden border border-border shrink-0 bg-muted shadow-sm hover:scale-105 transition-transform">
                               <img src={doc.fileUrl} alt={doc.title} className="h-full w-full object-cover" />
                             </div>
                           ) : (
-                            <div className="h-12 w-12 rounded-lg flex items-center justify-center border border-sidebar-border shrink-0 bg-card dark:bg-[#181818]">
+                            <div className="h-12 w-12 rounded-lg flex items-center justify-center border border-border shrink-0 bg-muted/50">
                               {doc.format === "PDF" && <FileText className="h-6 w-6 text-red-400" />}
                               {doc.format === "CSV" && <FileSpreadsheet className="h-6 w-6 text-emerald-400" />}
                               {doc.format !== "PDF" && doc.format !== "CSV" && <FileCheck className="h-6 w-6 text-blue-400" />}
                             </div>
                           )}
                           <div className="flex flex-col min-w-0">
-                            <span className="truncate max-w-[260px] font-semibold text-foreground dark:text-white text-xs" title={doc.title}>{doc.title}</span>
+                            <span className="truncate max-w-[260px] font-semibold text-card-foreground text-xs" title={doc.title}>{doc.title}</span>
                             <span className="text-[10px] text-muted-foreground">{doc.format} • {doc.size}</span>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">{doc.category}</TableCell>
-                      <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">{doc.patientName}</TableCell>
+                      <TableCell className="text-xs text-card-foreground whitespace-nowrap">{doc.category}</TableCell>
+                      <TableCell className="text-xs font-medium text-card-foreground whitespace-nowrap">{doc.patientName}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
                           doc.securityLevel === 'Public' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
@@ -315,7 +315,7 @@ export function EhrPage() {
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white group-hover:text-foreground dark:group-hover:text-white">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground hover:bg-accent">
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>

@@ -66,20 +66,20 @@ export function ReferralSuccessModal({
         {/* PIN Code & Link Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Transfer PIN Code */}
-          <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-sidebar-border bg-card dark:bg-[#111]">
-            <Label className="text-[11px] font-semibold text-foreground dark:text-white flex items-center gap-1.5">
+          <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-border bg-card text-card-foreground">
+            <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
               <Key className="h-3.5 w-3.5 text-amber-500" />
               Transfer PIN Code
             </Label>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-sm font-bold text-foreground dark:text-white flex-1 bg-muted/40 px-2 py-1 rounded">
+              <span className="font-mono text-sm font-bold text-foreground flex-1 bg-muted/40 px-2 py-1 rounded">
                 {pinCode}
               </span>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => handleCopy(pinCode, "pin")}
-                className="h-8 text-xs gap-1 border-sidebar-border"
+                className="h-8 text-xs gap-1 border-border"
               >
                 {copiedType === "pin" ? (
                   <>
@@ -95,8 +95,8 @@ export function ReferralSuccessModal({
           </div>
 
           {/* Secure Referral Link */}
-          <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-sidebar-border bg-card dark:bg-[#111]">
-            <Label className="text-[11px] font-semibold text-foreground dark:text-white flex items-center gap-1.5">
+          <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-border bg-card text-card-foreground">
+            <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
               <Link className="h-3.5 w-3.5 text-blue-500" />
               Direct Referral Link
             </Label>
@@ -104,13 +104,13 @@ export function ReferralSuccessModal({
               <Input
                 readOnly
                 value={link}
-                className="h-8 text-xs font-mono bg-muted/40 border-sidebar-border"
+                className="h-8 text-xs font-mono bg-muted/40 border-border text-foreground"
               />
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => handleCopy(link, "link")}
-                className="h-8 text-xs gap-1 border-sidebar-border shrink-0"
+                className="h-8 text-xs gap-1 border-border shrink-0"
               >
                 {copiedType === "link" ? (
                   <>
@@ -130,7 +130,7 @@ export function ReferralSuccessModal({
         {formattedMessage && (
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold text-foreground dark:text-white flex items-center gap-1.5">
+              <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                 <MessageSquare className="h-3.5 w-3.5 text-primary" />
                 Formatted Handoff Message (Ready for Messenger / Viber)
               </Label>
@@ -152,7 +152,7 @@ export function ReferralSuccessModal({
               </Button>
             </div>
 
-            <div className="p-3 rounded-xl bg-card dark:bg-[#111] border border-sidebar-border text-xs font-mono whitespace-pre-wrap leading-relaxed text-foreground dark:text-white max-h-[220px] overflow-y-auto shadow-inner">
+            <div className="p-3 rounded-xl bg-card text-card-foreground border border-border text-xs font-mono whitespace-pre-wrap leading-relaxed max-h-[220px] overflow-y-auto shadow-inner">
               {fullShareText}
             </div>
           </div>

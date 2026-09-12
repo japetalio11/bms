@@ -112,24 +112,24 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
   if (!activeChatId) return null
 
   return (
-    <div className="hidden lg:flex flex-col h-full w-[350px] shrink-0 border-l border-sidebar-border bg-background dark:bg-[#0a0a0a]">
+    <div className="hidden lg:flex flex-col h-full w-[350px] shrink-0 border-l border-border bg-card">
       {/* Header */}
-      <div className="h-[72px] px-6 py-4 border-b border-sidebar-border flex items-center justify-between shrink-0">
-        <h2 className="text-base font-semibold text-foreground dark:text-white">Chat Details</h2>
+      <div className="h-[72px] px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
+        <h2 className="text-base font-semibold text-card-foreground">Chat Details</h2>
       </div>
 
       {/* Accordions / Lists */}
       <div className="flex-1 overflow-y-auto">
         
         {/* Photos and Videos */}
-        <div className="border-b border-sidebar-border">
+        <div className="border-b border-border">
           <button 
             onClick={() => setOpenPhotos(!openPhotos)}
-            className="flex items-center justify-between w-full px-6 py-4 hover:bg-muted/50 dark:hover:bg-[#111] transition-colors"
+            className="flex items-center justify-between w-full px-6 py-4 hover:bg-muted/50 transition-colors"
           >
             <div className="flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground dark:text-white">Photos and Videos</span>
+              <span className="text-sm font-medium text-card-foreground">Photos and Videos</span>
               <span className="text-xs text-muted-foreground">({photosAndVideos.length})</span>
             </div>
             {openPhotos ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
@@ -140,7 +140,7 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
               {photosAndVideos.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2">
                   {photosAndVideos.map((media) => (
-                    <a key={media.id} href={media.message_content} target="_blank" rel="noreferrer" className="aspect-square bg-muted dark:bg-[#1a1a1a] rounded-md border border-sidebar-border overflow-hidden group block relative">
+                    <a key={media.id} href={media.message_content} target="_blank" rel="noreferrer" className="aspect-square bg-muted rounded-md border border-border overflow-hidden group block relative">
                       <img src={media.message_content} alt="Media" className="h-full w-full object-cover group-hover:scale-105 transition-transform" />
                     </a>
                   ))}
@@ -155,14 +155,14 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
         </div>
 
         {/* Shared Files */}
-        <div className="border-b border-sidebar-border">
+        <div className="border-b border-border">
           <button 
             onClick={() => setOpenFiles(!openFiles)}
-            className="flex items-center justify-between w-full px-6 py-4 hover:bg-muted/50 dark:hover:bg-[#111] transition-colors"
+            className="flex items-center justify-between w-full px-6 py-4 hover:bg-muted/50 transition-colors"
           >
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground dark:text-white">Shared Files</span>
+              <span className="text-sm font-medium text-card-foreground">Shared Files</span>
               <span className="text-xs text-muted-foreground">({sharedFiles.length})</span>
             </div>
             {openFiles ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
@@ -172,13 +172,13 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
             <div className="flex flex-col gap-3 px-6 pb-6">
               {sharedFiles.length > 0 ? (
                 sharedFiles.map((file) => (
-                  <div key={file.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-sidebar-border bg-card dark:bg-[#111]">
+                  <div key={file.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-card">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="h-8 w-8 rounded bg-primary/10 text-primary flex items-center justify-center shrink-0">
                         <FileText className="h-4 w-4" />
                       </div>
                       <div className="flex flex-col gap-0.5 min-w-0">
-                        <span className="text-xs font-medium text-foreground dark:text-white truncate">{file.name}</span>
+                        <span className="text-xs font-medium text-card-foreground truncate">{file.name}</span>
                         <span className="text-[10px] text-muted-foreground truncate">{file.size} • {formatDateStr(file.date)}</span>
                       </div>
                     </div>
@@ -199,14 +199,14 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
         </div>
 
         {/* Shared Links */}
-        <div className="border-b border-sidebar-border">
+        <div className="border-b border-border">
           <button 
             onClick={() => setOpenLinks(!openLinks)}
-            className="flex items-center justify-between w-full px-6 py-4 hover:bg-muted/50 dark:hover:bg-[#111] transition-colors"
+            className="flex items-center justify-between w-full px-6 py-4 hover:bg-muted/50 transition-colors"
           >
             <div className="flex items-center gap-2">
               <LinkIcon className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground dark:text-white">Shared Links</span>
+              <span className="text-sm font-medium text-card-foreground">Shared Links</span>
               <span className="text-xs text-muted-foreground">({sharedLinks.length})</span>
             </div>
             {openLinks ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
@@ -216,7 +216,7 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
             <div className="flex flex-col gap-2 px-6 pb-6">
               {sharedLinks.length > 0 ? (
                 sharedLinks.map((item) => (
-                  <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-sidebar-border bg-card dark:bg-[#111] hover:bg-muted/50 transition-colors">
+                  <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors">
                     <span className="text-xs text-primary underline truncate flex-1">{item.url}</span>
                     <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   </a>

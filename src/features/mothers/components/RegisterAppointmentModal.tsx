@@ -100,13 +100,13 @@ export function RegisterAppointmentModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Appointment Date *</Label>
+            <Label className="text-xs font-medium text-foreground">Appointment Date *</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full !h-9 justify-start text-left font-normal bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs",
+                    "w-full !h-9 justify-start text-left font-normal bg-card border-border text-xs",
                     !appointmentDate && "text-muted-foreground"
                   )}
                 >
@@ -126,22 +126,22 @@ export function RegisterAppointmentModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="appointmentTime" className="text-xs font-medium text-foreground dark:text-white">Appointment Time *</Label>
+            <Label htmlFor="appointmentTime" className="text-xs font-medium text-foreground">Appointment Time *</Label>
             <Input
               id="appointmentTime"
               type="text"
               placeholder="e.g. 09:00 AM"
               value={appointmentTime}
               onChange={(e) => setAppointmentTime(e.target.value)}
-              className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+              className="!h-9 bg-card border-border text-xs text-card-foreground"
             />
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label className="text-xs font-medium text-foreground dark:text-white">Appointment Type *</Label>
+          <Label className="text-xs font-medium text-foreground">Appointment Type *</Label>
           <Select value={appointmentType} onValueChange={setAppointmentType}>
-            <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+            <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
               <SelectValue placeholder="Select Type" />
             </SelectTrigger>
             <SelectContent>
@@ -155,24 +155,24 @@ export function RegisterAppointmentModal({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="reason" className="text-xs font-medium text-foreground dark:text-white">Reason / Purpose</Label>
+          <Label htmlFor="reason" className="text-xs font-medium text-foreground">Reason / Purpose</Label>
           <Textarea
             id="reason"
             placeholder="Enter reason for appointment or health worker notes..."
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="resize-none h-[75px] bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+            className="resize-none h-[75px] bg-card border-border text-xs text-card-foreground"
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-sidebar-border mt-1">
+        <div className="flex justify-end gap-2 pt-3 border-t border-border mt-1">
           <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-8 text-xs">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="h-8 text-xs bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 font-medium"
+            className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
           >
             {loading ? "Scheduling..." : "Schedule Appointment"}
           </Button>

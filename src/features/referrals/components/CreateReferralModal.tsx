@@ -417,15 +417,15 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
         )}
 
         {/* Section 1: Patient Selection & Single Destination Input */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/30 dark:bg-[#111] p-3 rounded-xl border border-sidebar-border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/40 p-3 rounded-xl border border-border">
           {/* Mother Selection */}
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-semibold text-foreground dark:text-white flex items-center gap-1.5">
+            <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <User className="h-3.5 w-3.5 text-primary" />
               Select Patient / Mother
             </Label>
             <Select value={selectedMotherId} onValueChange={setSelectedMotherId}>
-              <SelectTrigger className="h-8 text-xs bg-background dark:bg-black border-sidebar-border">
+              <SelectTrigger className="h-8 text-xs bg-card border-border text-card-foreground">
                 <SelectValue placeholder="Search or select patient by name..." />
               </SelectTrigger>
               <SelectContent className="max-h-[220px]">
@@ -453,14 +453,14 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
 
           {/* Destination Facility (Single Form Input) */}
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-semibold text-foreground dark:text-white flex items-center gap-1.5">
+            <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
               <Building2 className="h-3.5 w-3.5 text-primary" />
               Destination Facility
             </Label>
             <Input
               value={destinationFacility}
               onChange={(e) => setDestinationFacility(e.target.value)}
-              className="h-8 text-xs bg-background dark:bg-black border-sidebar-border"
+              className="h-8 text-xs bg-card border-border text-card-foreground"
               placeholder="e.g. Bicol Medical Center / Naga City RHU..."
             />
           </div>
@@ -468,7 +468,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
 
         {/* Selected Patient Demographics Card */}
         {selectedMother && (
-          <div className="flex flex-col gap-2 p-3 rounded-xl border border-primary/20 bg-primary/5 dark:bg-primary/10">
+          <div className="flex flex-col gap-2 p-3 rounded-xl border border-primary/20 bg-primary/5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-primary flex items-center gap-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -480,19 +480,19 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
               <div>
                 <span className="text-[10px] text-muted-foreground block">Age & Bday</span>
-                <span className="font-medium text-foreground dark:text-white">{motherAge} yrs ({motherBday})</span>
+                <span className="font-medium text-foreground">{motherAge} yrs ({motherBday})</span>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block">Civil Status</span>
-                <span className="font-medium text-foreground dark:text-white">{motherCivilStatus}</span>
+                <span className="font-medium text-foreground">{motherCivilStatus}</span>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block">CP Number</span>
-                <span className="font-mono text-foreground dark:text-white">{motherPhone}</span>
+                <span className="font-mono text-foreground">{motherPhone}</span>
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block">Address</span>
-                <span className="font-medium text-foreground dark:text-white truncate block">{motherAddress}</span>
+                <span className="font-medium text-foreground truncate block">{motherAddress}</span>
               </div>
             </div>
           </div>
@@ -500,7 +500,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
 
         {/* Section 2: Vital Signs (V/S) */}
         <div className="flex flex-col gap-2">
-          <Label className="text-xs font-semibold text-foreground dark:text-white flex items-center gap-1.5">
+          <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
             <Activity className="h-3.5 w-3.5 text-amber-500" />
             Vital Signs (V/S)
           </Label>
@@ -512,7 +512,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
               <Input
                 value={temp}
                 onChange={(e) => setTemp(e.target.value)}
-                className="h-8 text-xs bg-background dark:bg-black border-sidebar-border"
+                className="h-8 text-xs bg-card border-border text-card-foreground"
                 placeholder="36.5"
               />
             </div>
@@ -523,7 +523,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
               <Input
                 value={pulseRate}
                 onChange={(e) => setPulseRate(e.target.value)}
-                className="h-8 text-xs bg-background dark:bg-black border-sidebar-border"
+                className="h-8 text-xs bg-card border-border text-card-foreground"
                 placeholder="80"
               />
             </div>
@@ -534,7 +534,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
               <Input
                 value={bloodPressure}
                 onChange={(e) => setBloodPressure(e.target.value)}
-                className="h-8 text-xs bg-background dark:bg-black border-sidebar-border"
+                className="h-8 text-xs bg-card border-border text-card-foreground"
                 placeholder="120/80"
               />
             </div>
@@ -545,7 +545,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
               <Input
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
-                className="h-8 text-xs bg-background dark:bg-black border-sidebar-border"
+                className="h-8 text-xs bg-card border-border text-card-foreground"
                 placeholder="55"
               />
             </div>
@@ -556,7 +556,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
               <Input
                 value={height}
                 onChange={(e) => setHeight(e.target.value)}
-                className="h-8 text-xs bg-background dark:bg-black border-sidebar-border"
+                className="h-8 text-xs bg-card border-border text-card-foreground"
                 placeholder="155"
               />
             </div>
@@ -565,21 +565,21 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
 
         {/* Section 3: Chief Complaint (CC) */}
         <div className="flex flex-col gap-1.5">
-          <Label className="text-xs font-semibold text-foreground dark:text-white flex items-center gap-1.5">
+          <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
             <FileText className="h-3.5 w-3.5 text-primary" />
             Chief Complaint (CC)
           </Label>
           <Input
             value={chiefComplaint}
             onChange={(e) => setChiefComplaint(e.target.value)}
-            className="h-8 text-xs bg-background dark:bg-black border-sidebar-border"
+            className="h-8 text-xs bg-card border-border text-card-foreground"
             placeholder="e.g. for prenatal check up; high-risk"
           />
         </div>
 
         {/* Section 4: Obstetrical History & Custom DatePickers */}
         <div className="flex flex-col gap-2.5">
-          <Label className="text-xs font-semibold text-foreground dark:text-white flex items-center gap-1.5">
+          <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
             <CalendarIcon className="h-3.5 w-3.5 text-primary" />
             Obstetrical History
           </Label>
@@ -593,7 +593,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
                   <Button
                     variant="outline"
                     className={cn(
-                      "h-8 w-full justify-start text-left font-normal text-xs bg-background dark:bg-black border-sidebar-border px-2",
+                      "h-8 w-full justify-start text-left font-normal text-xs bg-card border-border px-2 text-card-foreground",
                       !lmpDate && "text-muted-foreground"
                     )}
                   >
@@ -622,7 +622,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
                   <Button
                     variant="outline"
                     className={cn(
-                      "h-8 w-full justify-start text-left font-normal text-xs bg-background dark:bg-black border-sidebar-border px-2",
+                      "h-8 w-full justify-start text-left font-normal text-xs bg-card border-border px-2 text-card-foreground",
                       !edcDate && "text-muted-foreground"
                     )}
                   >
@@ -649,7 +649,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
               <Input
                 value={aog}
                 onChange={(e) => setAog(e.target.value)}
-                className="h-8 text-xs bg-background dark:bg-black border-sidebar-border"
+                className="h-8 text-xs bg-card border-border text-card-foreground"
                 placeholder="e.g. 32 weeks"
               />
             </div>
@@ -660,7 +660,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
               <Input
                 value={gravidaPara}
                 onChange={(e) => setGravidaPara(e.target.value)}
-                className="h-8 text-xs bg-background dark:bg-black border-sidebar-border"
+                className="h-8 text-xs bg-card border-border text-card-foreground"
                 placeholder="G1P0"
               />
             </div>
@@ -672,7 +672,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
               <Input
                 value={previousDelivery}
                 onChange={(e) => setPreviousDelivery(e.target.value)}
-                className="h-8 text-xs bg-background dark:bg-black border-sidebar-border"
+                className="h-8 text-xs bg-card border-border text-card-foreground"
                 placeholder="None"
               />
             </div>
@@ -681,7 +681,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
               <Input
                 value={comorbidities}
                 onChange={(e) => setComorbidities(e.target.value)}
-                className="h-8 text-xs bg-background dark:bg-black border-sidebar-border"
+                className="h-8 text-xs bg-card border-border text-card-foreground"
                 placeholder="None"
               />
             </div>
@@ -689,15 +689,15 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
         </div>
 
         {/* Section 5: Optional Specialized Email Notification */}
-        <div className="flex flex-col gap-2 p-3 rounded-xl border border-sidebar-border bg-muted/20">
+        <div className="flex flex-col gap-2 p-3 rounded-xl border border-border bg-muted/40">
           <div className="flex items-center space-x-2 cursor-pointer">
             <Checkbox
               id="send-email-check"
               checked={sendEmailNotification}
               onCheckedChange={(checked) => setSendEmailNotification(!!checked)}
-              className="h-4 w-4 border-sidebar-border"
+              className="h-4 w-4 border-border"
             />
-            <label htmlFor="send-email-check" className="text-xs font-semibold text-foreground dark:text-white cursor-pointer select-none flex items-center gap-1.5">
+            <label htmlFor="send-email-check" className="text-xs font-semibold text-foreground cursor-pointer select-none flex items-center gap-1.5">
               <Mail className="h-3.5 w-3.5 text-blue-500" />
               Send specialized email notification to receiving facility / physician?
             </label>
@@ -712,7 +712,7 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
                 type="email"
                 value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
-                className="h-8 text-xs bg-background dark:bg-black border-sidebar-border"
+                className="h-8 text-xs bg-card border-border text-card-foreground"
                 placeholder="e.g. physician@hospital.gov.ph or referral@bicolmedicalcenter.ph"
               />
             </div>
@@ -721,14 +721,14 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
       </div>
 
       {/* Modal Actions */}
-      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-sidebar-border">
+      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-border">
         <Button variant="ghost" className="h-8 text-xs w-full sm:w-auto" onClick={() => onOpenChange(false)}>
           Cancel
         </Button>
         <Button
           disabled={loading || !selectedMotherId}
           onClick={handleSubmit}
-          className="h-8 text-xs w-full sm:w-auto bg-foreground text-background hover:bg-foreground/90 font-medium"
+          className="h-8 text-xs w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
         >
           {loading ? "Submitting Handoff..." : "Submit Online Referral"}
         </Button>

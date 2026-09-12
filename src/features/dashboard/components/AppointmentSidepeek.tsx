@@ -26,11 +26,11 @@ export function AppointmentSidepeek({
   }
 
   return (
-    <div className="flex flex-col h-full bg-background dark:bg-background dark:bg-[#0a0a0a] border-l border-sidebar-border w-full xl:w-[450px]">
+    <div className="flex flex-col h-full bg-card text-card-foreground border-l border-border w-full xl:w-[450px]">
       {/* Header */}
-      <div className="shrink-0 p-4 border-b border-sidebar-border flex items-start justify-between">
+      <div className="shrink-0 p-4 border-b border-border flex items-start justify-between">
         <div className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-foreground dark:text-foreground dark:text-white">
+          <h2 className="text-sm font-semibold text-foreground">
             {appointment.name || appointment.motherName || "Patient"} - {appointment.type || "Appointment"}
           </h2>
           <div className="flex items-center gap-2">
@@ -45,7 +45,7 @@ export function AppointmentSidepeek({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground dark:text-foreground dark:text-white" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -54,15 +54,15 @@ export function AppointmentSidepeek({
       {/* Body */}
       <div className="flex-1 overflow-y-auto flex flex-col">
         {/* Group A: Visit Details */}
-        <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-          <h3 className="text-xs font-semibold text-foreground dark:text-foreground dark:text-white">Visit Details</h3>
+        <div className="flex flex-col gap-4 p-4 border-b border-border">
+          <h3 className="text-xs font-semibold text-foreground">Visit Details</h3>
           <div className="flex flex-col gap-3">
             <div className="flex items-center">
               <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                 <Calendar className="h-3.5 w-3.5" />
                 <span className="text-xs">Date & Time</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">{appointment.date || appointment.datetime || "N/A"}</span>
+              <span className="text-xs text-foreground flex-1">{appointment.date || appointment.datetime || "N/A"}</span>
             </div>
             
             <div className="flex items-center">
@@ -70,21 +70,21 @@ export function AppointmentSidepeek({
                 <Stethoscope className="h-3.5 w-3.5" />
                 <span className="text-xs">Purpose</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">{appointment.type || "Prenatal Checkup"}</span>
+              <span className="text-xs text-foreground flex-1">{appointment.type || "Prenatal Checkup"}</span>
             </div>
           </div>
         </div>
 
         {/* Group B: Maternal Vitals */}
-        <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-          <h3 className="text-xs font-semibold text-foreground dark:text-foreground dark:text-white">Maternal Vitals</h3>
+        <div className="flex flex-col gap-4 p-4 border-b border-border">
+          <h3 className="text-xs font-semibold text-foreground">Maternal Vitals</h3>
           <div className="flex flex-col gap-3">
             <div className="flex items-center">
               <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                 <HeartPulse className="h-3.5 w-3.5" />
                 <span className="text-xs">Blood Pressure</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">120/80 mmHg</span>
+              <span className="text-xs text-foreground flex-1">120/80 mmHg</span>
             </div>
             
             <div className="flex items-center">
@@ -92,7 +92,7 @@ export function AppointmentSidepeek({
                 <ActivitySquare className="h-3.5 w-3.5" />
                 <span className="text-xs">Heart Rate</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">75 bpm</span>
+              <span className="text-xs text-foreground flex-1">75 bpm</span>
             </div>
             
             <div className="flex items-center">
@@ -100,7 +100,7 @@ export function AppointmentSidepeek({
                 <Droplets className="h-3.5 w-3.5" />
                 <span className="text-xs">Blood Sugar</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">90 mg/dL</span>
+              <span className="text-xs text-foreground flex-1">90 mg/dL</span>
             </div>
             
             <div className="flex items-center">
@@ -108,7 +108,7 @@ export function AppointmentSidepeek({
                 <Thermometer className="h-3.5 w-3.5" />
                 <span className="text-xs">Body Temp</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">37.0 °C</span>
+              <span className="text-xs text-foreground flex-1">37.0 °C</span>
             </div>
             
             <div className="flex items-center">
@@ -116,7 +116,7 @@ export function AppointmentSidepeek({
                 <Weight className="h-3.5 w-3.5" />
                 <span className="text-xs">Weight</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">65 kg</span>
+              <span className="text-xs text-foreground flex-1">65 kg</span>
             </div>
 
             <div className="flex items-center">
@@ -124,21 +124,21 @@ export function AppointmentSidepeek({
                 <Wind className="h-3.5 w-3.5" />
                 <span className="text-xs">Resp. Rate</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">22 cpm</span>
+              <span className="text-xs text-foreground flex-1">22 cpm</span>
             </div>
           </div>
         </div>
 
         {/* Group C: Fetal & Visit Metrics */}
-        <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-          <h3 className="text-xs font-semibold text-foreground dark:text-foreground dark:text-white">Fetal & Visit Metrics</h3>
+        <div className="flex flex-col gap-4 p-4 border-b border-border">
+          <h3 className="text-xs font-semibold text-foreground">Fetal & Visit Metrics</h3>
           <div className="flex flex-col gap-3">
             <div className="flex items-center">
               <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                 <Baby className="h-3.5 w-3.5" />
                 <span className="text-xs">Gestational Age</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">24 Weeks</span>
+              <span className="text-xs text-foreground flex-1">24 Weeks</span>
             </div>
             
             <div className="flex items-center">
@@ -146,7 +146,7 @@ export function AppointmentSidepeek({
                 <HeartPulse className="h-3.5 w-3.5" />
                 <span className="text-xs">Fetal Heart Tone</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">140 bpm</span>
+              <span className="text-xs text-foreground flex-1">140 bpm</span>
             </div>
             
             <div className="flex items-center">
@@ -154,7 +154,7 @@ export function AppointmentSidepeek({
                 <Ruler className="h-3.5 w-3.5" />
                 <span className="text-xs">Fundic Height</span>
               </div>
-              <span className="text-xs text-foreground dark:text-white flex-1">22 cm</span>
+              <span className="text-xs text-foreground flex-1">22 cm</span>
             </div>
           </div>
         </div>
@@ -162,17 +162,17 @@ export function AppointmentSidepeek({
         {/* Activity Log */}
         <div className="flex flex-col gap-4 p-4 pb-6">
           <div className="flex items-center gap-2">
-            <h3 className="text-xs font-semibold text-foreground dark:text-foreground dark:text-white">Activity Log</h3>
+            <h3 className="text-xs font-semibold text-foreground">Activity Log</h3>
             <History className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
           <p className="text-xs text-muted-foreground">Recent actions performed for this appointment.</p>
           
           <div className="flex gap-3 mt-1">
             <div className="flex flex-col items-center mt-1.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-foreground dark:bg-white shrink-0" />
+              <div className="h-1.5 w-1.5 rounded-full bg-foreground shrink-0" />
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-foreground dark:text-foreground dark:text-white">Scheduled appointment</span>
+              <span className="text-xs font-medium text-foreground">Scheduled appointment</span>
               <span className="text-[10px] text-muted-foreground">{appointment.date || "Scheduled"}</span>
             </div>
           </div>
@@ -180,20 +180,20 @@ export function AppointmentSidepeek({
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 p-4 pb-8 md:pb-4 border-t border-sidebar-border flex flex-col gap-3">
+      <div className="shrink-0 p-4 pb-8 md:pb-4 border-t border-border flex flex-col gap-3">
         <LogVitalsModal>
-          <Button className="w-full h-8 text-xs font-medium bg-[#111] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+          <Button className="w-full h-8 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90">
             Log Vitals
           </Button>
         </LogVitalsModal>
-        <Button className="w-full h-8 text-xs font-medium bg-[#e5e5e5] text-black hover:bg-[#d5d5d5] dark:bg-[#e5e5e5] dark:text-black">
+        <Button className="w-full h-8 text-xs font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border">
           Log Prescription
         </Button>
         {appointment.status !== 'Cancelled' && appointment.status !== 'cancelled' && (
           <Button 
             variant="outline" 
             onClick={handleCancel}
-            className="w-full h-8 text-xs font-medium bg-[#1e1e1e] text-white hover:bg-[#2a2a2a] border border-sidebar-border dark:bg-[#1e1e1e] dark:text-foreground dark:text-white dark:border-sidebar-border text-red-400 hover:text-red-300"
+            className="w-full h-8 text-xs font-medium text-red-500 hover:text-red-600 hover:bg-red-500/10 border border-red-500/20"
           >
             Cancel Appointment
           </Button>

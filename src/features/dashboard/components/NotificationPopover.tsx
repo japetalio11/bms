@@ -211,7 +211,7 @@ export function NotificationPopover({ align = "end" }: { align?: "end" | "center
       <PopoverContent
         align={align}
         collisionPadding={8}
-        className="w-[calc(100vw-2rem)] sm:w-[400px] pt-4 px-4 pb-3 flex flex-col gap-3 rounded-xl border-border shadow-xl bg-background"
+        className="w-[calc(100vw-2rem)] sm:w-[400px] pt-4 px-4 pb-3 flex flex-col gap-3 rounded-xl border-border shadow-xl bg-card text-card-foreground"
       >
         {/* Header */}
         <div className="flex items-center justify-between">

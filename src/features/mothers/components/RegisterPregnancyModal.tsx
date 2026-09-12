@@ -108,13 +108,13 @@ export function RegisterPregnancyModal({
           
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">LMP Date *</Label>
+              <Label className="text-xs font-medium text-foreground">LMP Date *</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-full !h-8 justify-start text-left font-normal bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs",
+                      "w-full !h-8 justify-start text-left font-normal bg-card border-border text-xs",
                       !lmpDate && "text-muted-foreground"
                     )}
                   >
@@ -134,9 +134,9 @@ export function RegisterPregnancyModal({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Pregnancy Status *</Label>
+              <Label className="text-xs font-medium text-foreground">Pregnancy Status *</Label>
               <Select value={pregnancyStatus} onValueChange={setPregnancyStatus}>
-                <SelectTrigger className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+                <SelectTrigger className="!h-8 bg-card border-border text-xs text-card-foreground">
                   <SelectValue placeholder="Select Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -150,33 +150,33 @@ export function RegisterPregnancyModal({
 
           <div className="grid grid-cols-3 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="gravida" className="text-xs font-medium text-foreground dark:text-white">Gravida (G) *</Label>
+              <Label htmlFor="gravida" className="text-xs font-medium text-foreground">Gravida (G) *</Label>
               <Input
                 id="gravida"
                 type="number"
                 min={1}
                 value={gravida}
                 onChange={(e) => setGravida(Number(e.target.value))}
-                className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+                className="!h-8 bg-card border-border text-xs text-card-foreground"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="parity" className="text-xs font-medium text-foreground dark:text-white">Parity (P) *</Label>
+              <Label htmlFor="parity" className="text-xs font-medium text-foreground">Parity (P) *</Label>
               <Input
                 id="parity"
                 type="number"
                 min={0}
                 value={parity}
                 onChange={(e) => setParity(Number(e.target.value))}
-                className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+                className="!h-8 bg-card border-border text-xs text-card-foreground"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">Age Group *</Label>
+              <Label className="text-xs font-medium text-foreground">Age Group *</Label>
               <Select value={ageGroup} onValueChange={setAgeGroup}>
-                <SelectTrigger className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+                <SelectTrigger className="!h-8 bg-card border-border text-xs text-card-foreground">
                   <SelectValue placeholder="Age Group" />
                 </SelectTrigger>
                 <SelectContent>
@@ -189,7 +189,7 @@ export function RegisterPregnancyModal({
           </div>
         </div>
 
-        <div className="h-px bg-sidebar-border/60 my-1" />
+        <div className="h-px bg-border my-1" />
 
         {/* Section 2: Clinical Assessment */}
         <div className="flex flex-col gap-3">
@@ -197,7 +197,7 @@ export function RegisterPregnancyModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="bmi1st" className="text-xs font-medium text-foreground dark:text-white">1st Tri BMI</Label>
+              <Label htmlFor="bmi1st" className="text-xs font-medium text-foreground">1st Tri BMI</Label>
               <Input
                 id="bmi1st"
                 type="number"
@@ -205,14 +205,14 @@ export function RegisterPregnancyModal({
                 placeholder="e.g. 22.5"
                 value={bmi1stTrimester}
                 onChange={(e) => setBmi1stTrimester(e.target.value)}
-                className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+                className="!h-8 bg-card border-border text-xs text-card-foreground"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground dark:text-white">BMI Category</Label>
+              <Label className="text-xs font-medium text-foreground">BMI Category</Label>
               <Select value={bmiCategory} onValueChange={setBmiCategory}>
-                <SelectTrigger className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+                <SelectTrigger className="!h-8 bg-card border-border text-xs text-card-foreground">
                   <SelectValue placeholder="BMI Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -226,36 +226,36 @@ export function RegisterPregnancyModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="coMorbidities" className="text-xs font-medium text-foreground dark:text-white">Co-morbidities</Label>
+            <Label htmlFor="coMorbidities" className="text-xs font-medium text-foreground">Co-morbidities</Label>
             <Input
               id="coMorbidities"
               placeholder="e.g. Hypertension, Diabetes, Asthma"
               value={coMorbidities}
               onChange={(e) => setCoMorbidities(e.target.value)}
-              className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+              className="!h-8 bg-card border-border text-xs text-card-foreground"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="previousDelivery" className="text-xs font-medium text-foreground dark:text-white">Previous Delivery History</Label>
+            <Label htmlFor="previousDelivery" className="text-xs font-medium text-foreground">Previous Delivery History</Label>
             <Textarea
               id="previousDelivery"
               placeholder="Notes on previous deliveries..."
               value={previousDeliveryHistory}
               onChange={(e) => setPreviousDeliveryHistory(e.target.value)}
-              className="resize-none h-[60px] bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+              className="resize-none h-[60px] bg-card border-border text-xs text-card-foreground"
             />
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-sidebar-border mt-1">
+        <div className="flex justify-end gap-2 pt-3 border-t border-border mt-1">
           <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-8 text-xs">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="h-8 text-xs bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 font-medium"
+            className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
           >
             {loading ? "Registering..." : "Save Pregnancy"}
           </Button>

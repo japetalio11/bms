@@ -170,14 +170,14 @@ export function LogVitalsModal({
 
         {/* Pregnancy Selector */}
         <div className="flex flex-col gap-1.5">
-          <Label className="text-xs font-medium text-foreground dark:text-white">Target Pregnancy Record *</Label>
+          <Label className="text-xs font-medium text-foreground">Target Pregnancy Record *</Label>
           {pregnancies.length === 0 ? (
-            <div className="text-xs text-muted-foreground italic bg-muted/30 p-2 rounded border border-sidebar-border">
+            <div className="text-xs text-muted-foreground italic bg-muted/40 p-2 rounded border border-border">
               No pregnancy registered for this mother. Please create a pregnancy record first.
             </div>
           ) : (
             <Select value={pregnancyId} onValueChange={setPregnancyId}>
-              <SelectTrigger className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+              <SelectTrigger className="!h-8 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Select Pregnancy" />
               </SelectTrigger>
               <SelectContent>
@@ -198,7 +198,7 @@ export function LogVitalsModal({
         {/* Visit Details Row */}
         <div className="grid grid-cols-3 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="visitNumber" className="text-xs font-medium text-foreground dark:text-white">Visit No. *</Label>
+            <Label htmlFor="visitNumber" className="text-xs font-medium text-foreground">Visit No. *</Label>
             <Input
               id="visitNumber"
               type="number"
@@ -206,11 +206,11 @@ export function LogVitalsModal({
               max={20}
               value={visitNumber}
               onChange={(e) => setVisitNumber(Number(e.target.value))}
-              className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+              className="!h-8 bg-card border-border text-xs text-card-foreground"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="gestationWeeks" className="text-xs font-medium text-foreground dark:text-white">Gestation (Wks) *</Label>
+            <Label htmlFor="gestationWeeks" className="text-xs font-medium text-foreground">Gestation (Wks) *</Label>
             <Input
               id="gestationWeeks"
               type="number"
@@ -218,13 +218,13 @@ export function LogVitalsModal({
               max={45}
               value={gestationWeeks}
               onChange={(e) => handleGestationChange(e.target.value)}
-              className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+              className="!h-8 bg-card border-border text-xs text-card-foreground"
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Trimester *</Label>
+            <Label className="text-xs font-medium text-foreground">Trimester *</Label>
             <Select value={String(trimester)} onValueChange={(val) => setTrimester(Number(val))}>
-              <SelectTrigger className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+              <SelectTrigger className="!h-8 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Trimester" />
               </SelectTrigger>
               <SelectContent>
@@ -237,15 +237,15 @@ export function LogVitalsModal({
         </div>
 
         {/* Vitals Grid */}
-        <div className="rounded-xl border border-sidebar-border/80 bg-muted/20 dark:bg-[#121212] p-4 flex flex-col gap-3.5 shadow-xs">
+        <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-3.5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Maternal Vital Signs</span>
-            <span className="text-[10px] text-muted-foreground bg-muted dark:bg-[#1e1e1e] px-2 py-0.5 rounded border border-sidebar-border/50 font-medium">Standard Clinical Units</span>
+            <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border font-medium">Standard Clinical Units</span>
           </div>
           
           <div className="grid grid-cols-2 gap-3.5">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="bpSystolic" className="text-xs font-semibold text-foreground dark:text-white">BP Systolic *</Label>
+              <Label htmlFor="bpSystolic" className="text-xs font-semibold text-foreground">BP Systolic *</Label>
               <div className="relative">
                 <Input
                   id="bpSystolic"
@@ -253,14 +253,14 @@ export function LogVitalsModal({
                   placeholder="120"
                   value={bpSystolic}
                   onChange={(e) => setBpSystolic(e.target.value)}
-                  className="!h-9 pr-14 bg-background dark:bg-[#080808] border-sidebar-border text-xs font-medium text-foreground dark:text-white focus-visible:ring-1"
+                  className="!h-9 pr-14 bg-card border-border text-xs font-medium text-card-foreground focus-visible:ring-1"
                 />
                 <span className="absolute right-3 top-2.5 text-[10px] font-medium text-muted-foreground/80 pointer-events-none">mmHg</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="bpDiastolic" className="text-xs font-semibold text-foreground dark:text-white">BP Diastolic *</Label>
+              <Label htmlFor="bpDiastolic" className="text-xs font-semibold text-foreground">BP Diastolic *</Label>
               <div className="relative">
                 <Input
                   id="bpDiastolic"
@@ -268,14 +268,14 @@ export function LogVitalsModal({
                   placeholder="80"
                   value={bpDiastolic}
                   onChange={(e) => setBpDiastolic(e.target.value)}
-                  className="!h-9 pr-14 bg-background dark:bg-[#080808] border-sidebar-border text-xs font-medium text-foreground dark:text-white focus-visible:ring-1"
+                  className="!h-9 pr-14 bg-card border-border text-xs font-medium text-card-foreground focus-visible:ring-1"
                 />
                 <span className="absolute right-3 top-2.5 text-[10px] font-medium text-muted-foreground/80 pointer-events-none">mmHg</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="weightKg" className="text-xs font-semibold text-foreground dark:text-white">Weight *</Label>
+              <Label htmlFor="weightKg" className="text-xs font-semibold text-foreground">Weight *</Label>
               <div className="relative">
                 <Input
                   id="weightKg"
@@ -284,14 +284,14 @@ export function LogVitalsModal({
                   placeholder="55.0"
                   value={weightKg}
                   onChange={(e) => setWeightKg(e.target.value)}
-                  className="!h-9 pr-10 bg-background dark:bg-[#080808] border-sidebar-border text-xs font-medium text-foreground dark:text-white focus-visible:ring-1"
+                  className="!h-9 pr-10 bg-card border-border text-xs font-medium text-card-foreground focus-visible:ring-1"
                 />
                 <span className="absolute right-3 top-2.5 text-[10px] font-medium text-muted-foreground/80 pointer-events-none">kg</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="pulseRateBpm" className="text-xs font-semibold text-foreground dark:text-white">Pulse Rate *</Label>
+              <Label htmlFor="pulseRateBpm" className="text-xs font-semibold text-foreground">Pulse Rate *</Label>
               <div className="relative">
                 <Input
                   id="pulseRateBpm"
@@ -299,16 +299,16 @@ export function LogVitalsModal({
                   placeholder="75"
                   value={pulseRateBpm}
                   onChange={(e) => setPulseRateBpm(e.target.value)}
-                  className="!h-9 pr-12 bg-background dark:bg-[#080808] border-sidebar-border text-xs font-medium text-foreground dark:text-white focus-visible:ring-1"
+                  className="!h-9 pr-12 bg-card border-border text-xs font-medium text-card-foreground focus-visible:ring-1"
                 />
                 <span className="absolute right-3 top-2.5 text-[10px] font-medium text-muted-foreground/80 pointer-events-none">BPM</span>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 pt-3 border-t border-sidebar-border/40">
+          <div className="grid grid-cols-3 gap-3 pt-3 border-t border-border">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="tempCelsius" className="text-xs font-semibold text-foreground dark:text-white">Temperature *</Label>
+              <Label htmlFor="tempCelsius" className="text-xs font-semibold text-foreground">Temperature *</Label>
               <div className="relative">
                 <Input
                   id="tempCelsius"
@@ -317,14 +317,14 @@ export function LogVitalsModal({
                   placeholder="36.5"
                   value={temperatureCelsius}
                   onChange={(e) => setTemperatureCelsius(e.target.value)}
-                  className="!h-9 pr-8 bg-background dark:bg-[#080808] border-sidebar-border text-xs font-medium text-foreground dark:text-white focus-visible:ring-1"
+                  className="!h-9 pr-8 bg-card border-border text-xs font-medium text-card-foreground focus-visible:ring-1"
                 />
                 <span className="absolute right-2.5 top-2.5 text-[10px] font-medium text-muted-foreground/80 pointer-events-none">°C</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="fundicHeight" className="text-xs font-semibold text-foreground dark:text-white">Fundal Height</Label>
+              <Label htmlFor="fundicHeight" className="text-xs font-semibold text-foreground">Fundal Height</Label>
               <div className="relative">
                 <Input
                   id="fundicHeight"
@@ -333,14 +333,14 @@ export function LogVitalsModal({
                   placeholder="24.0"
                   value={fundicHeightCm}
                   onChange={(e) => setFundicHeightCm(e.target.value)}
-                  className="!h-9 pr-9 bg-background dark:bg-[#080808] border-sidebar-border text-xs font-medium text-foreground dark:text-white focus-visible:ring-1"
+                  className="!h-9 pr-9 bg-card border-border text-xs font-medium text-card-foreground focus-visible:ring-1"
                 />
                 <span className="absolute right-2.5 top-2.5 text-[10px] font-medium text-muted-foreground/80 pointer-events-none">cm</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="fetalHeartTone" className="text-xs font-semibold text-foreground dark:text-white">Fetal Heart Tone</Label>
+              <Label htmlFor="fetalHeartTone" className="text-xs font-semibold text-foreground">Fetal Heart Tone</Label>
               <div className="relative">
                 <Input
                   id="fetalHeartTone"
@@ -348,7 +348,7 @@ export function LogVitalsModal({
                   placeholder="140"
                   value={fetalHeartToneBpm}
                   onChange={(e) => setFetalHeartToneBpm(e.target.value)}
-                  className="!h-9 pr-11 bg-background dark:bg-[#080808] border-sidebar-border text-xs font-medium text-foreground dark:text-white focus-visible:ring-1"
+                  className="!h-9 pr-11 bg-card border-border text-xs font-medium text-card-foreground focus-visible:ring-1"
                 />
                 <span className="absolute right-2.5 top-2.5 text-[10px] font-medium text-muted-foreground/80 pointer-events-none">BPM</span>
               </div>
@@ -359,9 +359,9 @@ export function LogVitalsModal({
         {/* Clinical Assessment */}
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Risk Level Assessed</Label>
+            <Label className="text-xs font-medium text-foreground">Risk Level Assessed</Label>
             <Select value={riskLevel} onValueChange={setRiskLevel}>
-              <SelectTrigger className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+              <SelectTrigger className="!h-8 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Select Risk" />
               </SelectTrigger>
               <SelectContent>
@@ -373,37 +373,37 @@ export function LogVitalsModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="dangerSigns" className="text-xs font-medium text-foreground dark:text-white">Danger Signs Observed</Label>
+            <Label htmlFor="dangerSigns" className="text-xs font-medium text-foreground">Danger Signs Observed</Label>
             <Input
               id="dangerSigns"
               placeholder="e.g. Severe headache, vaginal bleeding"
               value={dangerSigns}
               onChange={(e) => setDangerSigns(e.target.value)}
-              className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+              className="!h-8 bg-card border-border text-xs text-card-foreground"
             />
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="chiefComplaint" className="text-xs font-medium text-foreground dark:text-white">Chief Complaint / Clinical Notes</Label>
+          <Label htmlFor="chiefComplaint" className="text-xs font-medium text-foreground">Chief Complaint / Clinical Notes</Label>
           <Textarea
             id="chiefComplaint"
             placeholder="Enter reason for visit or clinical findings..."
             value={chiefComplaint}
             onChange={(e) => setChiefComplaint(e.target.value)}
-            className="resize-none h-[60px] bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+            className="resize-none h-[60px] bg-card border-border text-xs text-card-foreground"
           />
         </div>
 
         {/* Modal Footer */}
-        <div className="flex justify-end gap-2 pt-3 border-t border-sidebar-border mt-1">
+        <div className="flex justify-end gap-2 pt-3 border-t border-border mt-1">
           <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-8 text-xs">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="h-8 text-xs bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 font-medium"
+            className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
           >
             {loading ? "Recording..." : "Save Vitals Record"}
           </Button>

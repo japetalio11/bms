@@ -40,7 +40,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="bg-white dark:bg-black flex h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-4">
+    <header className="bg-card flex h-14 shrink-0 items-center justify-between border-b border-border px-4 text-card-foreground shadow-xs">
       {/* --- DESKTOP LAYOUT --- */}
       <div className="hidden md:flex flex-1 items-center gap-2">
         <SidebarTrigger className="-ml-1" />

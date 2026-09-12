@@ -116,12 +116,12 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
   }
 
   return (
-    <div className="hidden lg:flex flex-col h-full w-[350px] shrink-0 border-r border-sidebar-border bg-background dark:bg-[#0a0a0a]">
+    <div className="hidden lg:flex flex-col h-full w-[350px] shrink-0 border-r border-border bg-card">
       {/* Header */}
-      <div className="h-[72px] px-6 py-4 border-b border-sidebar-border flex items-center justify-between shrink-0">
+      <div className="h-[72px] px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-semibold text-foreground dark:text-white">Messages</h1>
-          <span className="inline-flex items-center justify-center bg-muted dark:bg-[#111] text-muted-foreground text-[10px] font-medium h-5 px-2 rounded-full border border-sidebar-border">
+          <h1 className="text-xl font-semibold text-card-foreground">Messages</h1>
+          <span className="inline-flex items-center justify-center bg-muted text-muted-foreground text-[10px] font-medium h-5 px-2 rounded-full border border-border">
             {chatThreads.length}
           </span>
         </div>
@@ -131,14 +131,14 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
       </div>
       
       {/* Search */}
-      <div className="px-6 py-3 border-b border-sidebar-border shrink-0">
+      <div className="px-6 py-3 border-b border-border shrink-0">
         <div className="relative">
           <Search className="absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
           <Input 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search messages or mothers..." 
-            className="pl-8 h-8 text-xs bg-muted/50 dark:bg-[#111] border-sidebar-border focus-visible:ring-1 focus-visible:ring-ring"
+            className="pl-8 h-8 text-xs bg-muted/50 border-border focus-visible:ring-1 focus-visible:ring-ring text-card-foreground"
           />
         </div>
       </div>
@@ -150,23 +150,23 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
             key={chat.id} 
             onClick={() => setActiveChatId(chat.id)}
             className={clsx(
-              "flex items-start gap-3 px-6 py-4 border-b border-sidebar-border cursor-pointer transition-colors hover:bg-muted/50 dark:hover:bg-[#111]",
-              activeChatId === chat.id ? "bg-muted dark:bg-[#111]" : ""
+              "flex items-start gap-3 px-6 py-4 border-b border-border cursor-pointer transition-colors hover:bg-muted/50",
+              activeChatId === chat.id ? "bg-accent" : ""
             )}
           >
-            <Avatar className="h-10 w-10 border border-sidebar-border shrink-0">
+            <Avatar className="h-10 w-10 border border-border shrink-0">
               <AvatarImage src={chat.avatar} />
               <AvatarFallback className="bg-primary/10 text-primary text-xs">{chat.name.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col flex-1 min-w-0 gap-1 mt-0.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-semibold text-foreground dark:text-white truncate">{chat.name}</span>
+                <span className="text-sm font-semibold text-card-foreground truncate">{chat.name}</span>
                 {chat.rawDate && <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(chat.rawDate)}</span>}
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span className={clsx(
                   "text-xs truncate", 
-                  chat.unread > 0 ? "text-foreground dark:text-white font-medium" : "text-muted-foreground"
+                  chat.unread > 0 ? "text-card-foreground font-medium" : "text-muted-foreground"
                 )}>
                   {chat.message}
                 </span>

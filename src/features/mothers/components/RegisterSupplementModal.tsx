@@ -119,9 +119,9 @@ export function RegisterSupplementModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Target Pregnancy *</Label>
+            <Label className="text-xs font-medium text-foreground">Target Pregnancy *</Label>
             <Select value={pregnancyId} onValueChange={setPregnancyId}>
-              <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+              <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Select Pregnancy" />
               </SelectTrigger>
               <SelectContent>
@@ -138,9 +138,9 @@ export function RegisterSupplementModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Associated Visit *</Label>
+            <Label className="text-xs font-medium text-foreground">Associated Visit *</Label>
             <Select value={visitId} onValueChange={setVisitId}>
-              <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+              <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Select Visit" />
               </SelectTrigger>
               <SelectContent>
@@ -162,9 +162,9 @@ export function RegisterSupplementModal({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label className="text-xs font-medium text-foreground dark:text-white">Supplement / Medication Type *</Label>
+          <Label className="text-xs font-medium text-foreground">Supplement / Medication Type *</Label>
           <Select value={supplementType} onValueChange={setSupplementType}>
-            <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+            <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
               <SelectValue placeholder="Select Supplement" />
             </SelectTrigger>
             <SelectContent>
@@ -179,25 +179,25 @@ export function RegisterSupplementModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="tabletsCount" className="text-xs font-medium text-foreground dark:text-white">Tablets Given Count *</Label>
+            <Label htmlFor="tabletsCount" className="text-xs font-medium text-foreground">Tablets Given Count *</Label>
             <Input
               id="tabletsCount"
               type="number"
               min={1}
               value={tabletsCount}
               onChange={(e) => setTabletsCount(Number(e.target.value))}
-              className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+              className="!h-9 bg-card border-border text-xs text-card-foreground"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Date Given *</Label>
+            <Label className="text-xs font-medium text-foreground">Date Given *</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full !h-9 justify-start text-left font-normal bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs",
+                    "w-full !h-9 justify-start text-left font-normal bg-card border-border text-xs",
                     !dateGiven && "text-muted-foreground"
                   )}
                 >
@@ -216,14 +216,14 @@ export function RegisterSupplementModal({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-sidebar-border mt-1">
+        <div className="flex justify-end gap-2 pt-3 border-t border-border mt-1">
           <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-8 text-xs">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="h-8 text-xs bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 font-medium"
+            className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
           >
             {loading ? "Saving..." : "Save Prescription"}
           </Button>

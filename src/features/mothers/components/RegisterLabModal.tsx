@@ -153,9 +153,9 @@ export function RegisterLabModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Target Pregnancy *</Label>
+            <Label className="text-xs font-medium text-foreground">Target Pregnancy *</Label>
             <Select value={pregnancyId} onValueChange={setPregnancyId}>
-              <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+              <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Select Pregnancy" />
               </SelectTrigger>
               <SelectContent>
@@ -172,9 +172,9 @@ export function RegisterLabModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Associated Visit *</Label>
+            <Label className="text-xs font-medium text-foreground">Associated Visit *</Label>
             <Select value={visitId} onValueChange={setVisitId}>
-              <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+              <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Select Visit" />
               </SelectTrigger>
               <SelectContent>
@@ -197,9 +197,9 @@ export function RegisterLabModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Screening Type *</Label>
+            <Label className="text-xs font-medium text-foreground">Screening Type *</Label>
             <Select value={screeningType} onValueChange={setScreeningType}>
-              <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+              <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Select Screening" />
               </SelectTrigger>
               <SelectContent>
@@ -216,13 +216,13 @@ export function RegisterLabModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Date of Screening *</Label>
+            <Label className="text-xs font-medium text-foreground">Date of Screening *</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full !h-9 justify-start text-left font-normal bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs",
+                    "w-full !h-9 justify-start text-left font-normal bg-card border-border text-xs",
                     !screeningDate && "text-muted-foreground"
                   )}
                 >
@@ -242,19 +242,19 @@ export function RegisterLabModal({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="labResult" className="text-xs font-medium text-foreground dark:text-white">Screening Result *</Label>
+          <Label htmlFor="labResult" className="text-xs font-medium text-foreground">Screening Result *</Label>
           <Input
             id="labResult"
             placeholder="e.g. Normal, Non-reactive, Hemoglobin: 12.5 g/dL"
             value={result}
             onChange={(e) => setResult(e.target.value)}
-            className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+            className="!h-9 bg-card border-border text-xs text-card-foreground"
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label className="text-xs font-medium text-foreground dark:text-white">Document / Lab Attachment (Optional)</Label>
-          <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-sidebar-border bg-muted/30 dark:bg-[#0a0a0a]">
+          <Label className="text-xs font-medium text-foreground">Document / Lab Attachment (Optional)</Label>
+          <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-border bg-muted/40">
             <label className="cursor-pointer flex-1">
               <input
                 type="file"
@@ -267,7 +267,7 @@ export function RegisterLabModal({
                 type="button"
                 variant="outline"
                 disabled={uploading}
-                className="w-full h-9 px-3 text-xs font-medium border-sidebar-border gap-2 pointer-events-none bg-background dark:bg-black"
+                className="w-full h-9 px-3 text-xs font-medium border-border gap-2 pointer-events-none bg-card text-card-foreground"
               >
                 {uploading ? (
                   <>
@@ -289,31 +289,31 @@ export function RegisterLabModal({
             </label>
           </div>
           {fileUrl && (
-            <span className="text-[10px] text-green-600 dark:text-green-400 font-medium truncate">
+            <span className="text-[10px] text-emerald-600 font-medium truncate">
               Attached: {fileUrl.split('/').pop()}
             </span>
           )}
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="labRemarks" className="text-xs font-medium text-foreground dark:text-white">Remarks / Findings</Label>
+          <Label htmlFor="labRemarks" className="text-xs font-medium text-foreground">Remarks / Findings</Label>
           <Textarea
             id="labRemarks"
             placeholder="Enter clinical observations or follow-up notes..."
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
-            className="resize-none h-[65px] bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+            className="resize-none h-[65px] bg-card border-border text-xs text-card-foreground"
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-sidebar-border mt-1">
+        <div className="flex justify-end gap-2 pt-3 border-t border-border mt-1">
           <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-8 text-xs">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="h-8 text-xs bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 font-medium"
+            className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
           >
             {loading ? "Saving..." : "Save Lab Record"}
           </Button>
