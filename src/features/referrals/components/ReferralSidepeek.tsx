@@ -17,7 +17,8 @@ import {
   Scale,
   History,
   CheckCircle2,
-  CloudOff
+  CloudOff,
+  Trash2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,10 +28,12 @@ export function ReferralSidepeek({
   referral, 
   onClose,
   onUpdated,
+  onDelete,
 }: { 
   referral: any
   onClose: () => void 
   onUpdated?: () => void
+  onDelete?: (referral: any) => void
 }) {
   const [copySuccess, setCopySuccess] = useState<string>("")
   const [actionLoading, setActionLoading] = useState<boolean>(false)
@@ -113,9 +116,22 @@ export function ReferralSidepeek({
             )}
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="hidden md:flex h-6 w-6 text-muted-foreground hover:text-foreground" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Delete Referral"
+              className="h-7 w-7 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+              onClick={() => onDelete(referral)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="hidden md:flex h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Body */}
@@ -267,13 +283,25 @@ export function ReferralSidepeek({
             Accept Referral Transfer
           </Button>
         )}
-        <Button 
-          disabled={actionLoading}
-          onClick={() => handleStatusChange("cancelled")}
-          className="w-full h-8 text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 border-none"
-        >
-          Cancel Transfer
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            disabled={actionLoading}
+            variant="outline"
+            onClick={() => handleStatusChange("cancelled")}
+            className="flex-1 h-8 text-xs font-medium text-amber-600 border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-700"
+          >
+            Cancel Transfer
+          </Button>
+          {onDelete && (
+            <Button
+              disabled={actionLoading}
+              onClick={() => onDelete(referral)}
+              className="flex-1 h-8 text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 border-none"
+            >
+              Delete Referral
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

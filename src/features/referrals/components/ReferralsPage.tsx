@@ -46,10 +46,12 @@ import { ReferralSidepeek } from "./ReferralSidepeek"
 import { CreateReferralModal } from "./CreateReferralModal"
 import { ExportReferralModal } from "./ExportReferralModal"
 import { ReferralSuccessModal, type ReferralSuccessData } from "./ReferralSuccessModal"
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
 import { referralRepository } from "@/lib/repositories/referralRepository"
 import type { LocalReferral } from "@/lib/db/bmsDatabase"
 import { useNetworkStatus } from "@/hooks/useNetworkStatus"
 import { syncEngine } from "@/lib/sync/syncEngine"
+import { toast } from "sonner"
 
 export function ReferralsPage() {
   const [activeTab, setActiveTab] = useState("today")
@@ -64,6 +66,8 @@ export function ReferralsPage() {
   const [isSuccessOpen, setIsSuccessOpen] = useState(false)
   const [successData, setSuccessData] = useState<ReferralSuccessData | null>(null)
   const [copyNotification, setCopyNotification] = useState<string>("")
+  const [referralToDelete, setReferralToDelete] = useState<LocalReferral | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   
   const isMobile = useIsMobile()
   const { isOnline } = useNetworkStatus()
@@ -96,6 +100,26 @@ export function ReferralsPage() {
       loadReferrals()
     }
   }, [isOnline])
+
+  const handleDeleteReferral = async () => {
+    if (!referralToDelete) return
+    setIsDeleting(true)
+    try {
+      const id = referralToDelete.referral_id || referralToDelete.id
+      await referralRepository.deleteReferral(id)
+      toast.success("Referral deleted successfully")
+      if (selectedReferral?.id === referralToDelete.id || selectedReferral?.referral_id === id) {
+        setSelectedReferral(null)
+      }
+      setReferralToDelete(null)
+      await loadReferrals()
+    } catch (err) {
+      console.error("[ReferralsPage] Failed to delete referral:", err)
+      toast.error("Failed to delete referral")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   // Filter referrals based on tab, search query, and risk filters
   const filteredReferrals = useMemo(() => {
@@ -440,8 +464,11 @@ export function ReferralsPage() {
                                 <DropdownMenuItem onClick={async () => {
                                   await referralRepository.respondToReferral(ref.referral_id || ref.id, { status: "cancelled" })
                                   loadReferrals()
-                                }} className="text-xs cursor-pointer rounded-md text-red-500 hover:!text-red-500 hover:!bg-red-500/10">
+                                }} className="text-xs cursor-pointer rounded-md text-amber-600 hover:!text-amber-600 hover:!bg-amber-500/10">
                                   Cancel Transfer
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setReferralToDelete(ref)} className="text-xs cursor-pointer rounded-md text-red-500 hover:!text-red-500 hover:!bg-red-500/10">
+                                  Delete Referral
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -545,8 +572,11 @@ export function ReferralsPage() {
                           <DropdownMenuItem onClick={async () => {
                             await referralRepository.respondToReferral(ref.referral_id || ref.id, { status: "cancelled" })
                             loadReferrals()
-                          }} className="text-xs cursor-pointer rounded-md text-red-500 hover:!text-red-500 hover:!bg-red-500/10">
+                          }} className="text-xs cursor-pointer rounded-md text-amber-600 hover:!text-amber-600 hover:!bg-amber-500/10">
                             Cancel Transfer
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setReferralToDelete(ref)} className="text-xs cursor-pointer rounded-md text-red-500 hover:!text-red-500 hover:!bg-red-500/10">
+                            Delete Referral
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -569,6 +599,7 @@ export function ReferralsPage() {
             referral={selectedReferral} 
             onClose={() => setSelectedReferral(null)} 
             onUpdated={loadReferrals}
+            onDelete={(ref) => setReferralToDelete(ref)}
           />
         </div>
       )}
@@ -584,6 +615,7 @@ export function ReferralsPage() {
               referral={selectedReferral} 
               onClose={() => setSelectedReferral(null)} 
               onUpdated={loadReferrals}
+              onDelete={(ref) => setReferralToDelete(ref)}
             />
           </DrawerContent>
         </Drawer>
@@ -608,6 +640,16 @@ export function ReferralsPage() {
         open={isSuccessOpen}
         onOpenChange={setIsSuccessOpen}
         referralData={successData}
+      />
+
+      <ConfirmDeleteModal
+        open={!!referralToDelete}
+        onOpenChange={(open) => !open && setReferralToDelete(null)}
+        title="Delete Referral"
+        description="Are you sure you want to delete this referral record? It will be permanently removed from local storage and the database."
+        confirmText="Delete"
+        isDeleting={isDeleting}
+        onConfirm={handleDeleteReferral}
       />
     </div>
   )

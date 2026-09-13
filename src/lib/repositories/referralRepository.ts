@@ -22,15 +22,15 @@ export const referralRepository = {
         const remoteList = response.data?.data || (Array.isArray(response.data) ? response.data : [])
 
         if (Array.isArray(remoteList)) {
-          const pendingItems = localList.filter((r) => r.sync_status !== "synced")
-          const pendingIds = new Set(pendingItems.map((r) => r.id))
+          const pendingQueue = await syncEngine.getQueue()
+          const pendingTempIds = new Set(pendingQueue.map((m) => m.temp_id).filter(Boolean))
 
-          const formattedRemote: LocalReferral[] = remoteList
-            .filter((r: any) => !pendingIds.has(r.referral_id || r._id || r.id))
-            .map((r: any) => ({
+          const formattedRemote: LocalReferral[] = remoteList.map((r: any) => {
+            const canonicalId = r.referral_id || r._id || r.id
+            return {
               ...r,
-              id: r.referral_id || r._id || r.id,
-              referral_id: r.referral_id || r._id || r.id,
+              id: canonicalId,
+              referral_id: canonicalId,
               pregnancy_id: r.pregnancy_id,
               from_facility_id: r.from_facility_id,
               to_facility_id: r.to_facility_id,
@@ -49,23 +49,30 @@ export const referralRepository = {
               pregnancy: r.pregnancy,
               fromFacility: r.fromFacility,
               toFacility: r.toFacility,
-            }))
+            }
+          })
 
-          try {
-            await db.transaction("rw", db.referrals, async () => {
-              const syncedLocalIds = localList.filter((r) => r.sync_status === "synced").map((r) => r.id)
-              if (syncedLocalIds.length > 0) {
-                await db.referrals.bulkDelete(syncedLocalIds)
-              }
-              if (formattedRemote.length > 0) {
-                await db.referrals.bulkPut(formattedRemote)
-              }
-            })
-          } catch (dbErr) {
-            console.warn("[referralRepository] Failed to update local Dexie cache:", dbErr)
+          const remoteIds = new Set(formattedRemote.map((r) => r.id))
+
+          // Purge stale/orphan local referrals that were deleted on server and are not pending in outbox
+          const toDelete = localList.filter((r) => {
+            const isPendingInOutbox = (r.id && pendingTempIds.has(r.id)) || (r.referral_id && pendingTempIds.has(r.referral_id))
+            if (isPendingInOutbox) return false
+            return !remoteIds.has(r.id) && (!r.referral_id || !remoteIds.has(r.referral_id))
+          })
+
+          for (const item of toDelete) {
+            if (item.id) await db.referrals.delete(item.id).catch(() => {})
+            if (item.referral_id) await db.referrals.where("referral_id").equals(item.referral_id).delete().catch(() => {})
           }
 
-          return [...pendingItems, ...formattedRemote]
+          const pendingItems = localList.filter((r) => (r.id && pendingTempIds.has(r.id)) || (r.referral_id && pendingTempIds.has(r.referral_id)))
+          if (formattedRemote.length > 0) {
+            await db.referrals.bulkPut(formattedRemote)
+          }
+
+          localList = await db.referrals.toArray()
+          return localList
         }
       } catch (apiErr) {
         console.warn("[referralRepository] Backend fetch failed, returning cached referrals:", apiErr)
@@ -210,8 +217,16 @@ export const referralRepository = {
   async deleteReferral(referralId: string): Promise<boolean> {
     try {
       await db.referrals.delete(referralId)
+      await db.referrals.where("referral_id").equals(referralId).delete().catch(() => {})
     } catch (err) {
       console.warn("[referralRepository] Delete local Dexie error:", err)
+    }
+
+    // If it was an offline/pending mutation, remove it from outbox
+    await syncEngine.cancelPendingMutation(referralId)
+
+    if (referralId.startsWith("temp-")) {
+      return true
     }
 
     if (syncEngine.isNetworkOnline()) {
