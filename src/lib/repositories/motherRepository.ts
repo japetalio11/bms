@@ -33,6 +33,9 @@ export const motherRepository = {
           const pendingItems = localMothers.filter((m) => m.sync_status !== "synced")
           const pendingTempIds = new Set(pendingItems.map((m) => m.id))
 
+          const remotePregs: LocalPregnancy[] = []
+          const remoteVisits: LocalPrenatalVisit[] = []
+
           const formattedRemote: LocalMother[] = remoteList
             .filter((m: any) => !pendingTempIds.has(m._id || m.id || m.mother_id))
             .map((m: any) => {
@@ -43,6 +46,35 @@ export const motherRepository = {
               const phoneNumber = m.phone_number || m.user?.phone_number || ""
               const photoUrl = m.photo_url || m.user?.profile_url || ""
               const userId = m.user_id || m.user?.user_id
+
+              if (Array.isArray(m.pregnancies)) {
+                for (const p of m.pregnancies) {
+                  const pId = p.pregnancy_id || p._id || p.id
+                  remotePregs.push({
+                    ...p,
+                    id: pId,
+                    pregnancy_id: pId,
+                    mother_id: motherId,
+                    sync_status: "synced",
+                    updated_at: Date.now(),
+                  })
+                  if (Array.isArray(p.prenatalVisits)) {
+                    for (const v of p.prenatalVisits) {
+                      const vId = v.visit_id || v._id || v.id
+                      remoteVisits.push({
+                        ...v,
+                        id: vId,
+                        visit_id: vId,
+                        pregnancy_id: pId,
+                        mother_id: motherId,
+                        sync_status: "synced",
+                        updated_at: Date.now(),
+                      })
+                    }
+                  }
+                }
+              }
+
               return {
                 ...m,
                 id: motherId,
@@ -60,9 +92,19 @@ export const motherRepository = {
               }
             })
 
-          await db.mothers.clear()
+          // Safe reconciliation: do NOT clear whole table
+          const remoteIds = new Set(formattedRemote.map((m) => m.id))
+          const staleMothers = localMothers.filter((m) => m.sync_status === "synced" && !remoteIds.has(m.id))
+          for (const sm of staleMothers) {
+            await db.mothers.delete(sm.id).catch(() => {})
+          }
           await db.mothers.bulkPut([...formattedRemote, ...pendingItems])
+          if (remotePregs.length > 0) await db.pregnancies.bulkPut(remotePregs).catch(() => {})
+          if (remoteVisits.length > 0) await db.prenatalVisits.bulkPut(remoteVisits).catch(() => {})
+
           localMothers = await db.mothers.toArray()
+          allPregnancies = await db.pregnancies.toArray()
+          allVisits = await db.prenatalVisits.toArray()
         }
       } catch (err) {
         console.warn("[motherRepository] Remote fetch failed, returning local Dexie mothers:", err)
@@ -88,28 +130,23 @@ export const motherRepository = {
       }
     }
 
-    // In-memory deduplication by mother_id, user_id, or full name
+    // Deduplication solely by canonical ID, never drop different mothers with same name
     const seen = new Set<string>()
     const deduplicated: LocalMother[] = []
 
     for (const mother of localMothers) {
       const motherId = mother.mother_id || mother._id || mother.id
       const userId = mother.user_id || mother.user?.user_id
-      const fname = (mother.user?.first_name || mother.first_name || "").toLowerCase().trim()
-      const lname = (mother.user?.last_name || mother.last_name || "").toLowerCase().trim()
-      const nameKey = fname && lname ? `name:${fname}_${lname}` : null
 
       if (
         (motherId && seen.has(`mid:${motherId}`)) ||
-        (userId && seen.has(`uid:${userId}`)) ||
-        (nameKey && seen.has(nameKey))
+        (userId && seen.has(`uid:${userId}`))
       ) {
         continue
       }
 
       if (motherId) seen.add(`mid:${motherId}`)
       if (userId) seen.add(`uid:${userId}`)
-      if (nameKey) seen.add(nameKey)
 
       const pregs = mother.pregnancies?.length ? mother.pregnancies : (motherId && pregMap.get(motherId)) || (userId && pregMap.get(userId)) || []
       const visits = mother.prenatalVisits?.length ? mother.prenatalVisits : (motherId && visitMap.get(motherId)) || (userId && visitMap.get(userId)) || []
@@ -134,54 +171,201 @@ export const motherRepository = {
   },
 
   /**
-   * Retrieves mother profile by ID. Returns local Dexie record or fetches remote profile synchronously when online.
+   * Retrieves full composite profile (mother, pregnancies, visits, appointments, labs, supplements).
+   * Reads local Dexie first, fetches /api/v1/mother/composite/:id in background, and updates Dexie atomically.
    */
-  async getMotherProfile(targetId: string): Promise<LocalMother | null> {
-    let local: LocalMother | null = null
-    try {
-      const allMothers = await db.mothers.toArray()
-      local = allMothers.find((m) => m.id === targetId || m._id === targetId || m.mother_id === targetId || m.user_id === targetId) || null
-    } catch (err) {
-      console.warn("[motherRepository] Failed to search local Dexie mothers:", err)
+  async getCompositeProfile(targetId: string): Promise<any> {
+    let localMother: any = await db.mothers.get(targetId)
+    if (!localMother) {
+      const allM = await db.mothers.toArray()
+      localMother = allM.find((m: any) => m.id === targetId || m._id === targetId || m.mother_id === targetId || m.user_id === targetId) || null
     }
 
+    const mid = localMother?.mother_id || localMother?.id || targetId
+    const uid = localMother?.user_id || localMother?.user?.user_id || targetId
+
+    const [allPregs, allVisits, allLabs, allSupps, allAppts] = await Promise.all([
+      db.pregnancies.toArray().catch(() => []),
+      db.prenatalVisits.toArray().catch(() => []),
+      db.labRecords.toArray().catch(() => []),
+      db.supplements.toArray().catch(() => []),
+      db.appointments.toArray().catch(() => []),
+    ])
+
+    const localPregs = allPregs.filter((p: any) => p.mother_id === mid || p.mother_id === uid || p.id === mid)
+    const pregIds = new Set(localPregs.map((p: any) => p.pregnancy_id || p.id).filter(Boolean))
+    const localVisits = allVisits.filter((v: any) => v.mother_id === mid || (v.pregnancy_id && pregIds.has(v.pregnancy_id)))
+    const localLabs = allLabs.filter((l: any) => l.mother_id === mid || (l.pregnancy_id && pregIds.has(l.pregnancy_id)))
+    const localSupps = allSupps.filter((s: any) => s.mother_id === mid || (s.pregnancy_id && pregIds.has(s.pregnancy_id)))
+    const localAppts = allAppts.filter((a: any) => a.user_id === uid || a.mother_id === mid)
+
+    const localComposite = localMother ? {
+      ...localMother,
+      mother_id: mid,
+      user_id: uid,
+      pregnancies: localPregs,
+      prenatalVisits: localVisits,
+      labRecords: localLabs,
+      supplements: localSupps,
+      appointments: localAppts,
+    } : null
+
+    // Background or fresh network sync if online
     if (syncEngine.isNetworkOnline()) {
       try {
-        const response = await apiClient.get(`/api/v1/mother/get/${targetId}`)
-        const remote = response.data?.result || response.data?.data || response.data?.mother || response.data
-        if (remote) {
-          const canonicalId = remote.mother_id || remote._id || remote.id || targetId
-          const updatedRecord: LocalMother = {
-            ...remote,
+        const response = await apiClient.get(`/api/v1/mother/composite/${targetId}`)
+        const data = response.data?.result || response.data?.data || response.data
+        if (data) {
+          const canonicalId = data.mother_id || data.id || targetId
+          const canonicalUid = data.user_id || data.user?.user_id || uid
+          const photoUrl = data.photo_url || data.user?.profile_url || data.user?.photo_url || data.profile_url || ""
+
+          const syncedMother: LocalMother = {
+            ...data,
             id: canonicalId,
             _id: canonicalId,
             mother_id: canonicalId,
-            user_id: remote.user_id || remote.user?.user_id,
-            sync_status: "synced" as const,
+            user_id: canonicalUid,
+            photo_url: photoUrl,
+            profile_url: photoUrl,
+            user: {
+              ...(data.user || {}),
+              ...(photoUrl ? { profile_url: photoUrl, photo_url: photoUrl } : {}),
+            },
+            sync_status: "synced",
             updated_at: Date.now(),
           }
-          await db.mothers.put(updatedRecord)
-          return updatedRecord
+
+          const pregs = (data.pregnancies || []).map((p: any) => ({
+            ...p,
+            id: p.pregnancy_id || p.id,
+            pregnancy_id: p.pregnancy_id || p.id,
+            mother_id: canonicalId,
+            sync_status: "synced" as const,
+            updated_at: Date.now(),
+          }))
+
+          const visits = (data.prenatalVisits || []).map((v: any) => ({
+            ...v,
+            id: v.visit_id || v.id,
+            visit_id: v.visit_id || v.id,
+            mother_id: canonicalId,
+            sync_status: "synced" as const,
+            updated_at: Date.now(),
+          }))
+
+          const labs = (data.labRecords || []).map((l: any) => ({
+            ...l,
+            id: l.screening_id || l.id,
+            screening_id: l.screening_id || l.id,
+            mother_id: canonicalId,
+            sync_status: "synced" as const,
+            updated_at: Date.now(),
+          }))
+
+          const supps = (data.supplements || []).map((s: any) => ({
+            ...s,
+            id: s.supplement_id || s.id,
+            supplement_id: s.supplement_id || s.id,
+            mother_id: canonicalId,
+            sync_status: "synced" as const,
+            updated_at: Date.now(),
+          }))
+
+          const appts = (data.appointments || []).map((a: any) => ({
+            ...a,
+            id: a.appointment_id || a.id,
+            appointment_id: a.appointment_id || a.id,
+            user_id: canonicalUid,
+            mother_id: canonicalId,
+            sync_status: "synced" as const,
+            updated_at: Date.now(),
+          }))
+
+          // Atomic Dexie update
+          await db.transaction("rw", [db.mothers, db.pregnancies, db.prenatalVisits, db.labRecords, db.supplements, db.appointments], async () => {
+            await db.mothers.put(syncedMother)
+            if (pregs.length > 0) await db.pregnancies.bulkPut(pregs)
+            if (visits.length > 0) await db.prenatalVisits.bulkPut(visits)
+            if (labs.length > 0) await db.labRecords.bulkPut(labs)
+            if (supps.length > 0) await db.supplements.bulkPut(supps)
+            if (appts.length > 0) await db.appointments.bulkPut(appts)
+          })
+
+          return {
+            ...syncedMother,
+            pregnancies: pregs,
+            prenatalVisits: visits,
+            labRecords: labs,
+            supplements: supps,
+            appointments: appts,
+          }
         }
       } catch (err) {
-        console.warn(`[motherRepository] Fetch profile ${targetId} failed:`, err)
+        console.warn(`[motherRepository] Fetch composite profile ${targetId} failed, returning local:`, err)
       }
     }
 
-    return local
+    return localComposite
+  },
+
+  /**
+   * Retrieves mother profile by ID. Returns composite profile with fast local first.
+   */
+  async getMotherProfile(targetId: string): Promise<LocalMother | null> {
+    return await this.getCompositeProfile(targetId)
   },
 
   /**
    * Registers a new mother (offline-first).
    */
   async registerMother(payload: any): Promise<LocalMother> {
-    const tempId = `temp-mother-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
-
     const firstName = payload.first_name || payload.firstName || ""
     const lastName = payload.last_name || payload.lastName || ""
     const middleName = payload.middle_name || payload.middleName || ""
     const phoneNumber = payload.phone_number || payload.phoneNumber || ""
     const address = payload.address || ""
+
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.post("/api/v1/mother/register", payload)
+        const m = response.data?.mother || response.data?.result?.mother || response.data?.result || response.data
+        const canonicalId = m.mother_id || m.id || m._id
+        const canonicalUserId = m.user_id || m.user?.user_id
+
+        const syncedMother: LocalMother = {
+          ...m,
+          id: canonicalId,
+          _id: canonicalId,
+          mother_id: canonicalId,
+          user_id: canonicalUserId,
+          first_name: firstName,
+          last_name: lastName,
+          middle_name: middleName,
+          phone_number: phoneNumber,
+          address: address,
+          facility_id: payload.facility_id || payload.facilityId || m.facility_id || "",
+          user: {
+            ...(m.user || {}),
+            _id: canonicalUserId,
+            user_id: canonicalUserId,
+            first_name: firstName,
+            last_name: lastName,
+            middle_name: middleName,
+            phone_number: phoneNumber,
+            address: address,
+          },
+          sync_status: "synced",
+          updated_at: Date.now(),
+        }
+        await db.mothers.put(syncedMother)
+        return syncedMother
+      } catch (err) {
+        console.warn("[motherRepository] Online registerMother failed, falling back to offline outbox:", err)
+      }
+    }
+
+    const tempId = `temp-mother-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
 
     const newMother: LocalMother = {
       ...payload,
@@ -208,10 +392,8 @@ export const motherRepository = {
       updated_at: Date.now(),
     }
 
-    // Save to Dexie DB immediately
     await db.mothers.put(newMother)
 
-    // Enqueue mutation
     await syncEngine.enqueueMutation({
       entity_type: "mother",
       action: "CREATE",
@@ -228,25 +410,33 @@ export const motherRepository = {
    * Updates an existing mother record (offline-first).
    */
   async updateMother(motherId: string, payload: any) {
-    const local = await db.mothers.get(motherId)
+    let local: any = await db.mothers.get(motherId)
+    if (!local) {
+      const all = await db.mothers.toArray()
+      local = all.find((m: any) => m.id === motherId || m._id === motherId || m.mother_id === motherId || m.user_id === motherId) || null
+    }
+
+    const photoUrl = payload.photo_url || payload.profile_url || ""
     if (local) {
+      const actualKey = local.id
       const updatedUser = {
         ...(local.user || {}),
-        ...(payload.profile_url ? { profile_url: payload.profile_url } : {}),
-        ...(payload.photo_url ? { photo_url: payload.photo_url } : {}),
+        ...(photoUrl ? { profile_url: photoUrl, photo_url: photoUrl } : {}),
         ...(payload.first_name ? { first_name: payload.first_name } : {}),
         ...(payload.last_name ? { last_name: payload.last_name } : {}),
         ...(payload.address ? { address: payload.address } : {}),
         ...(payload.phone_number ? { phone_number: payload.phone_number } : {}),
       }
-      await db.mothers.update(motherId, {
+      await db.mothers.update(actualKey, {
         ...payload,
+        ...(photoUrl ? { photo_url: photoUrl, profile_url: photoUrl } : {}),
         user: updatedUser,
         sync_status: local.sync_status === "pending_create" ? "pending_create" : "pending_update",
         updated_at: Date.now(),
       })
     }
 
+    // Queue mutation: syncEngine automatically runs processQueue immediately if online, or stores for later if offline
     await syncEngine.enqueueMutation({
       entity_type: "mother",
       action: "UPDATE",
@@ -260,15 +450,183 @@ export const motherRepository = {
   },
 
   /**
+   * Deletes a mother profile (offline-first).
+   * Soft-deletes online or enqueues DELETE mutation offline; cleans up Dexie and outbox.
+   */
+  async deleteMother(motherId: string) {
+    // 1. If temp ID, cancel any pending creation mutation
+    if (motherId.startsWith("temp-")) {
+      await syncEngine.cancelPendingMutation(motherId)
+    }
+
+    // 2. Clean up local IndexedDB
+    try {
+      await db.transaction("rw", [db.mothers, db.pregnancies, db.prenatalVisits, db.labRecords, db.supplements, db.appointments], async () => {
+        await db.mothers.delete(motherId).catch(() => {})
+        await db.mothers.where("mother_id").equals(motherId).delete().catch(() => {})
+        await db.pregnancies.where("mother_id").equals(motherId).delete().catch(() => {})
+        await db.prenatalVisits.where("mother_id").equals(motherId).delete().catch(() => {})
+        await db.labRecords.where("mother_id").equals(motherId).delete().catch(() => {})
+        await db.supplements.where("mother_id").equals(motherId).delete().catch(() => {})
+        await db.appointments.where("mother_id").equals(motherId).delete().catch(() => {})
+      })
+    } catch (dbErr) {
+      console.warn("[motherRepository] Local deletion error:", dbErr)
+    }
+
+    // 3. Online call or offline queue
+    if (!motherId.startsWith("temp-")) {
+      if (syncEngine.isNetworkOnline()) {
+        try {
+          await apiClient.delete(`/api/v1/mother/delete/soft/${motherId}`)
+          return { success: true }
+        } catch (apiErr) {
+          console.warn("[motherRepository] Online deleteMother failed, queueing mutation:", apiErr)
+        }
+      }
+
+      await syncEngine.enqueueMutation({
+        entity_type: "mother",
+        action: "DELETE",
+        endpoint: `/api/v1/mother/delete/soft/${motherId}`,
+        method: "DELETE",
+        payload: {},
+      })
+    }
+
+    return { success: true }
+  },
+
+  async deletePregnancy(pregnancyId: string) {
+    if (pregnancyId.startsWith("temp-")) {
+      await syncEngine.cancelPendingMutation(pregnancyId)
+    }
+    await db.pregnancies.delete(pregnancyId).catch(() => {})
+    await db.pregnancies.where("pregnancy_id").equals(pregnancyId).delete().catch(() => {})
+    await db.prenatalVisits.where("pregnancy_id").equals(pregnancyId).delete().catch(() => {})
+
+    if (!pregnancyId.startsWith("temp-")) {
+      if (syncEngine.isNetworkOnline()) {
+        try {
+          await apiClient.delete(`/api/v1/pregnancy/delete/${pregnancyId}`)
+          return { success: true }
+        } catch (err) {
+          console.warn("[motherRepository] Online deletePregnancy failed, queueing:", err)
+        }
+      }
+      await syncEngine.enqueueMutation({
+        entity_type: "pregnancy",
+        action: "DELETE",
+        endpoint: `/api/v1/pregnancy/delete/${pregnancyId}`,
+        method: "DELETE",
+        payload: {},
+      })
+    }
+    return { success: true }
+  },
+
+  async deletePrenatalVisit(visitId: string) {
+    if (visitId.startsWith("temp-")) {
+      await syncEngine.cancelPendingMutation(visitId)
+    }
+    await db.prenatalVisits.delete(visitId).catch(() => {})
+    await db.prenatalVisits.where("visit_id").equals(visitId).delete().catch(() => {})
+
+    if (!visitId.startsWith("temp-")) {
+      if (syncEngine.isNetworkOnline()) {
+        try {
+          await apiClient.delete(`/api/v1/prenatal-visit/delete/${visitId}`)
+          return { success: true }
+        } catch (err) {
+          console.warn("[motherRepository] Online deletePrenatalVisit failed, queueing:", err)
+        }
+      }
+      await syncEngine.enqueueMutation({
+        entity_type: "prenatal_visit",
+        action: "DELETE",
+        endpoint: `/api/v1/prenatal-visit/delete/${visitId}`,
+        method: "DELETE",
+        payload: {},
+      })
+    }
+    return { success: true }
+  },
+
+  async deleteLabRecord(screeningId: string) {
+    if (screeningId.startsWith("temp-")) {
+      await syncEngine.cancelPendingMutation(screeningId)
+    }
+    await db.labRecords.delete(screeningId).catch(() => {})
+    await db.labRecords.where("screening_id").equals(screeningId).delete().catch(() => {})
+
+    if (!screeningId.startsWith("temp-")) {
+      if (syncEngine.isNetworkOnline()) {
+        try {
+          await apiClient.delete(`/api/v1/lab-screening/delete/${screeningId}`)
+          return { success: true }
+        } catch (err) {
+          console.warn("[motherRepository] Online deleteLabRecord failed, queueing:", err)
+        }
+      }
+      await syncEngine.enqueueMutation({
+        entity_type: "lab_record",
+        action: "DELETE",
+        endpoint: `/api/v1/lab-screening/delete/${screeningId}`,
+        method: "DELETE",
+        payload: {},
+      })
+    }
+    return { success: true }
+  },
+
+  async deleteSupplement(supplementId: string) {
+    if (supplementId.startsWith("temp-")) {
+      await syncEngine.cancelPendingMutation(supplementId)
+    }
+    await db.supplements.delete(supplementId).catch(() => {})
+    await db.supplements.where("supplement_id").equals(supplementId).delete().catch(() => {})
+
+    if (!supplementId.startsWith("temp-")) {
+      if (syncEngine.isNetworkOnline()) {
+        try {
+          await apiClient.delete(`/api/v1/supplement/delete/${supplementId}`)
+          return { success: true }
+        } catch (err) {
+          console.warn("[motherRepository] Online deleteSupplement failed, queueing:", err)
+        }
+      }
+      await syncEngine.enqueueMutation({
+        entity_type: "supplement",
+        action: "DELETE",
+        endpoint: `/api/v1/supplement/delete/${supplementId}`,
+        method: "DELETE",
+        payload: {},
+      })
+    }
+    return { success: true }
+  },
+
+  /**
    * Registers a prenatal visit log (offline-first).
    */
   async registerPrenatalVisit(payload: any): Promise<LocalPrenatalVisit> {
-    const tempId = `temp-visit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
-    
     let motherId = payload.mother_id || payload.motherId || payload.targetId || ""
-    if (!motherId && payload.pregnancy_id) {
+    let pregnancyId = payload.pregnancy_id || payload.pregnancyId || ""
+
+    if (pregnancyId && pregnancyId.startsWith("temp-")) {
       try {
-        const preg = await db.pregnancies.get(payload.pregnancy_id)
+        const allPregs = await db.pregnancies.toArray()
+        const matched = allPregs.find((p) => p.id === pregnancyId || p.temp_id === pregnancyId || (motherId && (p.mother_id === motherId || p.motherId === motherId)))
+        if (matched && matched.pregnancy_id && !matched.pregnancy_id.startsWith("temp-")) {
+          pregnancyId = matched.pregnancy_id
+          payload.pregnancy_id = matched.pregnancy_id
+        }
+      } catch (e) {}
+    }
+
+    if (!motherId && pregnancyId) {
+      try {
+        const preg = await db.pregnancies.get(pregnancyId)
         if (preg) {
           motherId = preg.mother_id || preg.motherId || preg.targetId || ""
         }
@@ -276,6 +634,56 @@ export const motherRepository = {
         console.warn("[motherRepository] Failed to resolve motherId from pregnancy:", err)
       }
     }
+
+    if (motherId && motherId.startsWith("temp-")) {
+      try {
+        const allMothers = await db.mothers.toArray()
+        const matched = allMothers.find((m) => m.id === motherId || m.temp_id === motherId || m._id === motherId)
+        if (matched && matched.mother_id && !matched.mother_id.startsWith("temp-")) {
+          motherId = matched.mother_id
+          payload.mother_id = matched.mother_id
+        }
+      } catch (e) {}
+    }
+
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.post("/api/v1/prenatal-visit/register", payload)
+        const v = response.data?.prenatalVisit || response.data?.result || response.data
+        const canonicalId = v.visit_id || v._id || v.id
+
+        const syncedVisit: LocalPrenatalVisit = {
+          ...payload,
+          ...v,
+          id: canonicalId,
+          visit_id: canonicalId,
+          mother_id: motherId || v.mother_id,
+          visit_date: payload.visit_date || v.visit_date || new Date().toISOString(),
+          sync_status: "synced",
+          updated_at: Date.now(),
+        }
+        await db.prenatalVisits.put(syncedVisit)
+
+        if (payload.risk_level_assessed) {
+          try {
+            if (payload.pregnancy_id) {
+              await db.pregnancies.update(payload.pregnancy_id, { risk_flag: payload.risk_level_assessed, risk_level: payload.risk_level_assessed })
+            }
+            if (motherId) {
+              await db.mothers.update(motherId, { risk_flag: payload.risk_level_assessed, risk_level: payload.risk_level_assessed, risk: payload.risk_level_assessed })
+            }
+          } catch (err) {
+            console.warn("[motherRepository] Failed to sync risk flag to pregnancy/mother:", err)
+          }
+        }
+
+        return syncedVisit
+      } catch (err) {
+        console.warn("[motherRepository] Online registerPrenatalVisit failed, falling back to offline outbox:", err)
+      }
+    }
+
+    const tempId = `temp-visit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
 
     const newVisit: LocalPrenatalVisit = {
       ...payload,
@@ -360,7 +768,7 @@ export const motherRepository = {
       try {
         const response = await apiClient.get(`/api/v1/prenatal-visit/mother/${motherId}`)
         const remoteList = response.data?.result || response.data?.data || (Array.isArray(response.data) ? response.data : [])
-        if (Array.isArray(remoteList) && remoteList.length > 0) {
+        if (Array.isArray(remoteList)) {
           const pendingVisits = localVisits.filter((v) => v.sync_status !== "synced")
           const pendingIds = new Set(pendingVisits.map((v) => v.id))
 
@@ -374,7 +782,26 @@ export const motherRepository = {
               updated_at: Date.now(),
             }))
 
-          await db.prenatalVisits.bulkPut([...formattedRemote, ...pendingVisits])
+          const pendingQueue = await syncEngine.getQueue()
+          const pendingTempIds = new Set(pendingQueue.map((m) => m.temp_id).filter(Boolean))
+
+          const remoteIds = new Set(formattedRemote.map((v) => v.id))
+          const remoteVisitIds = new Set(remoteList.map((v: any) => v.visit_id || v._id || v.id).filter(Boolean))
+
+          const toDelete = localVisits.filter((v) => {
+            const isPendingInOutbox = (v.id && pendingTempIds.has(v.id)) || (v.visit_id && pendingTempIds.has(v.visit_id))
+            if (isPendingInOutbox) return false
+            return !remoteIds.has(v.id) && (!v.visit_id || !remoteVisitIds.has(v.visit_id))
+          })
+
+          for (const item of toDelete) {
+            if (item.id) await db.prenatalVisits.delete(item.id).catch(() => {})
+            if (item.visit_id) await db.prenatalVisits.where("visit_id").equals(item.visit_id).delete().catch(() => {})
+          }
+
+          if (formattedRemote.length > 0 || pendingVisits.length > 0) {
+            await db.prenatalVisits.bulkPut([...formattedRemote, ...pendingVisits])
+          }
         }
       } catch (err) {
         console.warn(`[motherRepository] Fetch prenatal visits for ${motherId} failed, returning Dexie data:`, err)
@@ -406,17 +833,63 @@ export const motherRepository = {
    * Registers lab record (offline-first).
    */
   async registerLabRecord(payload: any): Promise<LocalLabRecord> {
-    const tempId = `temp-lab-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
-
     let motherId = payload.mother_id || payload.motherId || payload.targetId || ""
-    if (!motherId && payload.pregnancy_id) {
+    let pregnancyId = payload.pregnancy_id || payload.pregnancyId || ""
+
+    if (pregnancyId && pregnancyId.startsWith("temp-")) {
       try {
-        const preg = await db.pregnancies.get(payload.pregnancy_id)
+        const allPregs = await db.pregnancies.toArray()
+        const matched = allPregs.find((p) => p.id === pregnancyId || p.temp_id === pregnancyId || (motherId && (p.mother_id === motherId || p.motherId === motherId)))
+        if (matched && matched.pregnancy_id && !matched.pregnancy_id.startsWith("temp-")) {
+          pregnancyId = matched.pregnancy_id
+          payload.pregnancy_id = matched.pregnancy_id
+        }
+      } catch (e) {}
+    }
+
+    if (!motherId && pregnancyId) {
+      try {
+        const preg = await db.pregnancies.get(pregnancyId)
         if (preg) motherId = preg.mother_id || preg.motherId || ""
       } catch {
         // ignore
       }
     }
+
+    if (motherId && motherId.startsWith("temp-")) {
+      try {
+        const allMothers = await db.mothers.toArray()
+        const matched = allMothers.find((m) => m.id === motherId || m.temp_id === motherId || m._id === motherId)
+        if (matched && matched.mother_id && !matched.mother_id.startsWith("temp-")) {
+          motherId = matched.mother_id
+          payload.mother_id = matched.mother_id
+        }
+      } catch (e) {}
+    }
+
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.post("/api/v1/lab-screening/register", payload)
+        const l = response.data?.result || response.data?.data || response.data
+        const canonicalId = l.screening_id || l._id || l.id
+
+        const syncedLab: LocalLabRecord = {
+          ...payload,
+          ...l,
+          id: canonicalId,
+          screening_id: canonicalId,
+          mother_id: motherId,
+          sync_status: "synced",
+          updated_at: Date.now(),
+        }
+        await db.labRecords.put(syncedLab)
+        return syncedLab
+      } catch (err) {
+        console.warn("[motherRepository] Online registerLabRecord failed, falling back to offline outbox:", err)
+      }
+    }
+
+    const tempId = `temp-lab-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
 
     const newLab: LocalLabRecord = {
       ...payload,
@@ -475,7 +948,7 @@ export const motherRepository = {
         headers: { "Content-Type": "multipart/form-data" },
       })
 
-      const remoteUrl = res.data?.url || res.data?.fileUrl || res.data?.result
+      const remoteUrl = res.data?.file_url || res.data?.fileUrl || res.data?.url || res.data?.result || ""
       await db.blobs.delete(tempBlobId)
       return { url: remoteUrl }
     } catch (err) {
@@ -493,8 +966,44 @@ export const motherRepository = {
    * Registers a new pregnancy (offline-first).
    */
   async registerPregnancy(payload: any): Promise<LocalPregnancy> {
+    let motherId = payload.motherId || payload.mother_id || payload.targetId || ""
+
+    if (motherId && motherId.startsWith("temp-")) {
+      try {
+        const allMothers = await db.mothers.toArray()
+        const matched = allMothers.find((m) => m.id === motherId || m.temp_id === motherId || m._id === motherId)
+        if (matched && matched.mother_id && !matched.mother_id.startsWith("temp-")) {
+          motherId = matched.mother_id
+          payload.motherId = matched.mother_id
+          payload.mother_id = matched.mother_id
+        }
+      } catch (e) {}
+    }
+
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.post("/api/v1/pregnancy/register", payload)
+        const p = response.data?.pregnancy || response.data?.result || response.data
+        const canonicalId = p.pregnancy_id || p._id || p.id
+
+        const syncedPreg: LocalPregnancy = {
+          ...payload,
+          ...p,
+          id: canonicalId,
+          pregnancy_id: canonicalId,
+          mother_id: motherId,
+          pregnancy_status: payload.pregnancy_status || p.pregnancy_status || "Active",
+          sync_status: "synced",
+          updated_at: Date.now(),
+        }
+        await db.pregnancies.put(syncedPreg)
+        return syncedPreg
+      } catch (err) {
+        console.warn("[motherRepository] Online registerPregnancy failed, falling back to offline outbox:", err)
+      }
+    }
+
     const tempId = `temp-preg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
-    const motherId = payload.motherId || payload.mother_id || payload.targetId || ""
 
     const newPregnancy: LocalPregnancy = {
       ...payload,
@@ -539,7 +1048,7 @@ export const motherRepository = {
       try {
         const response = await apiClient.get(`/api/v1/pregnancy/mother/${motherId}`)
         const remoteList = response.data?.result || response.data?.data || (Array.isArray(response.data) ? response.data : [])
-        if (Array.isArray(remoteList) && remoteList.length > 0) {
+        if (Array.isArray(remoteList)) {
           const pending = local.filter((p) => p.sync_status !== "synced")
           const pendingIds = new Set(pending.map((p) => p.id))
 
@@ -553,7 +1062,16 @@ export const motherRepository = {
               updated_at: Date.now(),
             }))
 
-          await db.pregnancies.bulkPut([...formattedRemote, ...pending])
+          const remoteIds = new Set(formattedRemote.map((p) => p.id))
+          const toDelete = local.filter((p) => p.sync_status === "synced" && !remoteIds.has(p.id))
+          for (const item of toDelete) {
+            await db.pregnancies.delete(item.id)
+            if (item.pregnancy_id) await db.pregnancies.where("pregnancy_id").equals(item.pregnancy_id).delete()
+          }
+
+          if (formattedRemote.length > 0 || pending.length > 0) {
+            await db.pregnancies.bulkPut([...formattedRemote, ...pending])
+          }
           const allUpdated = await db.pregnancies.toArray()
           return allUpdated.filter((p) => {
             const pMid = p.mother_id || p.motherId || p.targetId
@@ -587,7 +1105,7 @@ export const motherRepository = {
       try {
         const response = await apiClient.get(`/api/v1/lab-screening/get/mother/${motherId}`)
         const remoteList = response.data?.result || response.data?.data || (Array.isArray(response.data) ? response.data : [])
-        if (Array.isArray(remoteList) && remoteList.length > 0) {
+        if (Array.isArray(remoteList)) {
           const pending = local.filter((l) => l.sync_status !== "synced")
           const pendingIds = new Set(pending.map((l) => l.id))
 
@@ -601,7 +1119,16 @@ export const motherRepository = {
               updated_at: Date.now(),
             }))
 
-          await db.labRecords.bulkPut([...formattedRemote, ...pending])
+          const remoteIds = new Set(formattedRemote.map((l) => l.id))
+          const toDelete = local.filter((l) => l.sync_status === "synced" && !remoteIds.has(l.id))
+          for (const item of toDelete) {
+            await db.labRecords.delete(item.id)
+            if (item.screening_id) await db.labRecords.where("screening_id").equals(item.screening_id).delete()
+          }
+
+          if (formattedRemote.length > 0 || pending.length > 0) {
+            await db.labRecords.bulkPut([...formattedRemote, ...pending])
+          }
           const allUpdated = await db.labRecords.toArray()
           return allUpdated.filter((l) => {
             const lMid = l.mother_id || l.motherId || l.targetId
@@ -620,16 +1147,64 @@ export const motherRepository = {
    * Registers a supplement record (offline-first).
    */
   async registerSupplement(payload: any): Promise<LocalSupplement> {
-    const tempId = `temp-supp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
     let motherId = payload.motherId || payload.mother_id || payload.targetId || ""
-    if (!motherId && payload.pregnancy_id) {
+    let pregnancyId = payload.pregnancy_id || payload.pregnancyId || ""
+
+    if (pregnancyId && pregnancyId.startsWith("temp-")) {
       try {
-        const preg = await db.pregnancies.get(payload.pregnancy_id)
+        const allPregs = await db.pregnancies.toArray()
+        const matched = allPregs.find((p) => p.id === pregnancyId || p.temp_id === pregnancyId || (motherId && (p.mother_id === motherId || p.motherId === motherId)))
+        if (matched && matched.pregnancy_id && !matched.pregnancy_id.startsWith("temp-")) {
+          pregnancyId = matched.pregnancy_id
+          payload.pregnancy_id = matched.pregnancy_id
+        }
+      } catch (e) {}
+    }
+
+    if (!motherId && pregnancyId) {
+      try {
+        const preg = await db.pregnancies.get(pregnancyId)
         if (preg) motherId = preg.mother_id || preg.motherId || ""
       } catch {
         // ignore
       }
     }
+
+    if (motherId && motherId.startsWith("temp-")) {
+      try {
+        const allMothers = await db.mothers.toArray()
+        const matched = allMothers.find((m) => m.id === motherId || m.temp_id === motherId || m._id === motherId)
+        if (matched && matched.mother_id && !matched.mother_id.startsWith("temp-")) {
+          motherId = matched.mother_id
+          payload.mother_id = matched.mother_id
+          payload.motherId = matched.mother_id
+        }
+      } catch (e) {}
+    }
+
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.post("/api/v1/supplement/register", payload)
+        const s = response.data?.result || response.data?.supplement_record || response.data
+        const canonicalId = s.supplement_id || s._id || s.id
+
+        const syncedSupp: LocalSupplement = {
+          ...payload,
+          ...s,
+          id: canonicalId,
+          supplement_id: canonicalId,
+          mother_id: motherId,
+          sync_status: "synced",
+          updated_at: Date.now(),
+        }
+        await db.supplements.put(syncedSupp)
+        return syncedSupp
+      } catch (err) {
+        console.warn("[motherRepository] Online registerSupplement failed, falling back to offline outbox:", err)
+      }
+    }
+
+    const tempId = `temp-supp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
 
     const newSupplement: LocalSupplement = {
       ...payload,
@@ -664,7 +1239,7 @@ export const motherRepository = {
       try {
         const response = await apiClient.get(`/api/v1/supplement/get/mother/${motherId}`)
         const remoteList = response.data?.result || response.data?.data || []
-        if (Array.isArray(remoteList) && remoteList.length > 0) {
+        if (Array.isArray(remoteList)) {
           const pending = local.filter((s) => s.sync_status !== "synced")
           const pendingIds = new Set(pending.map((s) => s.id))
 
@@ -678,7 +1253,16 @@ export const motherRepository = {
               updated_at: Date.now(),
             }))
 
-          await db.supplements.bulkPut([...formattedRemote, ...pending])
+          const remoteIds = new Set(formattedRemote.map((s) => s.id))
+          const toDelete = local.filter((s) => s.sync_status === "synced" && !remoteIds.has(s.id))
+          for (const item of toDelete) {
+            await db.supplements.delete(item.id)
+            if (item.supplement_id) await db.supplements.where("supplement_id").equals(item.supplement_id).delete()
+          }
+
+          if (formattedRemote.length > 0 || pending.length > 0) {
+            await db.supplements.bulkPut([...formattedRemote, ...pending])
+          }
           return await db.supplements.where("mother_id").equals(motherId).toArray()
         }
       } catch (err) {

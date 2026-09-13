@@ -47,6 +47,8 @@ import { RegisterMotherModal } from "./RegisterMotherModal"
 import { ConnectMotherModal } from "./ConnectMotherModal"
 import { ExportMaternalDataModal } from "./ExportMaternalDataModal"
 import { formatDate } from "@/lib/utils"
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
+import { toast } from "sonner"
 import { mothersApi } from "../api"
 
 export function MothersPage() {
@@ -54,6 +56,8 @@ export function MothersPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
   const [connectModalOpen, setConnectModalOpen] = useState(false)
+  const [motherToDelete, setMotherToDelete] = useState<any>(null)
+  const [isDeletingMother, setIsDeletingMother] = useState(false)
   const [motherList, setMotherList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -466,21 +470,9 @@ export function MothersPage() {
                                 <DropdownMenuItem onClick={() => navigate(`/dashboard/mothers/${mother.id}`)} className="text-xs cursor-pointer rounded-md">View Profile</DropdownMenuItem>
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/mothers/${mother.id}`) }} className="text-xs cursor-pointer rounded-md">Edit Profile</DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={async (e) => {
+                                  onClick={(e) => {
                                     e.stopPropagation()
-                                    if (confirm(`Are you sure you want to delete ${mother.name}?`)) {
-                                      const token = localStorage.getItem("token")
-                                      const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
-                                      try {
-                                        await fetch(`${baseUrl}/api/v1/mother/delete/soft/${mother.id}`, {
-                                          method: "DELETE",
-                                          headers: { Authorization: `Bearer ${token}` }
-                                        })
-                                        fetchMothers()
-                                      } catch (err) {
-                                        alert("Failed to delete mother profile")
-                                      }
-                                    }
+                                    setMotherToDelete(mother)
                                   }}
                                   className="text-xs text-destructive focus:text-destructive cursor-pointer rounded-md"
                                 >
@@ -541,6 +533,27 @@ export function MothersPage() {
         open={connectModalOpen}
         onOpenChange={setConnectModalOpen}
         onSuccess={fetchMothers}
+      />
+      <ConfirmDeleteModal
+        open={!!motherToDelete}
+        onOpenChange={(open) => !open && setMotherToDelete(null)}
+        title="Delete Mother Profile"
+        description={`Are you sure you want to delete ${motherToDelete?.name || "this mother profile"}? This action will remove the record from your facility masterlist.`}
+        isDeleting={isDeletingMother}
+        onConfirm={async () => {
+          if (!motherToDelete) return
+          setIsDeletingMother(true)
+          try {
+            await mothersApi.deleteMother(motherToDelete.id)
+            toast.success(`${motherToDelete.name || "Mother profile"} deleted`)
+            setMotherToDelete(null)
+            fetchMothers()
+          } catch (err: any) {
+            toast.error(err?.response?.data?.error || err?.message || "Failed to delete mother profile")
+          } finally {
+            setIsDeletingMother(false)
+          }
+        }}
       />
     </div>
   )

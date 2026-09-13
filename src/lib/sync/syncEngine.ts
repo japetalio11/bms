@@ -124,6 +124,27 @@ class SyncEngine {
     }
   }
 
+  public async getQueue(): Promise<OfflineQueueItem[]> {
+    return await db.offlineQueue.orderBy("created_at").toArray()
+  }
+
+  public async cancelPendingMutation(entityId: string): Promise<boolean> {
+    const pendingItems = await db.offlineQueue.toArray()
+    let cancelled = false
+    for (const item of pendingItems) {
+      if (item.temp_id === entityId || (item.endpoint && item.endpoint.includes(entityId))) {
+        if (item.id) {
+          await db.offlineQueue.delete(item.id)
+          cancelled = true
+        }
+      }
+    }
+    if (cancelled) {
+      this.notify()
+    }
+    return cancelled
+  }
+
   /**
    * Processes all pending offline mutations in FIFO order.
    */
@@ -184,8 +205,21 @@ class SyncEngine {
           if (item.id) {
             await db.offlineQueue.delete(item.id)
           }
-          if (item.temp_id && item.entity_type === "mother") {
-            await db.mothers.update(item.temp_id, { sync_status: "synced" })
+          if (item.temp_id) {
+            const tableMap: Record<string, any> = {
+              mother: db.mothers,
+              pregnancy: db.pregnancies,
+              prenatal_visit: db.prenatalVisits,
+              appointment: db.appointments,
+              lab_record: db.labRecords,
+              supplement: db.supplements,
+              referral: db.referrals,
+              message: db.messages,
+            }
+            const table = tableMap[item.entity_type]
+            if (table) {
+              await table.update(item.temp_id, { sync_status: "error", last_error: errMsg }).catch(() => {})
+            }
           }
         } else if (item.id) {
           await db.offlineQueue.update(item.id, {
@@ -509,6 +543,14 @@ class SyncEngine {
           })
         }
       }
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("bms:temp-id-reconciled", {
+            detail: { entityType, tempId, canonicalId: primaryCanonicalId, responseData },
+          })
+        )
+      }
     })
   }
 
@@ -528,6 +570,39 @@ class SyncEngine {
         const pMid = p.mother_id || p.motherId
         if (pId && !pId.startsWith("temp-") && pMid) {
           pregMap.set(pMid, pId)
+        }
+      }
+
+      // 0. Recover Unsynced Mothers
+      const mothers = await db.mothers.toArray()
+      for (const mother of mothers) {
+        const isTemp = String(mother.id).startsWith("temp-") || mother.sync_status === "pending_create"
+        if (isTemp && !queuedTempIds.has(mother.id)) {
+          console.log(`[SyncEngine] Auto-recovering offline mother ${mother.id} to outbox queue...`)
+          await db.offlineQueue.add({
+            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            entity_type: "mother",
+            action: "CREATE",
+            endpoint: "/api/v1/mother/register",
+            method: "POST",
+            payload: {
+              first_name: mother.first_name || mother.user?.first_name,
+              last_name: mother.last_name || mother.user?.last_name,
+              middle_name: mother.middle_name || mother.user?.middle_name,
+              address: mother.address || mother.user?.address,
+              phone_number: mother.phone_number || mother.user?.phone_number,
+              email: mother.email || mother.user?.email,
+              birth_date: mother.birth_date,
+              civil_status: mother.civil_status,
+              blood_type: mother.blood_type,
+              family_serial_no: mother.family_serial_no,
+              facility_id: mother.facility_id,
+            },
+            temp_id: mother.id,
+            retry_count: 0,
+            created_at: Date.now(),
+          })
+          queuedTempIds.add(mother.id)
         }
       }
 

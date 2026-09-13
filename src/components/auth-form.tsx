@@ -4,7 +4,7 @@ import { Eye, EyeOff, Building2, User, KeyRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import headerImage from "@/assets/header.svg"
+import headerIcon from "@/assets/icon.svg"
 import { db } from "@/lib/db/bmsDatabase"
 import { TermsOfServiceModal } from "@/components/TermsOfServiceModal"
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal"
@@ -589,8 +589,9 @@ export function AuthForm() {
     <div className="flex min-h-svh w-full flex-col items-center justify-center bg-background p-6">
       <div className="flex w-full max-w-md flex-col items-center gap-6">
         {/* Logo */}
-        <div className="flex items-center justify-center mb-2">
-          <img src={headerImage} alt="BMS Logo" className="h-14 w-auto dark:invert" />
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <img src={headerIcon} alt="BMS Logo" className="h-10 w-auto dark:invert" />
+          <span className="text-3xl font-extrabold tracking-wider text-foreground">BMS</span>
         </div>
 
         {/* Form Card */}
@@ -875,7 +876,7 @@ export function AuthForm() {
                           <Input
                             id="facilityName"
                             type="text"
-                            placeholder="e.g. Pili Rural Health Unit 1"
+                            placeholder="e.g. Pili BMS 1"
                             required
                             value={facilityName}
                             onChange={(e) => setFacilityName(e.target.value)}

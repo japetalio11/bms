@@ -4,6 +4,35 @@ import "./index.css"
 import App from "./App"
 import { initStoragePersistence } from "@/lib/db/storagePersist"
 import { syncEngine } from "@/lib/sync/syncEngine"
+import { db } from "@/lib/db/bmsDatabase"
+
+// Expose cache reset utility globally on window for easy developer & testing access
+;(window as any).clearMotherCache = async (reload = true) => {
+  try {
+    await Promise.all([
+      db.mothers.clear(),
+      db.pregnancies.clear(),
+      db.prenatalVisits.clear(),
+      db.appointments.clear(),
+      db.labRecords.clear(),
+      db.supplements.clear(),
+      db.ehrDocuments.clear(),
+      db.offlineQueue.clear(),
+    ])
+    console.log("🧹 [BMS] All mother records and offline sync queues cleared from IndexedDB.")
+    if (reload) {
+      window.location.reload()
+    }
+    return { success: true }
+  } catch (err) {
+    console.error("Failed to clear IndexedDB cache:", err)
+    throw err
+  }
+}
+
+window.addEventListener("bms:purge-mother-cache", async () => {
+  await (window as any).clearMotherCache?.(true)
+})
 
 // Initialize browser storage persistence for Dexie IndexedDB
 initStoragePersistence().then((persisted) => {

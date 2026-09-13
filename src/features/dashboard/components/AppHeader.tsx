@@ -18,10 +18,14 @@ import { useTheme } from "@/components/theme-provider"
 import { useLocation } from "react-router-dom"
 import { OfflineSyncBadge } from "@/components/OfflineSyncBadge"
 import { NotificationPopover } from "./NotificationPopover"
+import { CreateAppointmentModal } from "@/features/appointments/components/CreateAppointmentModal"
+import { RegisterMotherModal } from "@/features/mothers/components/RegisterMotherModal"
 
 export function AppHeader() {
   const { theme, setTheme } = useTheme()
   const location = useLocation()
+  const [isAppointmentModalOpen, setIsAppointmentModalOpen] = React.useState(false)
+  const [isRegisterMotherModalOpen, setIsRegisterMotherModalOpen] = React.useState(false)
   
   const paths = location.pathname.split('/').filter(Boolean)
   const getBreadcrumbName = (path: string) => {
@@ -103,11 +107,17 @@ export function AppHeader() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 rounded-xl border-border shadow-md">
             <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">Quick Create</DropdownMenuLabel>
-            <DropdownMenuItem className="gap-2 cursor-pointer rounded-md">
+            <DropdownMenuItem 
+              className="gap-2 cursor-pointer rounded-md"
+              onClick={() => setIsRegisterMotherModalOpen(true)}
+            >
               <UserPlus className="h-4 w-4" />
               <span>Register Mother</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer rounded-md">
+            <DropdownMenuItem 
+              className="gap-2 cursor-pointer rounded-md"
+              onClick={() => setIsAppointmentModalOpen(true)}
+            >
               <CalendarPlus className="h-4 w-4" />
               <span>New Appointment</span>
             </DropdownMenuItem>
@@ -154,6 +164,15 @@ export function AppHeader() {
           <SidebarTrigger className="-mr-1" />
         </div>
       </div>
+
+      <CreateAppointmentModal 
+        open={isAppointmentModalOpen} 
+        onOpenChange={setIsAppointmentModalOpen} 
+      />
+      <RegisterMotherModal 
+        open={isRegisterMotherModalOpen} 
+        onOpenChange={setIsRegisterMotherModalOpen} 
+      />
     </header>
   )
 }

@@ -88,36 +88,105 @@ export function EditRecordModal({
 
     let endpoint = ""
     let payload: any = { ...formData }
+    const motherId = data.mother_id || data.motherId || data.targetId || ""
 
-    if (type === "pregnancy") {
-      endpoint = `/api/v1/pregnancy/update/${data.pregnancy_id}`
-      if (dateVal) payload.lmp_date = dateVal.toISOString()
-      if (payload.gravida) payload.gravida = Number(payload.gravida)
-      if (payload.parity) payload.parity = Number(payload.parity)
-    } else if (type === "visitation") {
-      endpoint = `/api/v1/prenatal-visit/update/${data.visit_id}`
-      if (dateVal) payload.visit_date = dateVal.toISOString()
-      if (payload.pulse_rate_bpm) payload.pulse_rate_bpm = Number(payload.pulse_rate_bpm)
-      if (payload.bp_systolic) payload.bp_systolic = Number(payload.bp_systolic)
-      if (payload.bp_diastolic) payload.bp_diastolic = Number(payload.bp_diastolic)
-      if (payload.weight_kg) payload.weight_kg = Number(payload.weight_kg)
-      if (payload.temperature_celsius) payload.temperature_celsius = Number(payload.temperature_celsius)
-      if (payload.fundic_height_cm) payload.fundic_height_cm = Number(payload.fundic_height_cm)
-      if (payload.fetal_heart_tone_bpm) payload.fetal_heart_tone_bpm = Number(payload.fetal_heart_tone_bpm)
-    } else if (type === "appointment") {
-      endpoint = `/api/v1/appointment/update/${data.appointment_id || data._id}`
-      if (dateVal) payload.appointment_date = dateVal.toISOString()
-    } else if (type === "laboratory") {
-      endpoint = `/api/v1/lab-screening/update/${data.screening_id}`
-      if (dateVal) payload.date_of_screening = dateVal.toISOString()
-    } else if (type === "prescription") {
-      endpoint = `/api/v1/supplement/update`
-      payload.supplement_id = data.supplement_id
-      if (dateVal) payload.date_given = dateVal.toISOString()
-      if (payload.tablets_given_count) payload.tablets_given_count = Number(payload.tablets_given_count)
+    if (motherId && !payload.mother_id) {
+      payload.mother_id = motherId
     }
 
     try {
+      const { db } = await import("@/lib/db/bmsDatabase")
+
+      if (data.pregnancy_id || data.pregnancyId) {
+        payload.pregnancy_id = data.pregnancy_id || data.pregnancyId
+      }
+
+      if (payload.pregnancy_id && payload.pregnancy_id.startsWith("temp-")) {
+        const allPregs = await db.pregnancies.toArray()
+        const matchedPreg = allPregs.find((p: any) => p.temp_id === payload.pregnancy_id || p.id === payload.pregnancy_id || (motherId && (p.mother_id === motherId || p.motherId === motherId)))
+        if (matchedPreg && matchedPreg.pregnancy_id && !matchedPreg.pregnancy_id.startsWith("temp-")) {
+          payload.pregnancy_id = matchedPreg.pregnancy_id
+        }
+      }
+
+      if (type === "pregnancy") {
+        let pregId = data.pregnancy_id || data.id || data._id
+        if (pregId && pregId.startsWith("temp-")) {
+          const allPregs = await db.pregnancies.toArray()
+          const matched = allPregs.find((p: any) => p.temp_id === pregId || p.id === pregId || (motherId && (p.mother_id === motherId || p.motherId === motherId)))
+          if (matched && matched.pregnancy_id && !matched.pregnancy_id.startsWith("temp-")) {
+            pregId = matched.pregnancy_id
+          }
+        }
+        endpoint = `/api/v1/pregnancy/update/${pregId}`
+        if (dateVal) payload.lmp_date = dateVal.toISOString()
+        if (payload.gravida) payload.gravida = Number(payload.gravida)
+        if (payload.parity) payload.parity = Number(payload.parity)
+        await db.pregnancies.update(pregId, { ...payload, updated_at: Date.now() }).catch(() => {})
+      } else if (type === "visitation") {
+        let visitId = data.visit_id || data.id || data._id
+        if (visitId && visitId.startsWith("temp-")) {
+          const allVisits = await db.prenatalVisits.toArray()
+          const matched = allVisits.find((v: any) => v.temp_id === visitId || v.id === visitId || (motherId && (v.mother_id === motherId || v.motherId === motherId)))
+          if (matched && matched.visit_id && !matched.visit_id.startsWith("temp-")) {
+            visitId = matched.visit_id
+          }
+        }
+        if (data.pregnancy_id && !payload.pregnancy_id) {
+          payload.pregnancy_id = data.pregnancy_id
+        }
+        endpoint = `/api/v1/prenatal-visit/update/${visitId}`
+        if (dateVal) payload.visit_date = dateVal.toISOString()
+        if (payload.pulse_rate_bpm) payload.pulse_rate_bpm = Number(payload.pulse_rate_bpm)
+        if (payload.bp_systolic) payload.bp_systolic = Number(payload.bp_systolic)
+        if (payload.bp_diastolic) payload.bp_diastolic = Number(payload.bp_diastolic)
+        if (payload.weight_kg) payload.weight_kg = Number(payload.weight_kg)
+        if (payload.temperature_celsius) payload.temperature_celsius = Number(payload.temperature_celsius)
+        if (payload.fundic_height_cm) payload.fundic_height_cm = Number(payload.fundic_height_cm)
+        if (payload.fetal_heart_tone_bpm) payload.fetal_heart_tone_bpm = Number(payload.fetal_heart_tone_bpm)
+        await db.prenatalVisits.update(visitId, { ...payload, updated_at: Date.now() }).catch(() => {})
+      } else if (type === "appointment") {
+        let apptId = data.appointment_id || data._id || data.id
+        if (apptId && apptId.startsWith("temp-")) {
+          const allAppts = await db.appointments.toArray()
+          const matched = allAppts.find((a: any) => a.temp_id === apptId || a.id === apptId || (motherId && (a.mother_id === motherId || a.user_id === motherId)))
+          if (matched && matched.appointment_id && !matched.appointment_id.startsWith("temp-")) {
+            apptId = matched.appointment_id
+          }
+        }
+        endpoint = `/api/v1/appointment/update/${apptId}`
+        if (dateVal) payload.appointment_date = dateVal.toISOString()
+        await db.appointments.update(apptId, { ...payload, updated_at: Date.now() }).catch(() => {})
+      } else if (type === "laboratory") {
+        let screenId = data.screening_id || data.id || data._id
+        if (screenId && screenId.startsWith("temp-")) {
+          const allLabs = await db.labRecords.toArray()
+          const matched = allLabs.find((l: any) => l.temp_id === screenId || l.id === screenId || (motherId && (l.mother_id === motherId || l.motherId === motherId)))
+          if (matched && matched.screening_id && !matched.screening_id.startsWith("temp-")) {
+            screenId = matched.screening_id
+          }
+        }
+        if (data.pregnancy_id && !payload.pregnancy_id) payload.pregnancy_id = data.pregnancy_id
+        endpoint = `/api/v1/lab-screening/update/${screenId}`
+        if (dateVal) payload.date_of_screening = dateVal.toISOString()
+        await db.labRecords.update(screenId, { ...payload, updated_at: Date.now() }).catch(() => {})
+      } else if (type === "prescription") {
+        let suppId = data.supplement_id || data.id || data._id
+        if (suppId && suppId.startsWith("temp-")) {
+          const allSupps = await db.supplements.toArray()
+          const matched = allSupps.find((s: any) => s.temp_id === suppId || s.id === suppId || (motherId && (s.mother_id === motherId || s.motherId === motherId)))
+          if (matched && matched.supplement_id && !matched.supplement_id.startsWith("temp-")) {
+            suppId = matched.supplement_id
+          }
+        }
+        if (data.pregnancy_id && !payload.pregnancy_id) payload.pregnancy_id = data.pregnancy_id
+        endpoint = `/api/v1/supplement/update`
+        payload.supplement_id = suppId
+        if (dateVal) payload.date_given = dateVal.toISOString()
+        if (payload.tablets_given_count) payload.tablets_given_count = Number(payload.tablets_given_count)
+        await db.supplements.update(suppId, { ...payload, updated_at: Date.now() }).catch(() => {})
+      }
+
       if (endpoint) {
         await mothersApi.updateRecord(endpoint, payload)
       }

@@ -12,12 +12,20 @@ export const mothersApi = {
     return await motherRepository.getMotherProfile(targetId)
   },
 
+  async getCompositeProfile(targetId: string) {
+    return await motherRepository.getCompositeProfile(targetId)
+  },
+
   async registerMother(payload: any) {
     return await motherRepository.registerMother(payload)
   },
 
   async updateMother(motherId: string, payload: any) {
     return await motherRepository.updateMother(motherId, payload)
+  },
+
+  async deleteMother(motherId: string) {
+    return await motherRepository.deleteMother(motherId)
   },
 
   async uploadAvatar(file: File, motherId?: string) {
@@ -46,12 +54,9 @@ export const mothersApi = {
     return await motherRepository.registerPrenatalVisit(payload)
   },
 
-  async getAppointmentsByUser(userId: string) {
-    const appointments = await appointmentRepository.getAllFacilityAppointments()
-    const filtered = appointments.filter(
-      (a) => a.user_id === userId || a.mother_id === userId || a.id === userId
-    )
-    return { result: filtered, data: filtered }
+  async getAppointmentsByUser(userId: string, motherId?: string) {
+    const appointments = await appointmentRepository.getAppointmentsForMother(userId, motherId)
+    return { result: appointments, data: appointments }
   },
 
   async registerAppointment(payload: any) {
@@ -83,16 +88,32 @@ export const mothersApi = {
 
   async updateRecord(url: string, payload: any) {
     if (syncEngine.isNetworkOnline()) {
-      const response = await apiClient.put(url, payload)
-      return response.data
+      try {
+        const response = await apiClient.put(url, payload)
+        return response.data
+      } catch (err: any) {
+        if (url.includes("/temp-") && (err.response?.status === 404 || err.response?.status === 400)) {
+          console.warn("[mothersApi] Online update for temp record handled locally:", url)
+          return { success: true, offline: true }
+        }
+        throw err
+      }
     }
     return { success: true, offline: true }
   },
 
   async deleteRecord(url: string) {
     if (syncEngine.isNetworkOnline()) {
-      const response = await apiClient.delete(url)
-      return response.data
+      try {
+        const response = await apiClient.delete(url)
+        return response.data
+      } catch (err: any) {
+        if (url.includes("/temp-") && (err.response?.status === 404 || err.response?.status === 400)) {
+          console.warn("[mothersApi] Online delete for temp record handled locally:", url)
+          return { success: true, offline: true }
+        }
+        throw err
+      }
     }
     return { success: true, offline: true }
   },

@@ -28,8 +28,13 @@ import {
   Edit,
   ExternalLink,
 } from "lucide-react"
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
+import { toast } from "sonner"
 import { EditRecordModal } from "./EditRecordModal"
 import { mothersApi } from "../api"
+import { db } from "@/lib/db/bmsDatabase"
+import { motherRepository } from "@/lib/repositories/motherRepository"
+import { appointmentRepository } from "@/lib/repositories/appointmentRepository"
 
 export interface DetailSideSheetProps {
   open: boolean
@@ -50,36 +55,39 @@ export function DetailSideSheet({
 }: DetailSideSheetProps) {
   const [deleting, setDeleting] = React.useState(false)
   const [editModalOpen, setEditModalOpen] = React.useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false)
 
   if (!data) return null
 
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this record? This action cannot be undone.")) {
+  const executeDelete = async () => {
+    setDeleting(true)
+    const recordId = data.pregnancy_id || data.visit_id || data.appointment_id || data.screening_id || data.supplement_id || data._id || data.id
+
+    if (!recordId) {
+      toast.error("Invalid record identifier")
+      setDeleting(false)
       return
     }
 
-    setDeleting(true)
-    let endpoint = ""
-    if (type === "pregnancy") {
-      endpoint = `/api/v1/pregnancy/delete/${data.pregnancy_id}`
-    } else if (type === "visitation") {
-      endpoint = `/api/v1/prenatal-visit/delete/${data.visit_id}`
-    } else if (type === "appointment") {
-      endpoint = `/api/v1/appointment/delete/${data.appointment_id || data._id}`
-    } else if (type === "laboratory") {
-      endpoint = `/api/v1/lab-screening/delete/${data.screening_id}`
-    } else if (type === "prescription") {
-      endpoint = `/api/v1/supplement/delete/${data.supplement_id}`
-    }
-
     try {
-      if (endpoint) {
-        await mothersApi.deleteRecord(endpoint)
+      if (type === "pregnancy") {
+        await motherRepository.deletePregnancy(recordId)
+      } else if (type === "visitation") {
+        await motherRepository.deletePrenatalVisit(recordId)
+      } else if (type === "appointment") {
+        await appointmentRepository.deleteAppointment(recordId)
+      } else if (type === "laboratory") {
+        await motherRepository.deleteLabRecord(recordId)
+      } else if (type === "prescription") {
+        await motherRepository.deleteSupplement(recordId)
       }
+
+      toast.success("Record deleted successfully")
       onSuccess?.()
+      setConfirmDeleteOpen(false)
       onOpenChange(false)
     } catch (err: any) {
-      alert(err.response?.data?.error || err.message || "Failed to delete record")
+      toast.error(err.response?.data?.error || err.message || "Failed to delete record")
     } finally {
       setDeleting(false)
     }
@@ -457,8 +465,8 @@ export function DetailSideSheet({
           <Button
             variant="outline"
             disabled={deleting}
-            onClick={handleDelete}
-            className="w-full h-8 text-xs font-medium border-red-500/20 text-red-500 hover:bg-red-500/10 hover:text-red-600"
+            onClick={() => setConfirmDeleteOpen(true)}
+            className="w-full h-8 text-xs font-medium border-red-500/20 text-red-500 hover:bg-red-500/10 hover:text-red-600 cursor-pointer"
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" />
             {deleting ? "Deleting..." : "Delete Record"}
@@ -475,6 +483,15 @@ export function DetailSideSheet({
           onSuccess?.()
           onOpenChange(false)
         }}
+      />
+
+      <ConfirmDeleteModal
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title={`Delete ${type ? type.charAt(0).toUpperCase() + type.slice(1) : "Record"}`}
+        description="Are you sure you want to delete this record from the database? This action cannot be undone."
+        isDeleting={deleting}
+        onConfirm={executeDelete}
       />
     </Sheet>
   )

@@ -18,6 +18,7 @@ import { isToday, isFuture, parseISO, format } from "date-fns"
 import { appointmentRepository } from "@/lib/repositories/appointmentRepository"
 import { motherRepository } from "@/lib/repositories/motherRepository"
 import { extractRiskLevel } from "@/lib/riskUtils"
+import { CreateAppointmentModal } from "@/features/appointments/components/CreateAppointmentModal"
 
 export function DashboardPage() {
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
@@ -168,20 +169,22 @@ export function DashboardPage() {
     }
     const headers = ["Mother Name", "Status", "Type", "Date & Time", "Facility ID"]
     const rows = enrichedAppointments.map(app => [
-      `"${app.motherName}"`,
+      `"${app.motherName || ''}"`,
       `"${app.status || 'Scheduled'}"`,
       `"${app.type || (app as any).appointment_type || 'Prenatal'}"`,
       `"${formatDateTime(app.appointment_date, app.time_slot)}"`,
       `"${app.facility_id || ''}"`
     ])
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n")
-    const encodedUri = encodeURI(csvContent)
+    const csvString = [headers.join(","), ...rows.map(e => e.join(","))].join("\n")
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
-    link.setAttribute("href", encodedUri)
+    link.setAttribute("href", url)
     link.setAttribute("download", `Appointments_Export_${new Date().toISOString().split('T')[0]}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
     toast.success("Appointments exported to CSV")
   }
 
@@ -469,10 +472,12 @@ export function DashboardPage() {
                 <RefreshCw className="h-3.5 w-3.5" />
                 Refresh
               </Button>
-              <Button className="w-full md:w-auto h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="h-3.5 w-3.5" />
-                New Appointment
-              </Button>
+              <CreateAppointmentModal onSuccess={handleRefresh}>
+                <Button className="w-full md:w-auto h-8 px-2 text-xs font-medium gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+                  <Plus className="h-3.5 w-3.5" />
+                  New Appointment
+                </Button>
+              </CreateAppointmentModal>
             </div>
           </div>
 
