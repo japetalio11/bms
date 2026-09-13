@@ -26,6 +26,8 @@ import {
 } from "lucide-react"
 import { UploadDocumentModal } from "./UploadDocumentModal"
 import { ResponsiveModal } from "@/components/ui/responsive-modal"
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
+import { toast } from "sonner"
 
 import { ehrRepository, type EhrDocument } from "@/lib/repositories/ehrRepository"
 export type { EhrDocument }
@@ -42,6 +44,9 @@ export function EhrPage() {
   const [viewingDoc, setViewingDoc] = useState<EhrDocument | null>(null)
   const [previewDocIndex, setPreviewDocIndex] = useState<number | null>(null)
   const [zoomScale, setZoomScale] = useState(1)
+
+  const [docToDelete, setDocToDelete] = useState<EhrDocument | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const fetchDocuments = async () => {
     setIsLoading(true)
@@ -62,10 +67,24 @@ export function EhrPage() {
     await fetchDocuments()
   }
 
-  const handleDeleteDocument = async (id: string) => {
-    if (!confirm("Are you sure you want to remove this record from facility EHR archives?")) return
-    await ehrRepository.deleteDocument(id)
-    await fetchDocuments()
+  const handleDeleteDocument = (doc: EhrDocument) => {
+    setDocToDelete(doc)
+  }
+
+  const executeDeleteDocument = async () => {
+    if (!docToDelete) return
+    setIsDeleting(true)
+    try {
+      await ehrRepository.deleteDocument(docToDelete.id)
+      toast.success("EHR record removed successfully")
+      setDocToDelete(null)
+      await fetchDocuments()
+    } catch (err) {
+      console.error("Failed to delete EHR document:", err)
+      toast.error("Failed to remove EHR document. Please try again.")
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleDownload = (doc: EhrDocument) => {
@@ -235,6 +254,7 @@ export function EhrPage() {
                 <div className="flex items-center justify-end pt-2 border-t border-border gap-2">
                   <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); setViewingDoc(doc); }}>View</Button>
                   <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); handleDownload(doc); }}>Download</Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500 hover:text-red-600 hover:bg-red-500/10" onClick={(e) => { e.stopPropagation(); handleDeleteDocument(doc); }}>Delete</Button>
                 </div>
               </div>
             ))
@@ -329,7 +349,7 @@ export function EhrPage() {
                             }} className="text-xs cursor-pointer rounded-md">View Full Screen</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDownload(doc)} className="text-xs cursor-pointer rounded-md">Download File</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleDeleteDocument(doc.id)} className="text-xs cursor-pointer rounded-md text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteDocument(doc)} className="text-xs cursor-pointer rounded-md text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -515,6 +535,17 @@ export function EhrPage() {
           </div>
         )
       })()}
+
+      {/* Confirmation Modal for Document Deletion */}
+      <ConfirmDeleteModal
+        open={!!docToDelete}
+        onOpenChange={(open) => !open && setDocToDelete(null)}
+        title="Delete EHR Record"
+        description={`Are you sure you want to delete "${docToDelete?.title || 'this record'}" from facility EHR archives? This action cannot be undone.`}
+        confirmText="Delete Record"
+        isDeleting={isDeleting}
+        onConfirm={executeDeleteDocument}
+      />
     </div>
   )
 }

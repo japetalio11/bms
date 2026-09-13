@@ -12,6 +12,8 @@ import { CustomEvent } from "./CustomEvent"
 import { WeeklyScheduleView } from "./WeeklyScheduleView"
 import { CreateAppointmentModal } from "@/features/appointments/components/CreateAppointmentModal"
 import { AppointmentSidepeek } from "@/features/dashboard/components/AppointmentSidepeek"
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
+import { toast } from "sonner"
 import { appointmentApi } from "@/features/appointments/api"
 import { mothersApi } from "@/features/mothers/api"
 import { extractRiskLevel } from "@/lib/riskUtils"
@@ -91,22 +93,34 @@ export function CalendarPage() {
     fetchAppointments()
   }, [])
 
-  const handleCancelAppointment = async (appointmentId: string) => {
+  const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(null)
+  const [isCancelling, setIsCancelling] = useState(false)
+
+  const handleCancelAppointment = (appointmentId: string) => {
     const appt = rawAppointments.find((a: any) => (a.id === appointmentId || a.appointment_id === appointmentId))
     if (appt && (appt.status?.toLowerCase() === "completed")) {
-      alert("Completed appointments cannot be cancelled.")
+      toast.error("Completed appointments cannot be cancelled.")
       return
     }
-    if (!confirm("Are you sure you want to cancel this appointment?")) return
+    setAppointmentToCancel(appointmentId)
+  }
+
+  const executeCancelAppointment = async () => {
+    if (!appointmentToCancel) return
+    setIsCancelling(true)
     try {
-      await appointmentApi.cancelAppointment(appointmentId)
-      if (selectedAppointment?.id === appointmentId) {
+      await appointmentApi.cancelAppointment(appointmentToCancel)
+      if (selectedAppointment?.id === appointmentToCancel) {
         setSelectedAppointment(null)
       }
+      toast.success("Appointment cancelled successfully")
+      setAppointmentToCancel(null)
       fetchAppointments()
     } catch (err) {
       console.error("Failed to cancel appointment:", err)
-      alert("Could not cancel appointment. Please try again.")
+      toast.error("Could not cancel appointment. Please try again.")
+    } finally {
+      setIsCancelling(false)
     }
   }
 
@@ -474,6 +488,16 @@ export function CalendarPage() {
           </DrawerContent>
         </Drawer>
       )}
+
+      <ConfirmDeleteModal
+        open={!!appointmentToCancel}
+        onOpenChange={(open) => !open && setAppointmentToCancel(null)}
+        title="Cancel Appointment"
+        description="Are you sure you want to cancel this appointment? This record will be marked as cancelled in the facility queue."
+        confirmText="Cancel Appointment"
+        isDeleting={isCancelling}
+        onConfirm={executeCancelAppointment}
+      />
     </div>
   )
 }
