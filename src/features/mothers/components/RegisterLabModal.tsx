@@ -76,20 +76,33 @@ export function RegisterLabModal({
   }
 
   const pregnancies = motherData?.pregnancies || []
-  const visits = visitationList.length > 0 ? visitationList : (motherData?.prenatalVisits || [])
+  const allVisits = visitationList.length > 0 ? visitationList : (motherData?.prenatalVisits || [])
+
+  // Filter visits by selected pregnancy, or show all visits if no pregnancy selected or none matched
+  const availableVisits = React.useMemo(() => {
+    if (!pregnancyId) return allVisits
+    const matched = allVisits.filter((v: any) => v.pregnancy_id === pregnancyId)
+    return matched.length > 0 ? matched : allVisits
+  }, [allVisits, pregnancyId])
 
   React.useEffect(() => {
-    if (pregnancies.length > 0) {
+    if (pregnancies.length > 0 && !pregnancyId) {
       const activePreg = pregnancies.find((p: any) => p.pregnancy_status?.toLowerCase() === "active") || pregnancies[0]
-      setPregnancyId(activePreg.pregnancy_id || activePreg._id || activePreg.id || "")
+      const chosenPId = activePreg.pregnancy_id || activePreg._id || activePreg.id || ""
+      setPregnancyId(chosenPId)
     }
-  }, [motherData, open])
+  }, [motherData, open, pregnancies, pregnancyId])
 
   React.useEffect(() => {
-    if (visits.length > 0) {
-      setVisitId(visits[0].visit_id || visits[0]._id || visits[0].id || "")
+    if (availableVisits.length > 0) {
+      const currentExists = availableVisits.some((v: any) => (v.visit_id || v._id || v.id) === visitId)
+      if (!currentExists || !visitId) {
+        setVisitId(availableVisits[0].visit_id || availableVisits[0]._id || availableVisits[0].id || "")
+      }
+    } else {
+      setVisitId("")
     }
-  }, [visits, open])
+  }, [availableVisits, open])
 
   const handleSubmit = async () => {
     setError(null)
@@ -154,7 +167,13 @@ export function RegisterLabModal({
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs font-medium text-foreground">Target Pregnancy *</Label>
-            <Select value={pregnancyId} onValueChange={setPregnancyId}>
+            <Select value={pregnancyId} onValueChange={(val) => {
+              setPregnancyId(val)
+              const matching = allVisits.filter((v: any) => v.pregnancy_id === val)
+              if (matching.length > 0) {
+                setVisitId(matching[0].visit_id || matching[0]._id || matching[0].id || "")
+              }
+            }}>
               <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Select Pregnancy" />
               </SelectTrigger>
@@ -178,10 +197,10 @@ export function RegisterLabModal({
                 <SelectValue placeholder="Select Visit" />
               </SelectTrigger>
               <SelectContent>
-                {visits.length === 0 ? (
+                {availableVisits.length === 0 ? (
                   <SelectItem value="none" disabled>No visits recorded yet</SelectItem>
                 ) : (
-                  visits.map((v: any, idx: number) => {
+                  availableVisits.map((v: any, idx: number) => {
                     const vId = v.visit_id || v._id || v.id || String(idx)
                     return (
                       <SelectItem key={vId} value={vId}>
@@ -197,22 +216,26 @@ export function RegisterLabModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground">Screening Type *</Label>
-            <Select value={screeningType} onValueChange={setScreeningType}>
-              <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
-                <SelectValue placeholder="Select Screening" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="CBC (Complete Blood Count)">CBC (Complete Blood Count)</SelectItem>
-                <SelectItem value="Blood Typing (ABO/Rh)">Blood Typing (ABO/Rh)</SelectItem>
-                <SelectItem value="Urinalysis">Urinalysis</SelectItem>
-                <SelectItem value="HBsAg (Hepatitis B)">HBsAg (Hepatitis B)</SelectItem>
-                <SelectItem value="HIV Screening">HIV Screening</SelectItem>
-                <SelectItem value="Syphilis (VDRL/RPR)">Syphilis (VDRL/RPR)</SelectItem>
-                <SelectItem value="OGTT (Glucose Tolerance)">OGTT (Glucose Tolerance)</SelectItem>
-                <SelectItem value="Ultrasound">Ultrasound</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="screeningType" className="text-xs font-medium text-foreground">Screening Type *</Label>
+            <Input
+              id="screeningType"
+              list="common-screening-types"
+              placeholder="e.g. CBC, Urinalysis, Blood Typing"
+              value={screeningType}
+              onChange={(e) => setScreeningType(e.target.value)}
+              className="!h-9 bg-card border-border text-xs text-card-foreground"
+            />
+            <datalist id="common-screening-types">
+              <option value="CBC (Complete Blood Count)" />
+              <option value="Blood Typing (ABO/Rh)" />
+              <option value="Urinalysis" />
+              <option value="HBsAg (Hepatitis B)" />
+              <option value="HIV Screening" />
+              <option value="Syphilis (VDRL/RPR)" />
+              <option value="OGTT (Glucose Tolerance)" />
+              <option value="Ultrasound" />
+              <option value="Pap Smear" />
+            </datalist>
           </div>
 
           <div className="flex flex-col gap-1.5">

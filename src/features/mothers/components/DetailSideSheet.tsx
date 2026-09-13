@@ -61,7 +61,20 @@ export function DetailSideSheet({
 
   const executeDelete = async () => {
     setDeleting(true)
-    const recordId = data.pregnancy_id || data.visit_id || data.appointment_id || data.screening_id || data.supplement_id || data._id || data.id
+    let recordId: string | undefined
+    if (type === "visitation") {
+      recordId = data.visit_id || data.id || data._id
+    } else if (type === "pregnancy") {
+      recordId = data.pregnancy_id || data.id || data._id
+    } else if (type === "appointment") {
+      recordId = data.appointment_id || data.id || data._id
+    } else if (type === "laboratory") {
+      recordId = data.screening_id || data.id || data._id
+    } else if (type === "prescription") {
+      recordId = data.supplement_id || data.id || data._id
+    } else {
+      recordId = data.visit_id || data.pregnancy_id || data.appointment_id || data.screening_id || data.supplement_id || data._id || data.id
+    }
 
     if (!recordId) {
       toast.error("Invalid record identifier")

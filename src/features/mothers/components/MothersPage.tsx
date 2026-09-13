@@ -56,6 +56,7 @@ export function MothersPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
   const [connectModalOpen, setConnectModalOpen] = useState(false)
+  const [exportModalOpen, setExportModalOpen] = useState(false)
   const [motherToDelete, setMotherToDelete] = useState<any>(null)
   const [isDeletingMother, setIsDeletingMother] = useState(false)
   const [motherList, setMotherList] = useState<any[]>([])
@@ -206,9 +207,13 @@ export function MothersPage() {
                     className="h-8 pl-8 pr-2 w-full text-xs font-normal bg-card border-border"
                   />
                 </div>
-                <Button variant="outline" className="h-8 px-2 text-xs font-medium gap-2 shrink-0 md:hidden border-border bg-card text-foreground hover:bg-muted">
-                  <Filter className="h-3.5 w-3.5" />
-                  Filter & Export
+                <Button
+                  onClick={() => setExportModalOpen(true)}
+                  variant="outline"
+                  className="h-8 px-2 text-xs font-medium gap-2 shrink-0 md:hidden border-border bg-card text-foreground hover:bg-muted"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export
                 </Button>
               </div>
 
@@ -313,12 +318,14 @@ export function MothersPage() {
               </Popover>
             </div>
             <div className="flex w-full xl:w-auto items-center gap-2">
-              <ExportMaternalDataModal>
-                <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-foreground hover:bg-muted">
-                  <Download className="h-3.5 w-3.5" />
-                  Export
-                </Button>
-              </ExportMaternalDataModal>
+              <Button
+                onClick={() => setExportModalOpen(true)}
+                variant="outline"
+                className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-foreground hover:bg-muted"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export
+              </Button>
               <Button onClick={fetchMothers} variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-foreground hover:bg-muted">
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                 Refresh
@@ -524,6 +531,13 @@ export function MothersPage() {
         </div>
       </div>
 
+      <ExportMaternalDataModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        filteredMothers={displayedMothers}
+        allMothers={motherList}
+        currentFilterLabel={`${activeTab} (${displayedMothers.length})`}
+      />
       <RegisterMotherModal
         open={registerModalOpen}
         onOpenChange={setRegisterModalOpen}

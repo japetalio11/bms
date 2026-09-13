@@ -3,7 +3,7 @@ import type { LocalMother, LocalPrenatalVisit, LocalPregnancy, LocalLabRecord, L
 import { apiClient } from "@/lib/apiClient"
 import { syncEngine } from "@/lib/sync/syncEngine"
 
-import { extractRiskLevel } from "@/lib/riskUtils"
+import { extractRiskLevel, calculateOfflineTEWSRisk } from "@/lib/riskUtils"
 
 export const motherRepository = {
   /**
@@ -220,6 +220,13 @@ export const motherRepository = {
           const canonicalUid = data.user_id || data.user?.user_id || uid
           const photoUrl = data.photo_url || data.user?.profile_url || data.user?.photo_url || data.profile_url || ""
 
+          // Guard against overwriting newer local edits if background GET completed after an update
+          let shouldUpdateMother = true
+          if (localMother && localMother.updated_at && localMother.sync_status?.startsWith("pending_")) {
+            // Local has pending changes awaiting sync or just edited, preserve local fields
+            shouldUpdateMother = false
+          }
+
           const syncedMother: LocalMother = {
             ...data,
             id: canonicalId,
@@ -282,13 +289,62 @@ export const motherRepository = {
             updated_at: Date.now(),
           }))
 
-          // Atomic Dexie update
+          // Atomic Dexie update with stale record cleanup for this mother
           await db.transaction("rw", [db.mothers, db.pregnancies, db.prenatalVisits, db.labRecords, db.supplements, db.appointments], async () => {
-            await db.mothers.put(syncedMother)
+            if (shouldUpdateMother) {
+              await db.mothers.put(syncedMother)
+            } else if (localMother) {
+              // Retain local unsynced edits, only fill in canonical server IDs
+              await db.mothers.update(localMother.id, {
+                mother_id: canonicalId,
+                user_id: canonicalUid,
+                id: canonicalId,
+                _id: canonicalId,
+              })
+            }
+
+            // Cleanup deleted pregnancies
+            const remotePregIds = new Set(pregs.map((p: any) => p.id))
+            const stalePregs = localPregs.filter((p: any) => p.sync_status === "synced" && !remotePregIds.has(p.id))
+            for (const sp of stalePregs) {
+              await db.pregnancies.delete(sp.id).catch(() => {})
+            }
             if (pregs.length > 0) await db.pregnancies.bulkPut(pregs)
+
+            // Cleanup deleted visits
+            const remoteVisitIds = new Set(visits.map((v: any) => v.id))
+            const staleVisits = localVisits.filter((v: any) => v.sync_status === "synced" && !remoteVisitIds.has(v.id))
+            for (const sv of staleVisits) {
+              await db.prenatalVisits.delete(sv.id).catch(() => {})
+              if (sv.visit_id) await db.prenatalVisits.where("visit_id").equals(sv.visit_id).delete().catch(() => {})
+            }
             if (visits.length > 0) await db.prenatalVisits.bulkPut(visits)
+
+            // Cleanup deleted labs
+            const remoteLabIds = new Set(labs.map((l: any) => l.id))
+            const staleLabs = localLabs.filter((l: any) => l.sync_status === "synced" && !remoteLabIds.has(l.id))
+            for (const sl of staleLabs) {
+              await db.labRecords.delete(sl.id).catch(() => {})
+              if (sl.screening_id) await db.labRecords.where("screening_id").equals(sl.screening_id).delete().catch(() => {})
+            }
             if (labs.length > 0) await db.labRecords.bulkPut(labs)
+
+            // Cleanup deleted supplements
+            const remoteSuppIds = new Set(supps.map((s: any) => s.id))
+            const staleSupps = localSupps.filter((s: any) => s.sync_status === "synced" && !remoteSuppIds.has(s.id))
+            for (const ss of staleSupps) {
+              await db.supplements.delete(ss.id).catch(() => {})
+              if (ss.supplement_id) await db.supplements.where("supplement_id").equals(ss.supplement_id).delete().catch(() => {})
+            }
             if (supps.length > 0) await db.supplements.bulkPut(supps)
+
+            // Cleanup deleted appointments
+            const remoteApptIds = new Set(appts.map((a: any) => a.id))
+            const staleAppts = localAppts.filter((a: any) => a.sync_status === "synced" && !remoteApptIds.has(a.id))
+            for (const sa of staleAppts) {
+              await db.appointments.delete(sa.id).catch(() => {})
+              if (sa.appointment_id) await db.appointments.where("appointment_id").equals(sa.appointment_id).delete().catch(() => {})
+            }
             if (appts.length > 0) await db.appointments.bulkPut(appts)
           })
 
@@ -419,17 +475,28 @@ export const motherRepository = {
     const photoUrl = payload.photo_url || payload.profile_url || ""
     if (local) {
       const actualKey = local.id
+      const birthDate = payload.birth_date || local.birth_date
+      let calculatedAge = local.age
+      if (birthDate) {
+        calculatedAge = Math.floor((Date.now() - new Date(birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+      }
+
       const updatedUser = {
         ...(local.user || {}),
         ...(photoUrl ? { profile_url: photoUrl, photo_url: photoUrl } : {}),
-        ...(payload.first_name ? { first_name: payload.first_name } : {}),
-        ...(payload.last_name ? { last_name: payload.last_name } : {}),
-        ...(payload.address ? { address: payload.address } : {}),
-        ...(payload.phone_number ? { phone_number: payload.phone_number } : {}),
+        ...(payload.first_name !== undefined ? { first_name: payload.first_name } : {}),
+        ...(payload.middle_name !== undefined ? { middle_name: payload.middle_name } : {}),
+        ...(payload.last_name !== undefined ? { last_name: payload.last_name } : {}),
+        ...(payload.address !== undefined ? { address: payload.address } : {}),
+        ...(payload.phone_number !== undefined ? { phone_number: payload.phone_number } : {}),
+        ...(payload.email !== undefined ? { email: payload.email } : {}),
+        ...(birthDate ? { birth_date: birthDate } : {}),
       }
+
       await db.mothers.update(actualKey, {
         ...payload,
         ...(photoUrl ? { photo_url: photoUrl, profile_url: photoUrl } : {}),
+        ...(calculatedAge ? { age: calculatedAge } : {}),
         user: updatedUser,
         sync_status: local.sync_status === "pending_create" ? "pending_create" : "pending_update",
         updated_at: Date.now(),
@@ -537,8 +604,9 @@ export const motherRepository = {
         try {
           await apiClient.delete(`/api/v1/prenatal-visit/delete/${visitId}`)
           return { success: true }
-        } catch (err) {
-          console.warn("[motherRepository] Online deletePrenatalVisit failed, queueing:", err)
+        } catch (err: any) {
+          console.error("[motherRepository] Online deletePrenatalVisit failed:", err)
+          throw err
         }
       }
       await syncEngine.enqueueMutation({
@@ -646,15 +714,65 @@ export const motherRepository = {
       } catch (e) {}
     }
 
+    // Compute offline risk assessment if not explicitly provided or for offline fallback
+    let assessedRisk = payload.risk_level_assessed
+    if (!assessedRisk || assessedRisk === "N/A") {
+      let motherAge: number | null = null
+      let parity: number | null = null
+      let prevDelivery: string | null = null
+      let baselineSys: number | null = null
+      let baselineDia: number | null = null
+
+      try {
+        if (motherId) {
+          const m = await db.mothers.get(motherId)
+          if (m?.age) motherAge = Number(m.age)
+        }
+        if (pregnancyId) {
+          const p = await db.pregnancies.get(pregnancyId)
+          if (p) {
+            if (p.parity != null) parity = Number(p.parity)
+            if (p.previous_delivery_history) prevDelivery = p.previous_delivery_history
+          }
+          const allVisits = await db.prenatalVisits.toArray()
+          const baseline = allVisits.find((v: any) => v.pregnancy_id === pregnancyId && (v.trimester === 1 || v.visit_number === 1))
+          if (baseline) {
+            if (baseline.bp_systolic) baselineSys = Number(baseline.bp_systolic)
+            if (baseline.bp_diastolic) baselineDia = Number(baseline.bp_diastolic)
+          }
+        }
+      } catch (err) {
+        console.warn("[motherRepository] Failed to gather demographic context for TEWS risk:", err)
+      }
+
+      const calculated = calculateOfflineTEWSRisk({
+        bp_systolic: payload.bp_systolic,
+        bp_diastolic: payload.bp_diastolic,
+        pulse_rate_bpm: payload.pulse_rate_bpm,
+        temperature_celsius: payload.temperature_celsius,
+        danger_signs_observed: payload.danger_signs_observed,
+        mother_age: motherAge,
+        parity: parity,
+        previous_delivery_history: prevDelivery,
+        baseline_bp_systolic: baselineSys,
+        baseline_bp_diastolic: baselineDia,
+      })
+
+      assessedRisk = calculated.risk_level
+      payload.risk_level_assessed = assessedRisk
+    }
+
     if (syncEngine.isNetworkOnline()) {
       try {
         const response = await apiClient.post("/api/v1/prenatal-visit/register", payload)
         const v = response.data?.prenatalVisit || response.data?.result || response.data
         const canonicalId = v.visit_id || v._id || v.id
+        const finalRisk = v.risk_level_assessed || response.data?.cdssAssessment?.risk_level || assessedRisk
 
         const syncedVisit: LocalPrenatalVisit = {
           ...payload,
           ...v,
+          risk_level_assessed: finalRisk,
           id: canonicalId,
           visit_id: canonicalId,
           mother_id: motherId || v.mother_id,
@@ -664,13 +782,13 @@ export const motherRepository = {
         }
         await db.prenatalVisits.put(syncedVisit)
 
-        if (payload.risk_level_assessed) {
+        if (finalRisk) {
           try {
             if (payload.pregnancy_id) {
-              await db.pregnancies.update(payload.pregnancy_id, { risk_flag: payload.risk_level_assessed, risk_level: payload.risk_level_assessed })
+              await db.pregnancies.update(payload.pregnancy_id, { risk_flag: finalRisk, risk_level: finalRisk })
             }
             if (motherId) {
-              await db.mothers.update(motherId, { risk_flag: payload.risk_level_assessed, risk_level: payload.risk_level_assessed, risk: payload.risk_level_assessed })
+              await db.mothers.update(motherId, { risk_flag: finalRisk, risk_level: finalRisk, risk: finalRisk })
             }
           } catch (err) {
             console.warn("[motherRepository] Failed to sync risk flag to pregnancy/mother:", err)
@@ -687,6 +805,7 @@ export const motherRepository = {
 
     const newVisit: LocalPrenatalVisit = {
       ...payload,
+      risk_level_assessed: assessedRisk,
       id: tempId,
       visit_id: tempId,
       mother_id: motherId,
@@ -697,13 +816,13 @@ export const motherRepository = {
 
     await db.prenatalVisits.put(newVisit)
 
-    if (payload.risk_level_assessed) {
+    if (assessedRisk) {
       try {
         if (payload.pregnancy_id) {
-          await db.pregnancies.update(payload.pregnancy_id, { risk_flag: payload.risk_level_assessed, risk_level: payload.risk_level_assessed })
+          await db.pregnancies.update(payload.pregnancy_id, { risk_flag: assessedRisk, risk_level: assessedRisk })
         }
         if (motherId) {
-          await db.mothers.update(motherId, { risk_flag: payload.risk_level_assessed, risk_level: payload.risk_level_assessed, risk: payload.risk_level_assessed })
+          await db.mothers.update(motherId, { risk_flag: assessedRisk, risk_level: assessedRisk, risk: assessedRisk })
         }
       } catch (err) {
         console.warn("[motherRepository] Failed to sync risk flag to pregnancy/mother:", err)

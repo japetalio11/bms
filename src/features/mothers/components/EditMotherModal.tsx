@@ -16,6 +16,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 import { mothersApi } from "../api"
 
@@ -73,6 +74,7 @@ export function EditMotherModal({
     const motherId = motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id
 
     try {
+      // Optimistically trigger local update and background sync
       await mothersApi.updateMother(motherId, {
         first_name: firstName,
         last_name: lastName,
@@ -86,10 +88,13 @@ export function EditMotherModal({
         family_serial_no: familySerialNo,
       })
 
+      toast.success("Mother profile updated successfully")
       onSuccess?.()
       onOpenChange?.(false)
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to update mother profile")
+      const errMsg = err.response?.data?.error || err.message || "Failed to update mother profile"
+      setError(errMsg)
+      toast.error(errMsg)
     } finally {
       setLoading(false)
     }

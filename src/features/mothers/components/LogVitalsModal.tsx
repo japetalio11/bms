@@ -11,6 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { Activity, ShieldAlert, CheckCircle2, AlertTriangle } from "lucide-react"
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+import { calculateOfflineTEWSRisk } from "@/lib/riskUtils"
 import { mothersApi } from "../api"
 
 export interface LogVitalsModalProps {
@@ -39,12 +44,37 @@ export function LogVitalsModal({
   const [fetalHeartToneBpm, setFetalHeartToneBpm] = React.useState<string>("")
   const [chiefComplaint, setChiefComplaint] = React.useState<string>("")
   const [dangerSigns, setDangerSigns] = React.useState<string>("")
-  const [riskLevel, setRiskLevel] = React.useState<string>("Low Risk")
 
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
   const pregnancies = motherData?.pregnancies || []
+
+  // Dynamic real-time TEWS Risk Level computed by the system
+  const calculatedAssessment = React.useMemo(() => {
+    const activePreg = pregnancies.find((p: any) => p.pregnancy_id === pregnancyId || p.id === pregnancyId) || pregnancies[0]
+    let motherAge: number | null = null
+    if (motherData?.age) {
+      motherAge = Number(motherData.age)
+    } else if (motherData?.birth_date) {
+      motherAge = Math.floor((Date.now() - new Date(motherData.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+    }
+
+    const baselineVisit = (motherData?.prenatalVisits || []).find((v: any) => v.pregnancy_id === pregnancyId && (v.trimester === 1 || v.visit_number === 1))
+
+    return calculateOfflineTEWSRisk({
+      bp_systolic: bpSystolic ? Number(bpSystolic) : null,
+      bp_diastolic: bpDiastolic ? Number(bpDiastolic) : null,
+      pulse_rate_bpm: pulseRateBpm ? Number(pulseRateBpm) : null,
+      temperature_celsius: temperatureCelsius ? Number(temperatureCelsius) : null,
+      danger_signs_observed: dangerSigns,
+      mother_age: motherAge,
+      parity: activePreg?.parity != null ? Number(activePreg.parity) : null,
+      previous_delivery_history: activePreg?.previous_delivery_history || null,
+      baseline_bp_systolic: baselineVisit?.bp_systolic ? Number(baselineVisit.bp_systolic) : null,
+      baseline_bp_diastolic: baselineVisit?.bp_diastolic ? Number(baselineVisit.bp_diastolic) : null,
+    })
+  }, [bpSystolic, bpDiastolic, pulseRateBpm, temperatureCelsius, dangerSigns, motherData, pregnancyId, pregnancies])
 
   React.useEffect(() => {
     if (open) {
@@ -59,9 +89,6 @@ export function LogVitalsModal({
         }
         if (activePreg.trimester) {
           setTrimester(Number(activePreg.trimester))
-        }
-        if (activePreg.risk_flag) {
-          setRiskLevel(activePreg.risk_flag)
         }
       }
     }
@@ -118,7 +145,6 @@ export function LogVitalsModal({
     }
 
     setLoading(true)
-    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
       const motherId = motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id || ""
@@ -139,10 +165,11 @@ export function LogVitalsModal({
         fetal_heart_tone_bpm: fetalHeartToneBpm ? Number(fetalHeartToneBpm) : null,
         chief_complaint: chiefComplaint || undefined,
         danger_signs_observed: dangerSigns || undefined,
-        risk_level_assessed: riskLevel
+        risk_level_assessed: calculatedAssessment.risk_level,
       }
 
       await mothersApi.registerPrenatalVisit(payload)
+      toast.success(`Prenatal visit recorded. System assessed: ${calculatedAssessment.risk_level}`)
       onSuccess?.()
       onOpenChange(false)
     } catch (err: any) {
@@ -356,32 +383,58 @@ export function LogVitalsModal({
           </div>
         </div>
 
-        {/* Clinical Assessment */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground">Risk Level Assessed</Label>
-            <Select value={riskLevel} onValueChange={setRiskLevel}>
-              <SelectTrigger className="!h-8 bg-card border-border text-xs text-card-foreground">
-                <SelectValue placeholder="Select Risk" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Low Risk">Low Risk</SelectItem>
-                <SelectItem value="Moderate Risk">Moderate Risk</SelectItem>
-                <SelectItem value="High Risk">High Risk</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* System Processed Clinical Risk Assessment (CDSS Engine) */}
+        <div className="rounded-xl border border-border bg-muted/30 p-3.5 flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Activity className="h-3.5 w-3.5 text-primary" />
+              System Clinical Risk Assessment (CDSS)
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground font-mono">
+                TEWS Score: {calculatedAssessment.tews_score}
+              </span>
+              <Badge
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border-none shadow-none",
+                  calculatedAssessment.risk_level === "High Risk"
+                    ? "bg-destructive/15 text-destructive border-destructive/20"
+                    : calculatedAssessment.risk_level === "Moderate Risk"
+                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                    : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                )}
+              >
+                {calculatedAssessment.risk_level === "High Risk" ? (
+                  <ShieldAlert className="h-3 w-3" />
+                ) : calculatedAssessment.risk_level === "Moderate Risk" ? (
+                  <AlertTriangle className="h-3 w-3" />
+                ) : (
+                  <CheckCircle2 className="h-3 w-3" />
+                )}
+                {calculatedAssessment.risk_level}
+              </Badge>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="dangerSigns" className="text-xs font-medium text-foreground">Danger Signs Observed</Label>
-            <Input
-              id="dangerSigns"
-              placeholder="e.g. Severe headache, vaginal bleeding"
-              value={dangerSigns}
-              onChange={(e) => setDangerSigns(e.target.value)}
-              className="!h-8 bg-card border-border text-xs text-card-foreground"
-            />
-          </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            {calculatedAssessment.reasons.length > 0 ? (
+              <span>Triggered by: {calculatedAssessment.reasons.join(", ")}</span>
+            ) : (
+              <span>All vital signs and physiological markers are within standard clinical baseline limits.</span>
+            )}
+          </p>
+        </div>
+
+        {/* Observations and Notes */}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="dangerSigns" className="text-xs font-medium text-foreground">Danger Signs Observed</Label>
+          <Input
+            id="dangerSigns"
+            placeholder="e.g. Severe headache, vaginal bleeding, vision disturbance"
+            value={dangerSigns}
+            onChange={(e) => setDangerSigns(e.target.value)}
+            className="!h-8 bg-card border-border text-xs text-card-foreground"
+          />
         </div>
 
         <div className="flex flex-col gap-1.5">
