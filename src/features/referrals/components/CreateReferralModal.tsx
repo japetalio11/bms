@@ -437,12 +437,9 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
                   mothers.map((m) => {
                     const id = m.mother_id || m._id || m.id
                     const fullName = getMotherFullName(m)
-                    const phone = m.phone_number || m.phone || ""
-                    const addr = m.address || m.barangay || ""
-                    const labelText = `${fullName}${addr ? ` (${addr})` : ""}${phone ? ` - ${phone}` : ""}`
                     return (
                       <SelectItem key={id} value={id} className="text-xs">
-                        {labelText}
+                        {fullName}
                       </SelectItem>
                     )
                   })
