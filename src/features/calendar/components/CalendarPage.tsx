@@ -92,6 +92,11 @@ export function CalendarPage() {
   }, [])
 
   const handleCancelAppointment = async (appointmentId: string) => {
+    const appt = rawAppointments.find((a: any) => (a.id === appointmentId || a.appointment_id === appointmentId))
+    if (appt && (appt.status?.toLowerCase() === "completed")) {
+      alert("Completed appointments cannot be cancelled.")
+      return
+    }
     if (!confirm("Are you sure you want to cancel this appointment?")) return
     try {
       await appointmentApi.cancelAppointment(appointmentId)
@@ -193,6 +198,11 @@ export function CalendarPage() {
 
       return {
         id: item.appointment_id || item.id,
+        raw: item,
+        mother_id: item.mother_id || matchedMother?.mother_id || matchedMother?.id || item.user_id,
+        user_id: item.user_id || matchedMother?.user_id,
+        pregnancy_id: item.pregnancy_id || (matchedMother?.pregnancies?.[0]?.pregnancy_id || matchedMother?.pregnancies?.[0]?.id),
+        mother: matchedMother,
         title: `${item.appointment_type || 'Prenatal Checkup'} - ${name}`,
         start: startDate,
         end: endDate,
@@ -408,6 +418,24 @@ export function CalendarPage() {
               appointment={selectedAppointment}
               onClose={() => setSelectedAppointment(null)}
               onCancelAppointment={handleCancelAppointment}
+              onStatusChange={(id, newStatus, newRisk) => {
+                setRawAppointments(prev => prev.map(a => {
+                  const targetId = a.appointment_id || a.id
+                  if (targetId === id) {
+                    return { 
+                      ...a, 
+                      status: newStatus,
+                      ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                    }
+                  }
+                  return a
+                }))
+                setSelectedAppointment((prev: any) => prev ? { 
+                  ...prev, 
+                  status: newStatus,
+                  ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                } : null)
+              }}
             />
           </div>
         </>
@@ -424,6 +452,24 @@ export function CalendarPage() {
               appointment={selectedAppointment}
               onClose={() => setSelectedAppointment(null)}
               onCancelAppointment={handleCancelAppointment}
+              onStatusChange={(id, newStatus, newRisk) => {
+                setRawAppointments(prev => prev.map(a => {
+                  const targetId = a.appointment_id || a.id
+                  if (targetId === id) {
+                    return { 
+                      ...a, 
+                      status: newStatus,
+                      ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                    }
+                  }
+                  return a
+                }))
+                setSelectedAppointment((prev: any) => prev ? { 
+                  ...prev, 
+                  status: newStatus,
+                  ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                } : null)
+              }}
             />
           </DrawerContent>
         </Drawer>

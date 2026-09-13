@@ -107,11 +107,22 @@ export function AppointmentListPage() {
   const [isCancelling, setIsCancelling] = useState(false)
 
   const handleCancelAppointment = (appointmentId: string) => {
+    const appt = appointmentList.find((a: any) => (a.id === appointmentId || a.appointment_id === appointmentId))
+    if (appt && appt.status?.toLowerCase() === "completed") {
+      toast.error("Completed appointments cannot be cancelled.")
+      return
+    }
     setAppointmentToCancel(appointmentId)
   }
 
   const executeCancelAppointment = async () => {
     if (!appointmentToCancel) return
+    const appt = appointmentList.find((a: any) => (a.id === appointmentToCancel || a.appointment_id === appointmentToCancel))
+    if (appt && appt.status?.toLowerCase() === "completed") {
+      toast.error("Completed appointments cannot be cancelled.")
+      setAppointmentToCancel(null)
+      return
+    }
     setIsCancelling(true)
     try {
       await appointmentApi.cancelAppointment(appointmentToCancel)
@@ -174,6 +185,10 @@ export function AppointmentListPage() {
     return {
       id: item.appointment_id || item.id,
       raw: item,
+      mother_id: item.mother_id || matchedMother?.mother_id || matchedMother?.id || item.user_id,
+      user_id: item.user_id || matchedMother?.user_id,
+      pregnancy_id: item.pregnancy_id || (matchedMother?.pregnancies?.[0]?.pregnancy_id || matchedMother?.pregnancies?.[0]?.id),
+      mother: matchedMother,
       name,
       risk,
       status,
@@ -533,7 +548,7 @@ export function AppointmentListPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-[200px] rounded-xl border-border shadow-md">
                                 <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); setSelectedAppointment(appointment); }}>View Details</DropdownMenuItem>
-                                {appointment.status !== 'Cancelled' && (
+                                {appointment.status !== 'Cancelled' && appointment.status !== 'Completed' && (
                                   <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem 
@@ -620,7 +635,7 @@ export function AppointmentListPage() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-[200px] rounded-xl border-border shadow-md">
                                       <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={() => setSelectedAppointment(appointment)}>View Details</DropdownMenuItem>
-                                      {appointment.status !== 'Cancelled' && (
+                                      {appointment.status !== 'Cancelled' && appointment.status !== 'Completed' && (
                                         <>
                                           <DropdownMenuSeparator />
                                           <DropdownMenuItem 
@@ -719,6 +734,24 @@ export function AppointmentListPage() {
               appointment={selectedAppointment} 
               onClose={() => setSelectedAppointment(null)} 
               onCancelAppointment={handleCancelAppointment}
+              onStatusChange={(id, newStatus, newRisk) => {
+                setAppointmentList(prev => prev.map(a => {
+                  const targetId = a.appointment_id || a.id
+                  if (targetId === id) {
+                    return { 
+                      ...a, 
+                      status: newStatus,
+                      ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                    }
+                  }
+                  return a
+                }))
+                setSelectedAppointment((prev: any) => prev ? { 
+                  ...prev, 
+                  status: newStatus,
+                  ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                } : null)
+              }}
             />
           </div>
         </>
@@ -735,6 +768,24 @@ export function AppointmentListPage() {
               appointment={selectedAppointment} 
               onClose={() => setSelectedAppointment(null)} 
               onCancelAppointment={handleCancelAppointment}
+              onStatusChange={(id, newStatus, newRisk) => {
+                setAppointmentList(prev => prev.map(a => {
+                  const targetId = a.appointment_id || a.id
+                  if (targetId === id) {
+                    return { 
+                      ...a, 
+                      status: newStatus,
+                      ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                    }
+                  }
+                  return a
+                }))
+                setSelectedAppointment((prev: any) => prev ? { 
+                  ...prev, 
+                  status: newStatus,
+                  ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                } : null)
+              }}
             />
           </DrawerContent>
         </Drawer>

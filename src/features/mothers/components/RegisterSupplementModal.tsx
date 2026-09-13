@@ -103,8 +103,8 @@ export function RegisterSupplementModal({
       }
 
       await mothersApi.registerSupplement(payload)
-      onSuccess?.()
       onOpenChange(false)
+      onSuccess?.()
     } catch (err: any) {
       const errMsg = err.response?.data?.error || err.message || "Failed to log prescription/supplement record"
       setError(errMsg)

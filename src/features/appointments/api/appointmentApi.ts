@@ -25,4 +25,8 @@ export const appointmentApi = {
   async cancelAppointment(appointmentId: string, payload?: any) {
     return await appointmentRepository.cancelAppointment(appointmentId, payload)
   },
+
+  async completeAppointment(appointmentId: string, payload?: any) {
+    return await appointmentRepository.completeAppointment(appointmentId, payload)
+  },
 }

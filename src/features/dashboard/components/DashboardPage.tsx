@@ -190,6 +190,11 @@ export function DashboardPage() {
 
   const handleCancelAppointment = async (appId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
+    const app = enrichedAppointments.find((a: any) => (a.id === appId || a.appointment_id === appId))
+    if (app && (app.status === 'completed' || app.status === 'Completed')) {
+      toast.error("Completed appointments cannot be cancelled.")
+      return
+    }
     try {
       await appointmentRepository.cancelAppointment(appId)
       toast.success("Appointment cancelled")
@@ -274,12 +279,14 @@ export function DashboardPage() {
                     >
                       View Profile
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="text-xs text-[#ff7373] focus:text-[#ff7373] focus:bg-[#ff7373]/10 cursor-pointer rounded-md"
-                      onClick={(e) => handleCancelAppointment(app.id, e)}
-                    >
-                      Cancel
-                    </DropdownMenuItem>
+                    {app.status !== 'cancelled' && app.status !== 'Cancelled' && app.status !== 'completed' && app.status !== 'Completed' && (
+                      <DropdownMenuItem 
+                        className="text-xs text-[#ff7373] focus:text-[#ff7373] focus:bg-[#ff7373]/10 cursor-pointer rounded-md"
+                        onClick={(e) => handleCancelAppointment(app.id, e)}
+                      >
+                        Cancel
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -335,12 +342,14 @@ export function DashboardPage() {
                         >
                           View Profile
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-xs text-[#ff7373] focus:text-[#ff7373] focus:bg-[#ff7373]/10 cursor-pointer rounded-md"
-                          onClick={(e) => handleCancelAppointment(app.id, e)}
-                        >
-                          Cancel
-                        </DropdownMenuItem>
+                        {app.status !== 'cancelled' && app.status !== 'Cancelled' && app.status !== 'completed' && app.status !== 'Completed' && (
+                          <DropdownMenuItem 
+                            className="text-xs text-[#ff7373] focus:text-[#ff7373] focus:bg-[#ff7373]/10 cursor-pointer rounded-md"
+                            onClick={(e) => handleCancelAppointment(app.id, e)}
+                          >
+                            Cancel
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -501,7 +510,13 @@ export function DashboardPage() {
         <div 
           className={`fixed top-0 right-0 h-screen w-[100%] sm:w-[450px] z-50 transition-transform duration-300 ease-in-out shadow-2xl ${selectedAppointment ? 'translate-x-0' : 'translate-x-full'}`}
         >
-          <AppointmentSidepeek appointment={selectedAppointment} onClose={() => setSelectedAppointment(null)} />
+          <AppointmentSidepeek 
+            appointment={selectedAppointment} 
+            onClose={() => setSelectedAppointment(null)} 
+            onStatusChange={(_id, newStatus) => {
+              setSelectedAppointment((prev: any) => prev ? { ...prev, status: newStatus } : null)
+            }}
+          />
         </div>
       )}
 
@@ -512,7 +527,13 @@ export function DashboardPage() {
             <div className="sr-only">
               <DrawerTitle>Appointment Details</DrawerTitle>
             </div>
-            <AppointmentSidepeek appointment={selectedAppointment} onClose={() => setSelectedAppointment(null)} />
+            <AppointmentSidepeek 
+              appointment={selectedAppointment} 
+              onClose={() => setSelectedAppointment(null)} 
+              onStatusChange={(_id, newStatus) => {
+                setSelectedAppointment((prev: any) => prev ? { ...prev, status: newStatus } : null)
+              }}
+            />
           </DrawerContent>
         </Drawer>
       )}

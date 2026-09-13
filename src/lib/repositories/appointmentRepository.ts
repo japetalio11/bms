@@ -281,9 +281,17 @@ export const appointmentRepository = {
    * Cancels or updates an appointment offline-first.
    */
   async cancelAppointment(appointmentId: string, payload?: any) {
-    const local = await db.appointments.get(appointmentId)
+    const local = await db.appointments.get(appointmentId) || 
+                  await db.appointments.where("appointment_id").equals(appointmentId).first()
+    
+    // Guard: Completed appointments cannot be cancelled
+    if (local && (local.status?.toLowerCase() === "completed")) {
+      return { success: false, error: "Completed appointments cannot be cancelled" }
+    }
+
+    const targetKey = local?.id || appointmentId
     if (local) {
-      await db.appointments.update(appointmentId, {
+      await db.appointments.update(targetKey, {
         ...payload,
         status: "Cancelled",
         sync_status: local.sync_status === "pending_create" ? "pending_create" : "pending_update",
@@ -297,6 +305,33 @@ export const appointmentRepository = {
       endpoint: `/api/v1/appointment/cancel/${appointmentId}`,
       method: "PUT",
       payload: payload || {},
+      temp_id: appointmentId.startsWith("temp-") ? appointmentId : undefined,
+    })
+
+    return { success: true }
+  },
+
+  /**
+   * Marks an appointment as completed offline-first.
+   */
+  async completeAppointment(appointmentId: string, payload?: any) {
+    const local = await db.appointments.get(appointmentId) || 
+                  await db.appointments.where("appointment_id").equals(appointmentId).first()
+    
+    const targetKey = local?.id || appointmentId
+    await db.appointments.update(targetKey, {
+      ...payload,
+      status: "Completed",
+      sync_status: local?.sync_status === "pending_create" ? "pending_create" : "pending_update",
+      updated_at: Date.now(),
+    }).catch(() => {})
+
+    await syncEngine.enqueueMutation({
+      entity_type: "appointment",
+      action: "UPDATE",
+      endpoint: `/api/v1/appointment/update/${appointmentId}`,
+      method: "PUT",
+      payload: { ...(payload || {}), status: "completed" },
       temp_id: appointmentId.startsWith("temp-") ? appointmentId : undefined,
     })
 
