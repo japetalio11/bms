@@ -57,6 +57,29 @@ export function DetailSideSheet({
   const [editModalOpen, setEditModalOpen] = React.useState(false)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false)
 
+  const handleViewAttachment = (fileUrl: string) => {
+    if (!fileUrl) return
+    if (fileUrl.startsWith("data:")) {
+      try {
+        const parts = fileUrl.split(",")
+        const mime = parts[0].match(/:(.*?);/)?.[1] || "application/pdf"
+        const bstr = atob(parts[1])
+        let n = bstr.length
+        const u8arr = new Uint8Array(n)
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n)
+        }
+        const blob = new Blob([u8arr], { type: mime })
+        const blobUrl = URL.createObjectURL(blob)
+        window.open(blobUrl, "_blank")
+        return
+      } catch (e) {
+        console.error("Failed to convert base64 data to blob URL:", e)
+      }
+    }
+    window.open(fileUrl, "_blank")
+  }
+
   if (!data) return null
 
   const executeDelete = async () => {
@@ -386,20 +409,31 @@ export function DetailSideSheet({
                     <span className="text-xs font-medium text-foreground flex-1">{data.result || "N/A"}</span>
                   </div>
                   {data.file_url && (
-                    <div className="flex items-center">
-                      <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        <span className="text-xs">Attachment</span>
+                    <div className="flex flex-col gap-2 pt-1">
+                      <div className="flex items-center">
+                        <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          <span className="text-xs">Attachment</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleViewAttachment(data.file_url)}
+                          className="text-xs text-blue-500 hover:underline flex items-center gap-1 font-medium flex-1 truncate text-left cursor-pointer"
+                        >
+                          View Attachment Document
+                          <ExternalLink className="h-3 w-3 inline" />
+                        </button>
                       </div>
-                      <a
-                        href={data.file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs text-blue-500 hover:underline flex items-center gap-1 font-medium flex-1 truncate"
-                      >
-                        View Attachment Document
-                        <ExternalLink className="h-3 w-3 inline" />
-                      </a>
+                      {(data.file_url.startsWith("data:image/") ||
+                        data.file_url.match(/\.(png|jpg|jpeg|webp|gif)($|\?)/i)) && (
+                        <div className="mt-1 rounded-lg border border-border overflow-hidden max-w-sm bg-muted/20 p-1">
+                          <img
+                            src={data.file_url}
+                            alt="Laboratory Attachment"
+                            className="max-h-56 w-full object-contain rounded-md"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

@@ -76,8 +76,11 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
     facilityMothers.forEach((mother: any) => {
       const uId = mother.user_id || mother.user?.user_id
       const mId = mother.mother_id || mother.id
+      const tempId = mother.temp_id
       if (uId) motherByUserId.set(uId, mother)
       if (mId) motherByMotherId.set(mId, mother)
+      if (tempId) motherByMotherId.set(tempId, mother)
+      if (mother._id) motherByMotherId.set(mother._id, mother)
     })
 
     // Process existing messages
@@ -88,18 +91,24 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
       let isIncomingFromPatient = false
 
       if (isStaff) {
-        const senderMother = motherByUserId.get(msg.sender_id) || motherByMotherId.get(msg.sender_id)
-        const receiverMother = motherByUserId.get(msg.receiver_id) || motherByMotherId.get(msg.receiver_id)
+        const senderMother =
+          motherByUserId.get(msg.sender_id) ||
+          motherByMotherId.get(msg.sender_id) ||
+          facilityMothers.find((m: any) => m.id === msg.sender_id || m.mother_id === msg.sender_id || m.user_id === msg.sender_id || (m.user && m.user.user_id === msg.sender_id))
+        const receiverMother =
+          motherByUserId.get(msg.receiver_id) ||
+          motherByMotherId.get(msg.receiver_id) ||
+          facilityMothers.find((m: any) => m.id === msg.receiver_id || m.mother_id === msg.receiver_id || m.user_id === msg.receiver_id || (m.user && m.user.user_id === msg.receiver_id))
 
         if (senderMother) {
-          contactId = senderMother.user_id || senderMother.id
-          contactName = `${senderMother.first_name || ''} ${senderMother.last_name || ''}`.trim() || contactName
-          contactAvatar = senderMother.photo_url || contactAvatar
+          contactId = senderMother.user_id || senderMother.user?.user_id || senderMother.mother_id || senderMother.id
+          contactName = `${senderMother.first_name || senderMother.user?.first_name || ''} ${senderMother.last_name || senderMother.user?.last_name || ''}`.trim() || contactName
+          contactAvatar = senderMother.photo_url || senderMother.user?.profile_url || contactAvatar
           isIncomingFromPatient = true
         } else if (receiverMother) {
-          contactId = receiverMother.user_id || receiverMother.id
-          contactName = `${receiverMother.first_name || ''} ${receiverMother.last_name || ''}`.trim() || contactName
-          contactAvatar = receiverMother.photo_url || contactAvatar
+          contactId = receiverMother.user_id || receiverMother.user?.user_id || receiverMother.mother_id || receiverMother.id
+          contactName = `${receiverMother.first_name || receiverMother.user?.first_name || ''} ${receiverMother.last_name || receiverMother.user?.last_name || ''}`.trim() || contactName
+          contactAvatar = receiverMother.photo_url || receiverMother.user?.profile_url || contactAvatar
           isIncomingFromPatient = false
         } else if (msg.sender_role === "Mother" || msg.sender?.role === "Mother") {
           contactId = msg.sender_id
@@ -131,7 +140,7 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
 
       // Canonicalize contact ID to mother.user_id if available
       const resolvedMother = motherByMotherId.get(contactId) || motherByUserId.get(contactId)
-      const validContactId: string = (resolvedMother && resolvedMother.user_id) ? resolvedMother.user_id : contactId
+      const validContactId: string = (resolvedMother && (resolvedMother.user_id || resolvedMother.user?.user_id)) ? (resolvedMother.user_id || resolvedMother.user?.user_id) : contactId
 
       const preview = getMessagePreview(msg.message_content, msg.message_type, msg.file_name)
       const isUnread = isIncomingFromPatient && !msg.is_read
@@ -173,8 +182,27 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
       const avatar = mother.photo_url || mother.user?.profile_url || mother.profile_url || ""
       const mId = mother.mother_id || mother.id
 
+      // Check if thread already exists by ANY of the mother's identifiers
+      let existingThreadKey: string | null = null
       if (threads.has(canonicalContactId)) {
-        const existing = threads.get(canonicalContactId)
+        existingThreadKey = canonicalContactId
+      } else if (mId && threads.has(mId)) {
+        existingThreadKey = mId
+      } else if (mother.id && threads.has(mother.id)) {
+        existingThreadKey = mother.id
+      } else if (mother.temp_id && threads.has(mother.temp_id)) {
+        existingThreadKey = mother.temp_id
+      } else {
+        for (const [key, t] of threads.entries()) {
+          if ((t.motherId && (t.motherId === mId || t.motherId === mother.id)) || (t.userId && (t.userId === canonicalContactId || t.userId === mother.user_id))) {
+            existingThreadKey = key
+            break
+          }
+        }
+      }
+
+      if (existingThreadKey) {
+        const existing = threads.get(existingThreadKey)
         if (!existing.name || existing.name === "Unknown Contact" || existing.name === "Unknown User") {
           existing.name = motherName
         }

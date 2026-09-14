@@ -257,8 +257,9 @@ class SyncEngine {
     if (responseData.screening?.screening_id) return responseData.screening.screening_id
     if (responseData.lab?.screening_id) return responseData.lab.screening_id
     if (responseData.supplement?.supplement_id) return responseData.supplement.supplement_id
+    if (responseData.supplement_record?.supplement_id) return responseData.supplement_record.supplement_id
 
-    const targetObj = responseData.result || responseData.data || responseData
+    const targetObj = responseData.result || responseData.data || responseData.supplement_record || responseData
     if (targetObj && typeof targetObj === "object") {
       return (
         targetObj._id ||
@@ -270,6 +271,8 @@ class SyncEngine {
         targetObj.appointment_id ||
         targetObj.screening_id ||
         targetObj.supplement_id ||
+        targetObj.referral_id ||
+        targetObj.message_id ||
         null
       )
     }
@@ -408,6 +411,8 @@ class SyncEngine {
         await db.labRecords.where("mother_id").equals(tempId).modify({ mother_id: canonicalMotherId })
         await db.supplements.where("mother_id").equals(tempId).modify({ mother_id: canonicalMotherId })
         await db.ehrDocuments.where("mother_id").equals(tempId).modify({ mother_id: canonicalMotherId })
+        await db.messages.where("receiver_id").equals(tempId).modify({ receiver_id: canonicalUserId })
+        await db.messages.where("sender_id").equals(tempId).modify({ sender_id: canonicalUserId })
       } else if (entityType === "pregnancy") {
         const existingLocal = await db.pregnancies.get(tempId)
         if (existingLocal) {
@@ -449,6 +454,7 @@ class SyncEngine {
             ...existingLocal,
             ...(responseData?.appointment || responseData),
             id: canonicalId,
+            appointment_id: canonicalId,
             sync_status: "synced",
             updated_at: Date.now(),
           })
@@ -465,7 +471,35 @@ class SyncEngine {
             updated_at: Date.now(),
           })
         }
-      } else if (entityType === "referral" || entityType === "custom_request") {
+      } else if (entityType === "lab_record") {
+        const existingLocal = await db.labRecords.get(tempId)
+        if (existingLocal) {
+          await db.labRecords.delete(tempId)
+          const respObj = responseData?.data || responseData?.result || responseData?.screening || responseData
+          await db.labRecords.put({
+            ...existingLocal,
+            ...(typeof respObj === "object" ? respObj : {}),
+            id: canonicalId,
+            screening_id: canonicalId,
+            sync_status: "synced",
+            updated_at: Date.now(),
+          })
+        }
+      } else if (entityType === "supplement") {
+        const existingLocal = await db.supplements.get(tempId)
+        if (existingLocal) {
+          await db.supplements.delete(tempId)
+          const respObj = responseData?.supplement_record || responseData?.data || responseData?.result || responseData?.supplement || responseData
+          await db.supplements.put({
+            ...existingLocal,
+            ...(typeof respObj === "object" ? respObj : {}),
+            id: canonicalId,
+            supplement_id: canonicalId,
+            sync_status: "synced",
+            updated_at: Date.now(),
+          })
+        }
+      } else if (entityType === "referral") {
         const existingLocal = await db.referrals.get(tempId)
         if (existingLocal) {
           await db.referrals.delete(tempId)
@@ -496,18 +530,30 @@ class SyncEngine {
         try {
           const cached = await db.userSession.get("facility_staff_cache")
           if (cached && Array.isArray(cached.data)) {
-            const updated = cached.data.map((u: any) => {
-              if (u.id === tempId || u.user_id === tempId) {
-                return {
-                  ...u,
-                  id: canonicalId,
-                  user_id: canonicalId,
-                  sync_status: "synced",
-                  updated_at: Date.now(),
+            const userObj = responseData?.user || responseData?.result || responseData?.data || responseData
+            const userEmail = userObj?.email
+            const updated = cached.data
+              .filter((u: any) => {
+                if (userEmail && u.email === userEmail && u.id !== tempId && u.id !== canonicalId) {
+                  return false
                 }
-              }
-              return u
-            })
+                return true
+              })
+              .map((u: any) => {
+                if (u.id === tempId || u.user_id === tempId || (userEmail && u.email === userEmail)) {
+                  return {
+                    ...u,
+                    ...(typeof userObj === "object" ? userObj : {}),
+                    id: canonicalId,
+                    user_id: canonicalId,
+                    status: "Active",
+                    is_active: true,
+                    sync_status: "synced",
+                    updated_at: Date.now(),
+                  }
+                }
+                return u
+              })
             await db.userSession.put({ id: "facility_staff_cache", data: updated, updated_at: Date.now() })
           }
         } catch (err) {
@@ -522,15 +568,21 @@ class SyncEngine {
         let newEndpoint = queueItem.endpoint
         let newPayload = queueItem.payload
 
+        const targetReplacement =
+          entityType === "mother" &&
+          (queueItem.entity_type === "message" || queueItem.endpoint?.includes("/message"))
+            ? (responseData?.result?.user?.user_id || responseData?.user?.user_id || primaryCanonicalId)
+            : primaryCanonicalId
+
         if (newEndpoint && newEndpoint.includes(tempId)) {
-          newEndpoint = newEndpoint.replaceAll(tempId, primaryCanonicalId)
+          newEndpoint = newEndpoint.replaceAll(tempId, targetReplacement)
           modified = true
         }
 
         if (newPayload) {
           let payloadStr = JSON.stringify(newPayload)
           if (payloadStr.includes(tempId)) {
-            payloadStr = payloadStr.replaceAll(tempId, primaryCanonicalId)
+            payloadStr = payloadStr.replaceAll(tempId, targetReplacement)
             newPayload = JSON.parse(payloadStr)
             modified = true
           }
@@ -681,6 +733,36 @@ class SyncEngine {
         }
       }
 
+      // 2.1 Recover Unsynced Appointments
+      const appointments = await db.appointments.toArray()
+      for (const appt of appointments) {
+        const isTemp = String(appt.id).startsWith("temp-") || appt.sync_status === "pending_create"
+        if (isTemp && !queuedTempIds.has(appt.id)) {
+          console.log(`[SyncEngine] Auto-recovering offline appointment ${appt.id} to outbox queue...`)
+          await db.offlineQueue.add({
+            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            entity_type: "appointment",
+            action: "CREATE",
+            endpoint: "/api/v1/appointment/register",
+            method: "POST",
+            payload: {
+              mother_id: appt.mother_id,
+              user_id: appt.user_id,
+              facility_id: appt.facility_id,
+              appointment_date: appt.appointment_date,
+              appointment_time: appt.appointment_time,
+              appointment_type: appt.appointment_type,
+              reason: (appt as any).reason || undefined,
+              status: appt.status || "Scheduled",
+            },
+            temp_id: appt.id,
+            retry_count: 0,
+            created_at: Date.now(),
+          })
+          queuedTempIds.add(appt.id)
+        }
+      }
+
       // 3. Recover Unsynced Lab Records
       const labs = await db.labRecords.toArray()
       for (const lab of labs) {
@@ -818,7 +900,7 @@ class SyncEngine {
             console.log(`[SyncEngine] Auto-recovering offline staff creation ${staff.id} to outbox queue...`)
             await db.offlineQueue.add({
               client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-              entity_type: "custom_request",
+              entity_type: "user",
               action: "CREATE",
               endpoint: "/api/v1/auth/create-staff",
               method: "POST",

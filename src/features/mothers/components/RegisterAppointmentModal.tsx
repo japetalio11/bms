@@ -64,8 +64,11 @@ export function RegisterAppointmentModal({
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
+      const motherId = motherData?.mother_id || motherData?.id || motherData?._id
       const payload = {
+        mother_id: motherId,
         user_id: userId,
+        facility_id: motherData?.facility_id,
         appointment_date: appointmentDate.toISOString(),
         appointment_time: appointmentTime,
         appointment_type: appointmentType,

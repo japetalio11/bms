@@ -126,14 +126,27 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(({
         {/* Left Side: Avatar & Name */}
         <div className="flex items-center gap-4">
           <div className="relative group">
-            <Avatar className="h-14 w-14 border border-border shadow-xs">
-              {avatarUrl && (
-                <AvatarImage src={avatarUrl} alt={name} className="object-cover" />
-              )}
-              <AvatarFallback className="bg-primary/10 text-primary font-bold">
+            <div className="h-14 w-14 rounded-full overflow-hidden border border-border shadow-xs bg-primary/10 flex items-center justify-center shrink-0">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={name}
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = "none"
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                    if (fallback) fallback.style.display = "flex"
+                  }}
+                />
+              ) : null}
+              <span
+                className={`text-primary font-bold text-base ${
+                  avatarUrl ? "hidden" : "flex"
+                }`}
+              >
                 {name.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+              </span>
+            </div>
             <button
               type="button"
               onClick={onAvatarClick}

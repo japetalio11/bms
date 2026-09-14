@@ -149,12 +149,27 @@ export function UploadAvatarModal({
 
         {/* Avatar Preview */}
         <div className="relative group">
-          <Avatar className="h-28 w-28 border-2 border-sidebar-border shadow-md">
-            {previewUrl && <AvatarImage src={previewUrl} className="object-cover" />}
-            <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
+          <div className="h-28 w-28 rounded-full overflow-hidden border-2 border-sidebar-border shadow-md bg-primary/10 flex items-center justify-center">
+            {previewUrl ? (
+              <img
+                src={previewUrl}
+                alt={motherName}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLElement).style.display = "none"
+                  const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                  if (fallback) fallback.style.display = "flex"
+                }}
+              />
+            ) : null}
+            <span
+              className={`text-primary text-2xl font-bold ${
+                previewUrl ? "hidden" : "flex"
+              }`}
+            >
               {motherName.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+            </span>
+          </div>
         </div>
 
         {/* Upload Action */}

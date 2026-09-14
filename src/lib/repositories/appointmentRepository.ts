@@ -154,12 +154,17 @@ export const appointmentRepository = {
   async createAppointment(payload: any): Promise<LocalAppointment> {
     let userId = payload.user_id || payload.userId || payload.mother_id || ""
 
-    if (userId && userId.startsWith("temp-")) {
+    if (userId) {
       try {
         const allMothers = await db.mothers.toArray()
-        const matched = allMothers.find((m) => m.id === userId || m.temp_id === userId || m._id === userId)
+        const matched = allMothers.find(
+          (m) => m.id === userId || m.temp_id === userId || m._id === userId || m.mother_id === userId || m.user_id === userId
+        )
         if (matched) {
-          const resolvedUser = matched.user_id || matched.user?.user_id || matched.mother_id
+          if (!payload.mother_id) {
+            payload.mother_id = matched.mother_id || matched.id
+          }
+          const resolvedUser = matched.user_id || matched.user?.user_id
           if (resolvedUser && !resolvedUser.startsWith("temp-")) {
             userId = resolvedUser
             payload.user_id = resolvedUser
@@ -203,6 +208,7 @@ export const appointmentRepository = {
     const newAppointment: LocalAppointment = {
       ...payload,
       id: tempId,
+      appointment_id: tempId,
       mother_id: payload.mother_id || payload.motherId,
       user_id: payload.user_id || payload.userId,
       facility_id: payload.facility_id || payload.facilityId,

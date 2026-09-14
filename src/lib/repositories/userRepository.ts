@@ -65,7 +65,13 @@ export const userRepository = {
         const remoteList = response.data?.result || response.data?.data || (Array.isArray(response.data) ? response.data : [])
 
         if (Array.isArray(remoteList)) {
-          const pendingItems = localStaff.filter((u) => u.sync_status !== "synced")
+          const remoteEmails = new Set(
+            remoteList.map((u: any) => (u.email || "").toLowerCase().trim()).filter(Boolean)
+          )
+          // Any pending local item that has now appeared in the remote list (matched by email) is reconciled!
+          const pendingItems = localStaff.filter(
+            (u) => u.sync_status !== "synced" && !remoteEmails.has((u.email || "").toLowerCase().trim())
+          )
           const pendingIds = new Set(pendingItems.map((u) => u.id))
 
           const formattedRemote: LocalStaffUser[] = remoteList
@@ -177,7 +183,7 @@ export const userRepository = {
       role: payload.role,
       position: payload.role,
       sector: payload.sector || "N/A",
-      status: "Pending",
+      status: "Active",
       is_active: true,
       facility_id: facilityId,
       sync_status: syncEngine.isNetworkOnline() ? "synced" : "pending_create",
@@ -199,6 +205,8 @@ export const userRepository = {
           ...created,
           id: canonicalId,
           user_id: canonicalId,
+          status: "Active",
+          is_active: true,
           sync_status: "synced",
           updated_at: Date.now(),
         }
@@ -217,7 +225,7 @@ export const userRepository = {
     // Save offline outbox queue
     newStaff.sync_status = "pending_create"
     await syncEngine.enqueueMutation({
-      entity_type: "custom_request",
+      entity_type: "user",
       action: "CREATE",
       endpoint: "/api/v1/auth/create-staff",
       method: "POST",
