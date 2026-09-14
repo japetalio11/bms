@@ -30,17 +30,37 @@ export const messageRepository = {
           const currentUserId = currentUserObj?.user_id || currentUserObj?.id
           const localById = new Map<string, LocalMessage>(localList.map((m) => [m.id, m]))
 
+          const isStaff = currentUserObj?.role && currentUserObj.role !== "Mother"
+
           const formattedRemote: LocalMessage[] = remoteList
             .filter((msg: any) => !pendingIds.has(msg.message_id || msg._id || msg.id))
             .map((msg: any) => {
               const msgId = msg.message_id || msg._id || msg.id
               const existing = localById.get(msgId)
-              const isSenderMe = currentUserId && msg.sender_id === currentUserId
-              const otherUser = isSenderMe ? (msg.receiver || msg.sender) : (msg.sender || msg.receiver)
-              const contactName = otherUser
-                ? `${otherUser.first_name || ""} ${otherUser.last_name || ""}`.trim()
+              
+              // Identify the external contact (mother) vs facility staff
+              let contactUser = null
+              if (isStaff) {
+                if (msg.sender?.role === "Mother") {
+                  contactUser = msg.sender
+                } else if (msg.receiver?.role === "Mother") {
+                  contactUser = msg.receiver
+                } else if (currentUserId && msg.sender_id === currentUserId) {
+                  contactUser = msg.receiver
+                } else {
+                  contactUser = msg.sender || msg.receiver
+                }
+              } else {
+                contactUser = (currentUserId && msg.sender_id === currentUserId) ? msg.receiver : msg.sender
+              }
+
+              const contactName = contactUser
+                ? `${contactUser.first_name || ""} ${contactUser.last_name || ""}`.trim()
                 : msg.contact_name || existing?.contact_name || undefined
-              const avatar = otherUser?.profile_url || otherUser?.photo_url || msg.contact_avatar || existing?.contact_avatar || ""
+              const avatar = contactUser?.profile_url || contactUser?.photo_url || msg.contact_avatar || existing?.contact_avatar || ""
+
+              const senderName = msg.sender ? `${msg.sender.first_name || ""} ${msg.sender.last_name || ""}`.trim() : existing?.sender_name
+              const senderRole = msg.sender?.role || existing?.sender_role
 
               // Determine message_type
               let msgType = msg.message_type || existing?.message_type || "text"
@@ -65,6 +85,8 @@ export const messageRepository = {
                 is_read: msg.is_read ?? false,
                 contact_name: contactName,
                 contact_avatar: avatar,
+                sender_name: senderName,
+                sender_role: senderRole,
                 sync_status: "synced" as const,
                 updated_at: msg.updated_at ? new Date(msg.updated_at).getTime() : Date.now(),
               }
@@ -191,23 +213,16 @@ export const messageRepository = {
    */
   async markAsRead(contactId: string): Promise<void> {
     try {
-      let currentUser = await db.userSession.get("current_user")
-      if (!currentUser && typeof window !== "undefined") {
-        const stored = localStorage.getItem("user")
-        if (stored) {
-          try {
-            currentUser = JSON.parse(stored)
-          } catch {}
-        }
-      }
-      if (!currentUser) return
-      const currentUserId = currentUser.user_id || currentUser.id
       const unreadMsgs = await db.messages
-        .filter((m) => m.sender_id === contactId && m.receiver_id === currentUserId && !m.is_read)
+        .filter((m) => m.sender_id === contactId && !m.is_read)
         .toArray()
 
       for (const m of unreadMsgs) {
         await db.messages.update(m.id, { is_read: true, updated_at: Date.now() })
+      }
+
+      if (syncEngine.isNetworkOnline()) {
+        await apiClient.put("/api/v1/message/markAllAsRead", { sender_id: contactId }).catch(() => {})
       }
     } catch (err) {
       console.warn("[messageRepository] Failed to mark messages as read:", err)

@@ -5,20 +5,27 @@ import { syncEngine } from "@/lib/sync/syncEngine"
 
 export const notificationRepository = {
   /**
-    * Helper to get current authenticated user ID
-    */
+   * Helper to get current authenticated user ID
+   */
   async getCurrentUserId(): Promise<string> {
     try {
       const currentUser = await db.userSession.get("current_user")
       if (currentUser?.user_id || currentUser?.id) {
         return currentUser.user_id || currentUser.id
       }
+      const rawStoredUser = localStorage.getItem("user")
+      if (rawStoredUser) {
+        const parsed = JSON.parse(rawStoredUser)
+        if (parsed?.user_id || parsed?.id) {
+          return parsed.user_id || parsed.id
+        }
+      }
       const tokenUser = localStorage.getItem("bms_user_id")
       if (tokenUser) return tokenUser
     } catch {
       // fallback
     }
-    return "USR-1001" // default fallback user ID
+    return ""
   },
 
   /**
@@ -27,14 +34,11 @@ export const notificationRepository = {
    */
   async getUserNotifications(): Promise<LocalNotification[]> {
     const userId = await this.getCurrentUserId()
+    if (!userId) return []
     let localList: LocalNotification[] = []
 
     try {
       localList = await db.notifications.where("user_id").equals(userId).toArray()
-      if (localList.length === 0) {
-        // Fallback to all local notifications if query by user_id returned none
-        localList = await db.notifications.toArray()
-      }
     } catch (err) {
       console.warn("[notificationRepository] Failed to query local Dexie DB:", err)
     }
@@ -56,17 +60,20 @@ export const notificationRepository = {
             .filter((notif: any) => !pendingIds.has(notif.notification_id || notif._id || notif.id))
             .map((notif: any) => {
               const notifId = notif.notification_id || notif._id || notif.id
+              const localExisting = localList.find((l) => l.id === notifId || l.notification_id === notifId)
+              const isRead = Boolean(notif.is_read || (localExisting ? localExisting.is_read : false))
+
               return {
                 ...notif,
                 id: notifId,
                 notification_id: notifId,
-                user_id: notif.user_id || userId,
+                user_id: userId,
                 notification_type: notif.notification_type || "system",
                 notification_message: notif.notification_message || "",
                 notification_date: notif.notification_date
                   ? new Date(notif.notification_date).toISOString()
                   : new Date().toISOString(),
-                is_read: notif.is_read ?? false,
+                is_read: isRead,
                 sync_status: "synced" as const,
                 updated_at: notif.updated_at ? new Date(notif.updated_at).getTime() : Date.now(),
               }
@@ -150,11 +157,12 @@ export const notificationRepository = {
    */
   async markAllAsRead(): Promise<void> {
     const userId = await this.getCurrentUserId()
+    if (!userId) return
     const nowMs = Date.now()
 
     try {
-      const allLocal = await db.notifications.toArray()
-      const updatedList = allLocal.map((n) => ({
+      const userLocal = await db.notifications.where("user_id").equals(userId).toArray()
+      const updatedList = userLocal.map((n) => ({
         ...n,
         is_read: true,
         sync_status: (syncEngine.isNetworkOnline() ? "synced" : "pending_update") as "synced" | "pending_update",
@@ -195,11 +203,13 @@ export const notificationRepository = {
   },
 
   /**
-   * Clears all local notifications (useful for reset or purge).
+   * Clears all local notifications for current user.
    */
   async clearAll(): Promise<void> {
+    const userId = await this.getCurrentUserId()
+    if (!userId) return
     try {
-      await db.notifications.clear()
+      await db.notifications.where("user_id").equals(userId).delete()
     } catch (err) {
       console.warn("[notificationRepository] Failed to clear local notifications:", err)
     }

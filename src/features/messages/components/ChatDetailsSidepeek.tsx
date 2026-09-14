@@ -32,15 +32,34 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
   const currentUserId = currentUser?.user_id || currentUser?.id
 
   // Query all messages in this conversation
-  const messages = useLiveQuery(() => {
-    if (!currentUserId || !activeChatId) return []
+  const messages = useLiveQuery(async () => {
+    if (!activeChatId) return []
+    let mother = await db.mothers.where('user_id').equals(activeChatId).first()
+    if (!mother) mother = await db.mothers.get(activeChatId)
+    if (!mother) mother = await db.mothers.where('mother_id').equals(activeChatId).first()
+    if (!mother) {
+      const all = await db.mothers.toArray()
+      mother = all.find((m: any) => m.id === activeChatId || m.user_id === activeChatId || m.mother_id === activeChatId)
+    }
+
+    const targetUserId = mother?.user_id || mother?.user?.user_id || activeChatId
+    const targetMotherId = mother?.mother_id || mother?.id
+    const isStaff = currentUser?.role && currentUser.role !== 'Mother'
+
     return db.messages
-      .filter(msg => 
-        (msg.sender_id === currentUserId && msg.receiver_id === activeChatId) ||
-        (msg.receiver_id === currentUserId && msg.sender_id === activeChatId)
-      )
+      .filter(msg => {
+        if (isStaff && mother) {
+          return msg.sender_id === targetUserId ||
+                 msg.receiver_id === targetUserId ||
+                 (targetMotherId && (msg.sender_id === targetMotherId || msg.receiver_id === targetMotherId))
+        }
+
+        return (msg.sender_id === currentUserId && (msg.receiver_id === targetUserId || msg.receiver_id === targetMotherId)) ||
+               (msg.receiver_id === currentUserId && (msg.sender_id === targetUserId || msg.sender_id === targetMotherId)) ||
+               (msg.sender_id === targetUserId || msg.receiver_id === targetUserId)
+      })
       .toArray()
-  }, [currentUserId, activeChatId]) ?? []
+  }, [currentUserId, activeChatId, currentUser?.role]) ?? []
 
   // Query EHR documents for this contact if contact is a mother
   const ehrDocs = useLiveQuery(async () => {

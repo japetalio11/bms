@@ -24,6 +24,25 @@ export interface LocalStaffUser {
   [key: string]: any
 }
 
+export interface StaffActivityItem {
+  id: string
+  type: string
+  title: string
+  subtitle: string
+  patientName?: string
+  details?: string
+  timestamp: string | Date
+  iconType: "activity" | "file" | "user" | "settings" | string
+}
+
+export interface StaffActivitiesResponse {
+  activities: StaffActivityItem[]
+  hasMore: boolean
+  total: number
+  page: number
+  limit: number
+}
+
 export const userRepository = {
   /**
    * Retrieves all facility staff members.
@@ -239,7 +258,12 @@ export const userRepository = {
         })
         await db.userSession.put({ id: "facility_staff_cache", data: syncedList, updated_at: Date.now() })
         return true
-      } catch (err) {
+      } catch (err: any) {
+        if (err.response?.status >= 400 && err.response?.status < 500) {
+          // Revert local optimistic change
+          await db.userSession.put({ id: "facility_staff_cache", data: currentList, updated_at: Date.now() })
+          throw err
+        }
         console.warn("[userRepository] Online deactivate failed, queuing offline update:", err)
       }
     }
@@ -285,7 +309,12 @@ export const userRepository = {
         })
         await db.userSession.put({ id: "facility_staff_cache", data: syncedList, updated_at: Date.now() })
         return true
-      } catch (err) {
+      } catch (err: any) {
+        if (err.response?.status >= 400 && err.response?.status < 500) {
+          // Revert local optimistic change
+          await db.userSession.put({ id: "facility_staff_cache", data: currentList, updated_at: Date.now() })
+          throw err
+        }
         console.warn("[userRepository] Online role update failed, queuing offline mutation:", err)
       }
     }
@@ -299,5 +328,50 @@ export const userRepository = {
     })
 
     return true
+  },
+
+  /**
+   * Resets a staff member's password by an administrator.
+   */
+  async adminResetPassword(userId: string, newPassword: string): Promise<boolean> {
+    if (!syncEngine.isNetworkOnline()) {
+      throw new Error("Password reset requires an active network connection.")
+    }
+    const response = await apiClient.put(`/api/v1/user/${userId}/admin-reset-password`, { newPassword })
+    return response.data?.success ?? true
+  },
+
+  /**
+   * Retrieves unified activity and audit logs for a staff member.
+   */
+  async getStaffActivities(
+    userId: string,
+    params?: { search?: string; page?: number; limit?: number }
+  ): Promise<StaffActivitiesResponse> {
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.get(`/api/v1/user/${userId}/activities`, { params })
+        const res = response.data?.result || response.data?.data
+        if (res && Array.isArray(res.activities)) {
+          return {
+            activities: res.activities,
+            hasMore: Boolean(res.hasMore),
+            total: res.total || res.activities.length,
+            page: res.page || (params?.page ?? 1),
+            limit: res.limit || (params?.limit ?? 10),
+          }
+        }
+      } catch (err) {
+        console.warn(`[userRepository] Failed to fetch staff activities for ${userId}:`, err)
+      }
+    }
+
+    return {
+      activities: [],
+      hasMore: false,
+      total: 0,
+      page: params?.page ?? 1,
+      limit: params?.limit ?? 10,
+    }
   },
 }

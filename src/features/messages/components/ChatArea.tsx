@@ -42,59 +42,105 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
   const imageInputRef = React.useRef<HTMLInputElement>(null)
 
   const currentUserId = currentUser?.user_id || currentUser?.id
+  const isStaff = currentUser?.role && currentUser.role !== 'Mother'
 
-  const chatMessages = useLiveQuery(() => {
-    if (!currentUserId || !activeChatId) return []
-    return db.messages
-      .filter(msg => 
-        (msg.sender_id === currentUserId && msg.receiver_id === activeChatId) ||
-        (msg.receiver_id === currentUserId && msg.sender_id === activeChatId)
-      )
-      .sortBy('message_date')
-  }, [currentUserId, activeChatId]) ?? []
-
-  const activeContact = useLiveQuery(async () => {
+  // Resolve target contact information
+  const targetContactInfo = useLiveQuery(async () => {
     if (!activeChatId) return null
-    let mother = await db.mothers.get(activeChatId)
+    let mother = await db.mothers.where('user_id').equals(activeChatId).first()
+    if (!mother) mother = await db.mothers.get(activeChatId)
+    if (!mother) mother = await db.mothers.where('mother_id').equals(activeChatId).first()
     if (!mother) {
-      mother = await db.mothers.where('user_id').equals(activeChatId).first()
-    }
-    if (!mother) {
-      mother = await db.mothers.where('mother_id').equals(activeChatId).first()
-    }
-    if (!mother) {
-      // Check in-memory list if primary key differed
       const all = await db.mothers.toArray()
       mother = all.find((m: any) => m.id === activeChatId || m.user_id === activeChatId || m.mother_id === activeChatId || m.user?.user_id === activeChatId)
     }
 
     if (mother) {
+      const uId = mother.user_id || mother.user?.user_id || activeChatId
+      const mId = mother.mother_id || mother.id || activeChatId
       const firstName = mother.first_name || mother.user?.first_name || ''
       const lastName = mother.last_name || mother.user?.last_name || ''
       const photoUrl = mother.photo_url || mother.user?.profile_url || ''
-      const canonicalMotherId = mother.mother_id || mother.id || activeChatId
       return {
+        isMother: true,
+        userId: uId,
+        motherId: mId,
         name: `${firstName} ${lastName}`.trim() || "Mother",
         role: "Mother",
-        avatar: photoUrl,
-        motherId: canonicalMotherId
+        avatar: photoUrl
       }
     }
+
     const msg = await db.messages.filter(m => m.sender_id === activeChatId || m.receiver_id === activeChatId).first()
     if (msg) {
       return {
+        isMother: false,
+        userId: activeChatId,
+        motherId: null,
         name: msg.contact_name || "Contact",
         role: "Healthcare Staff",
-        avatar: msg.contact_avatar,
-        motherId: null
+        avatar: msg.contact_avatar || ""
       }
     }
-    return { name: "Healthcare Contact", role: "Contact", avatar: "", motherId: null }
+
+    return {
+      isMother: false,
+      userId: activeChatId,
+      motherId: null,
+      name: "Contact",
+      role: "Contact",
+      avatar: ""
+    }
   }, [activeChatId])
+
+  const activeContact = React.useMemo(() => {
+    if (!targetContactInfo) return null
+    return {
+      name: targetContactInfo.name,
+      role: targetContactInfo.role,
+      avatar: targetContactInfo.avatar,
+      motherId: targetContactInfo.motherId
+    }
+  }, [targetContactInfo])
+
+  const chatMessages = useLiveQuery(() => {
+    if (!activeChatId) return []
+    const targetUserId = targetContactInfo?.userId || activeChatId
+    const targetMotherId = targetContactInfo?.motherId
+
+    return db.messages
+      .filter(msg => {
+        if (isStaff && targetContactInfo?.isMother) {
+          // Facility staff seeing patient messages: include incoming from mother and outgoing from any facility staff
+          return msg.sender_id === targetUserId ||
+                 msg.receiver_id === targetUserId ||
+                 (targetMotherId && (msg.sender_id === targetMotherId || msg.receiver_id === targetMotherId))
+        }
+
+        // Direct 1-on-1 or mother reading clinic messages
+        return (msg.sender_id === currentUserId && (msg.receiver_id === targetUserId || msg.receiver_id === targetMotherId)) ||
+               (msg.receiver_id === currentUserId && (msg.sender_id === targetUserId || msg.sender_id === targetMotherId)) ||
+               (msg.sender_id === targetUserId || msg.receiver_id === targetUserId)
+      })
+      .sortBy('message_date')
+  }, [currentUserId, activeChatId, targetContactInfo, isStaff]) ?? []
+
+  // Mark unread messages as read upon viewing
+  React.useEffect(() => {
+    if (activeChatId) {
+      const targetUserId = targetContactInfo?.userId || activeChatId
+      messageRepository.markAsRead(targetUserId).catch(() => {})
+      if (targetContactInfo?.motherId && targetContactInfo.motherId !== targetUserId) {
+        messageRepository.markAsRead(targetContactInfo.motherId).catch(() => {})
+      }
+    }
+  }, [activeChatId, targetContactInfo])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isImageOnly = false) => {
     const file = e.target.files?.[0]
     if (!file || !currentUser || !activeChatId || isSending) return
+
+    const targetReceiverId = targetContactInfo?.userId || activeChatId
 
     setIsSending(true)
     const reader = new FileReader()
@@ -104,7 +150,7 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
 
       try {
         await messageRepository.sendMessage({
-          receiver_id: activeChatId,
+          receiver_id: targetReceiverId,
           message_content: dataUrl,
           message_type: msgType,
           file_name: file.name,
@@ -128,12 +174,13 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
   const handleSendMessage = async () => {
     if (!message.trim() || !currentUser || !activeChatId || isSending) return
     const content = message.trim()
+    const targetReceiverId = targetContactInfo?.userId || activeChatId
     setMessage("")
     setIsSending(true)
 
     try {
       await messageRepository.sendMessage({
-        receiver_id: activeChatId,
+        receiver_id: targetReceiverId,
         message_content: content,
         message_type: "text",
         contact_name: activeContact?.name,
@@ -217,15 +264,24 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
       {/* Message History */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
         {chatMessages.map((msg) => {
-          const isMe = msg.sender_id === currentUser?.user_id
+          const isSentByMe = msg.sender_id === currentUserId
+          const isOutgoing = targetContactInfo?.isMother
+            ? (msg.sender_id !== targetContactInfo.userId && msg.sender_id !== targetContactInfo.motherId)
+            : isSentByMe
           const isImage = msg.message_type === 'image' || (typeof msg.message_content === 'string' && (msg.message_content.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(msg.message_content)))
           const isFile = msg.message_type === 'file' || (typeof msg.message_content === 'string' && msg.message_content.startsWith('data:application/'))
+          const colleagueSender = (isOutgoing && !isSentByMe) ? (msg.sender_name || "Facility Staff") : null
 
           return (
-            <div key={msg.id} className={clsx("flex flex-col gap-1 w-full max-w-[80%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
+            <div key={msg.id} className={clsx("flex flex-col gap-1 w-full max-w-[80%]", isOutgoing ? "ml-auto items-end" : "mr-auto items-start")}>
+              {colleagueSender && (
+                <span className="text-[10px] text-muted-foreground font-medium px-1">
+                  {colleagueSender}
+                </span>
+              )}
               <div className={clsx(
                 "p-3 rounded-2xl text-sm leading-relaxed",
-                isMe 
+                isOutgoing 
                   ? "bg-primary text-primary-foreground rounded-tr-sm" 
                   : "bg-card border border-border text-card-foreground rounded-tl-sm shadow-xs"
               )}>
@@ -260,7 +316,7 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
               </div>
               <div className="flex items-center gap-1 px-1">
                 <span className="text-[10px] text-muted-foreground">{formatTime(msg.message_date)}</span>
-                {isMe && msg.sync_status === "pending_create" && (
+                {isSentByMe && msg.sync_status === "pending_create" && (
                   <span className="inline-flex items-center gap-1 text-[10px] text-amber-500 font-medium">
                     <Clock className="h-2.5 w-2.5 animate-pulse" /> Pending Sync
                   </span>

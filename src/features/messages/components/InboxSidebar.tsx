@@ -67,59 +67,133 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
     
     const threads = new Map<string, any>()
     const currentUserId = currentUser.user_id || currentUser.id
+    const isStaff = currentUser.role !== 'Mother'
     
+    // Index facility mothers by all possible IDs
+    const motherByUserId = new Map<string, any>()
+    const motherByMotherId = new Map<string, any>()
+
+    facilityMothers.forEach((mother: any) => {
+      const uId = mother.user_id || mother.user?.user_id
+      const mId = mother.mother_id || mother.id
+      if (uId) motherByUserId.set(uId, mother)
+      if (mId) motherByMotherId.set(mId, mother)
+    })
+
     // Process existing messages
     messages.forEach(msg => {
-      const isMe = msg.sender_id === currentUserId
-      const contactId = isMe ? msg.receiver_id : msg.sender_id
-      if (!contactId) return
-      
-      const preview = getMessagePreview(msg.message_content, msg.message_type, msg.file_name)
+      let contactId: string | null = null
+      let contactName = msg.contact_name
+      let contactAvatar = msg.contact_avatar || ""
+      let isIncomingFromPatient = false
 
-      if (!threads.has(contactId)) {
-        threads.set(contactId, {
-          id: contactId,
-          name: msg.contact_name || "Unknown User",
+      if (isStaff) {
+        const senderMother = motherByUserId.get(msg.sender_id) || motherByMotherId.get(msg.sender_id)
+        const receiverMother = motherByUserId.get(msg.receiver_id) || motherByMotherId.get(msg.receiver_id)
+
+        if (senderMother) {
+          contactId = senderMother.user_id || senderMother.id
+          contactName = `${senderMother.first_name || ''} ${senderMother.last_name || ''}`.trim() || contactName
+          contactAvatar = senderMother.photo_url || contactAvatar
+          isIncomingFromPatient = true
+        } else if (receiverMother) {
+          contactId = receiverMother.user_id || receiverMother.id
+          contactName = `${receiverMother.first_name || ''} ${receiverMother.last_name || ''}`.trim() || contactName
+          contactAvatar = receiverMother.photo_url || contactAvatar
+          isIncomingFromPatient = false
+        } else if (msg.sender_role === "Mother" || msg.sender?.role === "Mother") {
+          contactId = msg.sender_id
+          contactName = msg.sender_name || contactName
+          contactAvatar = msg.sender?.profile_url || contactAvatar
+          isIncomingFromPatient = true
+        } else if (msg.receiver_role === "Mother" || msg.receiver?.role === "Mother") {
+          contactId = msg.receiver_id
+          contactName = msg.contact_name || contactName
+          contactAvatar = msg.receiver?.profile_url || contactAvatar
+          isIncomingFromPatient = false
+        } else {
+          // Direct staff-to-staff message
+          if (msg.sender_id === currentUserId) {
+            contactId = msg.receiver_id
+          } else if (msg.receiver_id === currentUserId) {
+            contactId = msg.sender_id
+            isIncomingFromPatient = true
+          }
+        }
+      } else {
+        // Mother logged in
+        const isMe = msg.sender_id === currentUserId
+        contactId = isMe ? msg.receiver_id : msg.sender_id
+        isIncomingFromPatient = !isMe
+      }
+
+      if (!contactId) return
+
+      // Canonicalize contact ID to mother.user_id if available
+      const resolvedMother = motherByMotherId.get(contactId) || motherByUserId.get(contactId)
+      const validContactId: string = (resolvedMother && resolvedMother.user_id) ? resolvedMother.user_id : contactId
+
+      const preview = getMessagePreview(msg.message_content, msg.message_type, msg.file_name)
+      const isUnread = isIncomingFromPatient && !msg.is_read
+
+      if (!threads.has(validContactId)) {
+        threads.set(validContactId, {
+          id: validContactId,
+          name: contactName || "Unknown Contact",
           message: preview,
           rawDate: msg.message_date,
-          unread: (!isMe && !msg.is_read) ? 1 : 0,
-          avatar: msg.contact_avatar || ""
+          unread: isUnread ? 1 : 0,
+          avatar: contactAvatar,
+          motherId: resolvedMother?.mother_id || resolvedMother?.id || null,
+          userId: validContactId
         })
       } else {
-        const existing = threads.get(contactId)
-        if (!isMe && !msg.is_read) {
-          existing.unread += 1
+        const existing = threads.get(validContactId)
+        if (existing) {
+          if (isUnread) {
+            existing.unread += 1
+          }
+          // Keep the latest message preview
+          if (msg.message_date && (!existing.rawDate || new Date(msg.message_date).getTime() > new Date(existing.rawDate).getTime())) {
+            existing.message = preview
+            existing.rawDate = msg.message_date
+          }
         }
       }
     })
 
     // Include facility mothers in contacts for healthcare staff
     facilityMothers.forEach((mother: any) => {
-      // Prioritize the user_id (since in_App_Message refers to User.user_id)
-      const motherContactId = mother.user_id || mother.user?.user_id || mother.id || mother.mother_id
-      if (!motherContactId) return
+      const canonicalContactId = mother.user_id || mother.user?.user_id || mother.id || mother.mother_id
+      if (!canonicalContactId) return
       
       const firstName = mother.first_name || mother.user?.first_name || ''
       const lastName = mother.last_name || mother.user?.last_name || ''
       const motherName = `${firstName} ${lastName}`.trim() || mother.name || "Mother"
       const avatar = mother.photo_url || mother.user?.profile_url || mother.profile_url || ""
+      const mId = mother.mother_id || mother.id
 
-      if (threads.has(motherContactId)) {
-        const existing = threads.get(motherContactId)
-        if (!existing.name || existing.name === "Unknown User") {
+      if (threads.has(canonicalContactId)) {
+        const existing = threads.get(canonicalContactId)
+        if (!existing.name || existing.name === "Unknown Contact" || existing.name === "Unknown User") {
           existing.name = motherName
         }
         if (!existing.avatar) {
           existing.avatar = avatar
         }
+        if (!existing.motherId) {
+          existing.motherId = mId
+        }
       } else {
-        threads.set(motherContactId, {
-          id: motherContactId,
+        threads.set(canonicalContactId, {
+          id: canonicalContactId,
           name: motherName,
           message: "No messages yet",
           rawDate: mother.created_at || "",
           unread: 0,
-          avatar: avatar
+          avatar: avatar,
+          motherId: mId,
+          userId: canonicalContactId
         })
       }
     })
@@ -181,40 +255,43 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
 
       {/* Conversation List */}
       <div className="flex-1 overflow-y-auto">
-        {chatThreads.map((chat) => (
-          <div 
-            key={chat.id} 
-            onClick={() => setActiveChatId(chat.id)}
-            className={clsx(
-              "flex items-start gap-3 px-6 py-4 border-b border-border cursor-pointer transition-colors hover:bg-muted/50",
-              activeChatId === chat.id ? "bg-accent" : ""
-            )}
-          >
-            <Avatar className="h-10 w-10 border border-border shrink-0">
-              <AvatarImage src={chat.avatar} />
-              <AvatarFallback className="bg-primary/10 text-primary text-xs">{chat.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col flex-1 min-w-0 gap-1 mt-0.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-semibold text-card-foreground truncate">{chat.name}</span>
-                {chat.rawDate && <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(chat.rawDate)}</span>}
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className={clsx(
-                  "text-xs truncate", 
-                  chat.unread > 0 ? "text-card-foreground font-medium" : "text-muted-foreground"
-                )}>
-                  {chat.message}
-                </span>
-                {chat.unread > 0 && (
-                  <span className="inline-flex items-center justify-center bg-primary text-primary-foreground text-[10px] font-bold h-4 min-w-4 px-1 rounded-full shrink-0">
-                    {chat.unread}
+        {chatThreads.map((chat) => {
+          const isSelected = activeChatId === chat.id || (activeChatId && (activeChatId === chat.userId || activeChatId === chat.motherId))
+          return (
+            <div 
+              key={chat.id} 
+              onClick={() => setActiveChatId(chat.id)}
+              className={clsx(
+                "flex items-start gap-3 px-6 py-4 border-b border-border cursor-pointer transition-colors hover:bg-muted/50",
+                isSelected ? "bg-accent" : ""
+              )}
+            >
+              <Avatar className="h-10 w-10 border border-border shrink-0">
+                <AvatarImage src={chat.avatar} />
+                <AvatarFallback className="bg-primary/10 text-primary text-xs">{chat.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col flex-1 min-w-0 gap-1 mt-0.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-card-foreground truncate">{chat.name}</span>
+                  {chat.rawDate && <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(chat.rawDate)}</span>}
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className={clsx(
+                    "text-xs truncate", 
+                    chat.unread > 0 ? "text-card-foreground font-medium" : "text-muted-foreground"
+                  )}>
+                    {chat.message}
                   </span>
-                )}
+                  {chat.unread > 0 && (
+                    <span className="inline-flex items-center justify-center bg-primary text-primary-foreground text-[10px] font-bold h-4 min-w-4 px-1 rounded-full shrink-0">
+                      {chat.unread}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
         {chatThreads.length === 0 && (
           <div className="p-6 text-center text-sm text-muted-foreground">
             No contacts or messages found.

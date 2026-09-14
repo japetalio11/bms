@@ -45,6 +45,8 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { userRepository } from "@/lib/repositories/userRepository"
 import { useNetworkStatus } from "@/hooks/useNetworkStatus"
 import { syncEngine } from "@/lib/sync/syncEngine"
+import { useLiveQuery } from "dexie-react-hooks"
+import { db } from "@/lib/db/bmsDatabase"
 
 export function TeamManagementPage() {
   const [activeTab, setActiveTab] = useState("all")
@@ -54,6 +56,11 @@ export function TeamManagementPage() {
   const navigate = useNavigate()
   const isMobile = useIsMobile()
   const { isOnline } = useNetworkStatus()
+
+  const currentUser = useLiveQuery(() => db.userSession.get("current_user"))
+  const currentUserId = currentUser?.user_id || currentUser?._id || currentUser?.id
+  const currentUserRole = currentUser?.role || ""
+  const isPrivilegedAdmin = currentUserRole === "Admin" || currentUserRole === "SystemAdmin"
 
   const fetchStaff = async () => {
     setLoading(true)
@@ -67,16 +74,52 @@ export function TeamManagementPage() {
     }
   }
 
-  const handleDeactivate = async (id: string, currentStatus: string, e: React.MouseEvent) => {
+  const handleDeactivate = async (targetStaff: any, e: React.MouseEvent) => {
     e.stopPropagation()
-    const is_active = currentStatus !== "Active"
+    const targetId = targetStaff.user_id || targetStaff.id
+    const isSelf = currentUserId && targetId === currentUserId
+    const is_active = targetStaff.status !== "Active"
+
+    // Only self or Admin/SystemAdmin can modify/deactivate an account
+    if (!isSelf && !isPrivilegedAdmin) {
+      toast.error("You do not have permission to modify someone else's account.")
+      return
+    }
+
+    // If deactivating an admin, check that at least one other active admin remains in the facility
+    if (!is_active && (targetStaff.role === "Admin" || targetStaff.position === "Administrator" || targetStaff.position === "Admin")) {
+      const otherActiveAdmins = staffList.filter((s) => {
+        const sId = s.user_id || s.id
+        const sRole = s.role || s.position
+        const isAdminRole = sRole === "Admin" || sRole === "Administrator"
+        return sId !== targetId && isAdminRole && s.status === "Active"
+      })
+
+      if (otherActiveAdmins.length === 0) {
+        toast.error("Cannot deactivate account. There must be at least 1 active administrator per facility.")
+        return
+      }
+    }
+
     try {
-      await userRepository.updateStaffStatus(id, is_active)
+      await userRepository.updateStaffStatus(targetId, is_active)
       toast.success(`Staff account ${is_active ? 'activated' : 'deactivated'} successfully`)
       fetchStaff()
-    } catch (e) {
+
+      // If user just self-deactivated, log them out
+      if (isSelf && !is_active) {
+        toast.info("You have deactivated your own account. Logging out...")
+        setTimeout(async () => {
+          localStorage.removeItem("token")
+          localStorage.removeItem("user")
+          await db.userSession.delete("current_user")
+          navigate("/login")
+        }, 1200)
+      }
+    } catch (e: any) {
       console.error("Failed to update status:", e)
-      toast.error("Failed to update account status")
+      const errorMsg = e.response?.data?.error || e.message || "Failed to update account status"
+      toast.error(errorMsg)
     }
   }
 
@@ -333,22 +376,48 @@ export function TeamManagementPage() {
                         {staff.email}
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground hover:bg-accent" onClick={(e) => e.stopPropagation()}>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
-                            <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/team/${staff.id}`); }}>Edit Profile</DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className={`text-xs cursor-pointer rounded-md ${staff.status === 'Active' ? 'text-red-500 hover:!text-red-500 hover:!bg-red-500/10' : 'text-green-500 hover:!text-green-500 hover:!bg-green-500/10'}`}
-                              onClick={(e) => handleDeactivate(staff.id, staff.status, e)}
-                            >
-                              {staff.status === 'Active' ? 'Deactivate' : 'Activate'}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {(() => {
+                          const targetId = staff.user_id || staff.id
+                          const isSelf = currentUserId && targetId === currentUserId
+                          const canManage = isSelf || isPrivilegedAdmin
+                          if (!canManage) return null
+
+                          const isTargetAdmin = staff.role === "Admin" || staff.position === "Administrator" || staff.position === "Admin"
+                          const otherActiveAdminsCount = isTargetAdmin
+                            ? staffList.filter((s) => {
+                                const sId = s.user_id || s.id
+                                const sRole = s.role || s.position
+                                const isAdminRole = sRole === "Admin" || sRole === "Administrator"
+                                return sId !== targetId && isAdminRole && s.status === "Active"
+                              }).length
+                            : 999
+
+                          // If target is active Admin and there are NO other active admins, they cannot deactivate
+                          const cannotDeactivateDueToAdminRule = staff.status === "Active" && isTargetAdmin && otherActiveAdminsCount === 0
+
+                          return (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground hover:bg-accent" onClick={(e) => e.stopPropagation()}>
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                                {isPrivilegedAdmin && (
+                                  <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/team/${staff.id}`); }}>Edit Profile</DropdownMenuItem>
+                                )}
+                                {!cannotDeactivateDueToAdminRule && (
+                                  <DropdownMenuItem 
+                                    className={`text-xs cursor-pointer rounded-md ${staff.status === 'Active' ? 'text-red-500 hover:!text-red-500 hover:!bg-red-500/10' : 'text-green-500 hover:!text-green-500 hover:!bg-green-500/10'}`}
+                                    onClick={(e) => handleDeactivate(staff, e)}
+                                  >
+                                    {staff.status === 'Active' ? (isSelf ? 'Self-Deactivate' : 'Deactivate') : 'Activate'}
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )
+                        })()}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -443,24 +512,49 @@ export function TeamManagementPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end pt-3 border-t border-border">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground" onClick={(e) => e.stopPropagation()}>
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
-                      <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/team/${staff.id}`); }}>Edit Profile</DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className={`text-xs cursor-pointer rounded-md ${staff.status === 'Active' ? 'text-red-500 hover:!text-red-500 hover:!bg-red-500/10' : 'text-green-500 hover:!text-green-500 hover:!bg-green-500/10'}`}
-                        onClick={(e) => handleDeactivate(staff.id, staff.status, e as any)}
-                      >
-                        {staff.status === 'Active' ? 'Deactivate' : 'Activate'}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                {(() => {
+                  const targetId = staff.user_id || staff.id
+                  const isSelf = currentUserId && targetId === currentUserId
+                  const canManage = isSelf || isPrivilegedAdmin
+                  if (!canManage) return null
+
+                  const isTargetAdmin = staff.role === "Admin" || staff.position === "Administrator" || staff.position === "Admin"
+                  const otherActiveAdminsCount = isTargetAdmin
+                    ? staffList.filter((s) => {
+                        const sId = s.user_id || s.id
+                        const sRole = s.role || s.position
+                        const isAdminRole = sRole === "Admin" || sRole === "Administrator"
+                        return sId !== targetId && isAdminRole && s.status === "Active"
+                      }).length
+                    : 999
+
+                  const cannotDeactivateDueToAdminRule = staff.status === "Active" && isTargetAdmin && otherActiveAdminsCount === 0
+
+                  return (
+                    <div className="flex items-center justify-end pt-3 border-t border-border">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground" onClick={(e) => e.stopPropagation()}>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                          {isPrivilegedAdmin && (
+                            <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/team/${staff.id}`); }}>Edit Profile</DropdownMenuItem>
+                          )}
+                          {!cannotDeactivateDueToAdminRule && (
+                            <DropdownMenuItem 
+                              className={`text-xs cursor-pointer rounded-md ${staff.status === 'Active' ? 'text-red-500 hover:!text-red-500 hover:!bg-red-500/10' : 'text-green-500 hover:!text-green-500 hover:!bg-green-500/10'}`}
+                              onClick={(e) => handleDeactivate(staff, e as any)}
+                            >
+                              {staff.status === 'Active' ? (isSelf ? 'Self-Deactivate' : 'Deactivate') : 'Activate'}
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )
+                })()}
               </div>
             ))}
           </div>
