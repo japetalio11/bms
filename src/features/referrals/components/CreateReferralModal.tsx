@@ -319,6 +319,7 @@ Thank you. 💛`
         from_facility_id: currentFacilityId || "default",
         external_facility_name: destinationFacility.trim(),
         reason: formattedReferralMessage,
+        mother_name: motherFullName.trim() || undefined,
       })
 
       // Send Email Notification if requested

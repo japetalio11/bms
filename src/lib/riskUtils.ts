@@ -56,6 +56,21 @@ export function extractRiskLevel(motherOrItem: any, pregnancies?: any[], visits?
     }
   }
 
+  // 4. Check CDSS alerts (severe / high severity alerts indicate High Risk)
+  const alerts = motherOrItem.cdssAlerts || motherOrItem.alerts || motherOrItem.pregnancy?.cdssAlerts || []
+  if (Array.isArray(alerts) && alerts.length > 0) {
+    for (const a of alerts) {
+      if (a.is_resolved) continue
+      const sev = (a.severity || a.alert_type || "").toLowerCase()
+      if (sev.includes("high") || sev.includes("critical") || sev.includes("severe")) {
+        return "High Risk"
+      }
+      if (sev.includes("medium") || sev.includes("moderate") || sev.includes("warning")) {
+        return "Medium Risk"
+      }
+    }
+  }
+
   return "Low Risk"
 }
 

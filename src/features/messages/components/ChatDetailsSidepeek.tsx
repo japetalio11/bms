@@ -1,8 +1,9 @@
 import * as React from "react"
-import { ChevronRight, ChevronDown, FileText, Link as LinkIcon, Image as ImageIcon, ExternalLink, Download } from "lucide-react"
+import { ChevronRight, ChevronDown, FileText, Link as LinkIcon, Image as ImageIcon, ExternalLink, Download, X } from "lucide-react"
 import { useLiveQuery } from "dexie-react-hooks"
 import { db } from "@/lib/db/bmsDatabase"
 import { format, parseISO } from "date-fns"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
 interface ChatDetailsProps {
   activeChatId: string | null
@@ -12,24 +13,47 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
   const [openPhotos, setOpenPhotos] = React.useState(true)
   const [openFiles, setOpenFiles] = React.useState(true)
   const [openLinks, setOpenLinks] = React.useState(true)
+  const [previewImage, setPreviewImage] = React.useState<string | null>(null)
 
-  const currentUser = useLiveQuery(() => db.userSession.get("current_user"))
+  const sessionUser = useLiveQuery(() => db.userSession.get("current_user"))
+  const currentUser = React.useMemo(() => {
+    if (sessionUser) return sessionUser
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("user")
+      if (stored) {
+        try {
+          return JSON.parse(stored)
+        } catch {}
+      }
+    }
+    return null
+  }, [sessionUser])
+
+  const currentUserId = currentUser?.user_id || currentUser?.id
 
   // Query all messages in this conversation
   const messages = useLiveQuery(() => {
-    if (!currentUser || !activeChatId) return []
+    if (!currentUserId || !activeChatId) return []
     return db.messages
       .filter(msg => 
-        (msg.sender_id === currentUser.user_id && msg.receiver_id === activeChatId) ||
-        (msg.receiver_id === currentUser.user_id && msg.sender_id === activeChatId)
+        (msg.sender_id === currentUserId && msg.receiver_id === activeChatId) ||
+        (msg.receiver_id === currentUserId && msg.sender_id === activeChatId)
       )
       .toArray()
-  }, [currentUser, activeChatId]) ?? []
+  }, [currentUserId, activeChatId]) ?? []
 
   // Query EHR documents for this contact if contact is a mother
   const ehrDocs = useLiveQuery(async () => {
     if (!activeChatId) return []
-    const mother = (await db.mothers.where('user_id').equals(activeChatId).first()) || (await db.mothers.get(activeChatId))
+    let mother = (await db.mothers.where('user_id').equals(activeChatId).first()) || (await db.mothers.get(activeChatId))
+    if (!mother) {
+      mother = await db.mothers.where('mother_id').equals(activeChatId).first()
+    }
+    if (!mother) {
+      const all = await db.mothers.toArray()
+      mother = all.find((m: any) => m.id === activeChatId || m.user_id === activeChatId || m.mother_id === activeChatId)
+    }
+
     if (mother) {
       const motherId = mother.mother_id || mother.id
       return await db.ehrDocuments.where('mother_id').equals(motherId).toArray()
@@ -140,9 +164,14 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
               {photosAndVideos.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2">
                   {photosAndVideos.map((media) => (
-                    <a key={media.id} href={media.message_content} target="_blank" rel="noreferrer" className="aspect-square bg-muted rounded-md border border-border overflow-hidden group block relative">
+                    <button 
+                      key={media.id} 
+                      type="button"
+                      onClick={() => setPreviewImage(media.message_content)}
+                      className="aspect-square bg-muted rounded-md border border-border overflow-hidden group block relative cursor-pointer text-left p-0"
+                    >
                       <img src={media.message_content} alt="Media" className="h-full w-full object-cover group-hover:scale-105 transition-transform" />
-                    </a>
+                    </button>
                   ))}
                 </div>
               ) : (
@@ -231,6 +260,22 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
         </div>
 
       </div>
+
+      {/* Image Preview Lightbox Modal */}
+      <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+        <DialogContent className="max-w-3xl p-2 bg-black/90 border-border overflow-hidden">
+          <DialogTitle className="sr-only">Image Preview</DialogTitle>
+          {previewImage && (
+            <div className="flex flex-col items-center justify-center p-2">
+              <img
+                src={previewImage}
+                alt="Enlarged preview"
+                className="max-h-[80vh] w-auto max-w-full rounded-md object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

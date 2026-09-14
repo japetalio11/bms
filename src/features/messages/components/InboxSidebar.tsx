@@ -6,7 +6,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { clsx } from "clsx"
 import { useLiveQuery } from "dexie-react-hooks"
 import { db } from "@/lib/db/bmsDatabase"
+import { motherRepository } from "@/lib/repositories/motherRepository"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
+import { getMessagePreview } from "@/lib/utils"
 
 interface InboxSidebarProps {
   activeChatId: string | null
@@ -15,21 +17,48 @@ interface InboxSidebarProps {
 
 export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProps) {
   const [searchQuery, setSearchQuery] = React.useState("")
-  const currentUser = useLiveQuery(() => db.userSession.get("current_user"))
   
+  // Resolve current user from Dexie DB or fallback to localStorage
+  const sessionUser = useLiveQuery(() => db.userSession.get("current_user"))
+  const currentUser = React.useMemo(() => {
+    if (sessionUser) return sessionUser
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("user")
+      if (stored) {
+        try {
+          return JSON.parse(stored)
+        } catch {}
+      }
+    }
+    return null
+  }, [sessionUser])
+
   // Get all messages from local DB
   const messages = useLiveQuery(() => db.messages.orderBy('updated_at').reverse().toArray(), []) ?? []
   
   // Get active mothers in facility from local DB (for staff members)
   const facilityMothers = useLiveQuery(async () => {
     if (!currentUser) return []
-    if (currentUser.role !== 'Mother') {
-      if (currentUser.facility_id) {
-        return await db.mothers.where('facility_id').equals(currentUser.facility_id).toArray()
-      }
-      return await db.mothers.toArray()
+    if (currentUser.role === 'Mother') return []
+
+    const userFacilityId = currentUser.facility_id || currentUser.facility?.facility_id
+    const allMothers = await db.mothers.toArray()
+
+    // If local Dexie has no mothers yet and user is staff, trigger an async fetch
+    if (allMothers.length === 0) {
+      motherRepository.getActiveMothers(userFacilityId || undefined).catch(() => {})
     }
-    return []
+
+    // SystemAdmin sees all mothers; facility staff see mothers assigned to their facility
+    if (currentUser.role === 'SystemAdmin' || !userFacilityId) {
+      return allMothers
+    }
+
+    return allMothers.filter((m: any) => {
+      const mFac = m.facility_id || m.user?.facility_id || m.facilityId || m.rawMother?.facility_id
+      // Include if it matches facility or if facility isn't partitioned strictly
+      return !mFac || mFac === userFacilityId
+    })
   }, [currentUser]) ?? []
 
   // Group messages and facility mothers by contact
@@ -37,17 +66,21 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
     if (!currentUser) return []
     
     const threads = new Map<string, any>()
+    const currentUserId = currentUser.user_id || currentUser.id
     
     // Process existing messages
     messages.forEach(msg => {
-      const isMe = msg.sender_id === currentUser.user_id
+      const isMe = msg.sender_id === currentUserId
       const contactId = isMe ? msg.receiver_id : msg.sender_id
+      if (!contactId) return
       
+      const preview = getMessagePreview(msg.message_content, msg.message_type, msg.file_name)
+
       if (!threads.has(contactId)) {
         threads.set(contactId, {
           id: contactId,
           name: msg.contact_name || "Unknown User",
-          message: msg.message_content,
+          message: preview,
           rawDate: msg.message_date,
           unread: (!isMe && !msg.is_read) ? 1 : 0,
           avatar: msg.contact_avatar || ""
@@ -61,15 +94,18 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
     })
 
     // Include facility mothers in contacts for healthcare staff
-    facilityMothers.forEach(mother => {
-      const motherUserId = mother.user_id || mother.user?.user_id
-      if (!motherUserId) return
+    facilityMothers.forEach((mother: any) => {
+      // Prioritize the user_id (since in_App_Message refers to User.user_id)
+      const motherContactId = mother.user_id || mother.user?.user_id || mother.id || mother.mother_id
+      if (!motherContactId) return
       
-      const motherName = `${mother.first_name || mother.user?.first_name || ''} ${mother.last_name || mother.user?.last_name || ''}`.trim() || "Mother"
-      const avatar = mother.photo_url || mother.user?.profile_url || ""
+      const firstName = mother.first_name || mother.user?.first_name || ''
+      const lastName = mother.last_name || mother.user?.last_name || ''
+      const motherName = `${firstName} ${lastName}`.trim() || mother.name || "Mother"
+      const avatar = mother.photo_url || mother.user?.profile_url || mother.profile_url || ""
 
-      if (threads.has(motherUserId)) {
-        const existing = threads.get(motherUserId)
+      if (threads.has(motherContactId)) {
+        const existing = threads.get(motherContactId)
         if (!existing.name || existing.name === "Unknown User") {
           existing.name = motherName
         }
@@ -77,8 +113,8 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
           existing.avatar = avatar
         }
       } else {
-        threads.set(motherUserId, {
-          id: motherUserId,
+        threads.set(motherContactId, {
+          id: motherContactId,
           name: motherName,
           message: "No messages yet",
           rawDate: mother.created_at || "",
@@ -116,7 +152,7 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
   }
 
   return (
-    <div className="hidden lg:flex flex-col h-full w-[350px] shrink-0 border-r border-border bg-card">
+    <div className="flex flex-col h-full w-full lg:w-[350px] shrink-0 border-r border-border bg-card">
       {/* Header */}
       <div className="h-[72px] px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">

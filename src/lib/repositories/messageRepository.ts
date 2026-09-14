@@ -25,23 +25,42 @@ export const messageRepository = {
           const pendingItems = localList.filter((m) => m.sync_status !== "synced")
           const pendingIds = new Set(pendingItems.map((m) => m.id))
 
+          const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null
+          const currentUserObj = userStr ? JSON.parse(userStr) : null
+          const currentUserId = currentUserObj?.user_id || currentUserObj?.id
+          const localById = new Map<string, LocalMessage>(localList.map((m) => [m.id, m]))
+
           const formattedRemote: LocalMessage[] = remoteList
             .filter((msg: any) => !pendingIds.has(msg.message_id || msg._id || msg.id))
             .map((msg: any) => {
               const msgId = msg.message_id || msg._id || msg.id
-              const otherUser = msg.sender || msg.receiver
+              const existing = localById.get(msgId)
+              const isSenderMe = currentUserId && msg.sender_id === currentUserId
+              const otherUser = isSenderMe ? (msg.receiver || msg.sender) : (msg.sender || msg.receiver)
               const contactName = otherUser
                 ? `${otherUser.first_name || ""} ${otherUser.last_name || ""}`.trim()
-                : msg.contact_name || undefined
-              const avatar = otherUser?.profile_url || otherUser?.photo_url || msg.contact_avatar || ""
+                : msg.contact_name || existing?.contact_name || undefined
+              const avatar = otherUser?.profile_url || otherUser?.photo_url || msg.contact_avatar || existing?.contact_avatar || ""
+
+              // Determine message_type
+              let msgType = msg.message_type || existing?.message_type || "text"
+              if (typeof msg.message_content === "string") {
+                if (msg.message_content.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif)$/i.test(msg.message_content)) {
+                  msgType = "image"
+                } else if (msg.message_content.startsWith("data:application/") || /\.(pdf|docx?|xlsx?|txt|csv|zip)$/i.test(msg.message_content)) {
+                  msgType = "file"
+                }
+              }
 
               return {
                 ...msg,
                 id: msgId,
                 sender_id: msg.sender_id,
                 receiver_id: msg.receiver_id,
-                message_type: msg.message_type || "text",
+                message_type: msgType,
                 message_content: msg.message_content || "",
+                file_name: msg.file_name || existing?.file_name,
+                file_size: msg.file_size || existing?.file_size,
                 message_date: msg.message_date ? new Date(msg.message_date).toISOString() : new Date().toISOString(),
                 is_read: msg.is_read ?? false,
                 contact_name: contactName,
@@ -87,7 +106,15 @@ export const messageRepository = {
     contact_name?: string
     contact_avatar?: string
   }): Promise<LocalMessage> {
-    const currentUser = await db.userSession.get("current_user")
+    let currentUser = await db.userSession.get("current_user")
+    if (!currentUser && typeof window !== "undefined") {
+      const stored = localStorage.getItem("user")
+      if (stored) {
+        try {
+          currentUser = JSON.parse(stored)
+        } catch {}
+      }
+    }
     const senderId = currentUser?.user_id || currentUser?.id || "current-user"
     const tempId = `temp-msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
     const nowIso = new Date().toISOString()
@@ -123,10 +150,8 @@ export const messageRepository = {
 
         const savedMsg: LocalMessage = {
           ...localMsg,
-          ...created,
           id: canonicalId,
           sync_status: "synced",
-          updated_at: nowMs,
         }
 
         await db.messages.put(savedMsg)
@@ -166,10 +191,19 @@ export const messageRepository = {
    */
   async markAsRead(contactId: string): Promise<void> {
     try {
-      const currentUser = await db.userSession.get("current_user")
+      let currentUser = await db.userSession.get("current_user")
+      if (!currentUser && typeof window !== "undefined") {
+        const stored = localStorage.getItem("user")
+        if (stored) {
+          try {
+            currentUser = JSON.parse(stored)
+          } catch {}
+        }
+      }
       if (!currentUser) return
+      const currentUserId = currentUser.user_id || currentUser.id
       const unreadMsgs = await db.messages
-        .filter((m) => m.sender_id === contactId && m.receiver_id === currentUser.user_id && !m.is_read)
+        .filter((m) => m.sender_id === contactId && m.receiver_id === currentUserId && !m.is_read)
         .toArray()
 
       for (const m of unreadMsgs) {

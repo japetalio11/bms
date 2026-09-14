@@ -15,12 +15,16 @@ import { ReferralsPage } from "@/features/referrals/components/ReferralsPage"
 import { MessagesPage } from "@/features/messages/components/MessagesPage"
 import { EhrPage } from "@/features/ehr/components/EhrPage"
 import { TestSmsPage } from "@/pages/TestSmsPage"
+import { PublicReferralPage } from "@/features/referrals/components/PublicReferralPage"
 
 export function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public Referral Link Route */}
+          <Route path="/referral/:id" element={<PublicReferralPage />} />
+
           {/* Auth Routes */}
           <Route path="/" element={<AuthForm />} />
           <Route path="/login" element={<AuthForm />} />

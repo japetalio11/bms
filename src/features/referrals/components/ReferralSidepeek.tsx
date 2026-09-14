@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { 
   X, 
   Copy, 
@@ -18,11 +18,14 @@ import {
   History,
   CheckCircle2,
   CloudOff,
-  Trash2
+  Trash2,
+  Check,
+  Ban
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { referralRepository } from "@/lib/repositories/referralRepository"
+import { extractRiskLevel } from "@/lib/riskUtils"
 
 export function ReferralSidepeek({ 
   referral, 
@@ -38,15 +41,47 @@ export function ReferralSidepeek({
   const [copySuccess, setCopySuccess] = useState<string>("")
   const [actionLoading, setActionLoading] = useState<boolean>(false)
 
+  // Current logged in user details for facility check
+  const currentUser = useMemo(() => {
+    try {
+      const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null
+      return userStr ? JSON.parse(userStr) : null
+    } catch {
+      return null
+    }
+  }, [])
+
   if (!referral) return null
 
-  // Helper properties derived from dynamic backend objects
-  const motherName = referral.pregnancy?.mother 
-    ? `${referral.pregnancy.mother.first_name || ""} ${referral.pregnancy.mother.last_name || ""}`.trim()
-    : (referral.motherName || "Patient Record")
+  const currentFacilityId = currentUser?.facility_id || currentUser?.facilityId
+  const isSystemAdmin = currentUser?.role === "SystemAdmin"
+  const isDestination = isSystemAdmin || Boolean(currentFacilityId && referral.to_facility_id === currentFacilityId)
+  const isOrigin = Boolean(currentFacilityId && referral.from_facility_id === currentFacilityId)
 
-  const riskFlag = referral.pregnancy?.risk_flag || referral.riskFlag || "Low Risk"
+  // Helper properties derived from dynamic backend objects
+  const motherUser = referral.pregnancy?.mother?.user
+  const motherName = motherUser
+    ? `${motherUser.first_name || ""} ${motherUser.last_name || ""}`.trim()
+    : (referral.pregnancy?.mother?.first_name 
+        ? `${referral.pregnancy.mother.first_name} ${referral.pregnancy.mother.last_name || ""}`.trim()
+        : (referral.motherName || "Patient Record"))
+
+  // Dynamically calculate risk level
+  const dynamicRisk = extractRiskLevel(
+    referral.pregnancy?.mother || referral,
+    referral.pregnancy ? [referral.pregnancy] : [],
+    referral.pregnancy?.prenatalVisits || []
+  )
+  const riskFlag = (dynamicRisk && dynamicRisk !== "Low Risk") 
+    ? dynamicRisk 
+    : (referral.pregnancy?.risk_flag || referral.riskFlag || dynamicRisk || "Low Risk")
+  
+  const riskLower = riskFlag.toLowerCase()
+  const isHighRisk = riskLower.includes("high")
+  const isMedRisk = riskLower.includes("med") || riskLower.includes("moderate")
+
   const status = referral.status ? (referral.status.charAt(0).toUpperCase() + referral.status.slice(1)) : "Pending"
+  const statusLower = (referral.status || "pending").toLowerCase()
   const reasonText = referral.reason || referral.summary || "No clinical handoff summary specified."
   const destination = referral.toFacility?.facility_name || referral.external_facility_name || referral.destination || "N/A"
   const recordLink = referral.secure_link || referral.recordLink || "N/A"
@@ -66,7 +101,7 @@ export function ReferralSidepeek({
     setTimeout(() => setCopySuccess(""), 2000)
   }
 
-  // Handle transfer status actions (e.g. Accept / Cancel)
+  // Handle transfer status actions (e.g. Accept / Complete / Decline / Cancel)
   const handleStatusChange = async (newStatus: string) => {
     const id = referral.referral_id || referral.id
     if (!id) return
@@ -75,7 +110,7 @@ export function ReferralSidepeek({
     try {
       await referralRepository.respondToReferral(id, {
         status: newStatus,
-        is_completed: newStatus === "completed" || newStatus === "accepted" || newStatus === "cancelled",
+        is_completed: newStatus === "completed" || newStatus === "accepted" || newStatus === "cancelled" || newStatus === "rejected",
       })
       onUpdated?.()
       onClose()
@@ -91,22 +126,36 @@ export function ReferralSidepeek({
       {/* Header */}
       <div className="shrink-0 p-4 pb-4 border-b border-border flex items-start justify-between">
         <div className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold text-foreground">{motherName}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-foreground">{motherName}</h2>
+            {isOrigin && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                Outgoing Referral
+              </span>
+            )}
+            {isDestination && !isOrigin && (
+              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                Incoming Referral
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
-              riskFlag === 'High Risk' ? 'bg-red-500/10 text-red-500' : 
-              riskFlag === 'Medium Risk' ? 'bg-amber-500/10 text-amber-500' : 
+              isHighRisk ? 'bg-red-500/10 text-red-500' : 
+              isMedRisk ? 'bg-amber-500/10 text-amber-500' : 
               'bg-green-500/10 text-green-500'
             }`}>
-              {riskFlag === 'High Risk' ? <Activity className="h-3 w-3" /> : riskFlag === 'Medium Risk' ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+              {isHighRisk ? <Activity className="h-3 w-3" /> : isMedRisk ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
               {riskFlag}
             </div>
             <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
-              status === 'Accepted' || status === 'Completed' ? 'bg-green-500/10 text-green-500' : 
-              status === 'Pending' ? 'bg-amber-500/10 text-amber-500' : 
+              statusLower === 'accepted' || statusLower === 'completed' ? 'bg-green-500/10 text-green-500' : 
+              statusLower === 'pending' ? 'bg-amber-500/10 text-amber-500' : 
+              statusLower === 'rejected' || statusLower === 'cancelled' ? 'bg-red-500/10 text-red-500' :
               'bg-blue-500/10 text-blue-500'
             }`}>
-              {status === 'Accepted' || status === 'Completed' ? <CheckCircle2 className="h-3 w-3" /> : status === 'Pending' ? <Clock className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
+              {statusLower === 'accepted' || statusLower === 'completed' ? <CheckCircle2 className="h-3 w-3" /> : statusLower === 'pending' ? <Clock className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
+              {status}
             </div>
             {referral.sync_status && referral.sync_status !== "synced" && (
               <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-amber-500/15 text-amber-600 border border-amber-500/20">
@@ -274,34 +323,82 @@ export function ReferralSidepeek({
 
       {/* Footer */}
       <div className="shrink-0 p-4 pb-8 md:pb-4 border-t border-border flex flex-col gap-2">
-        {status === "Pending" && (
-          <Button 
-            disabled={actionLoading}
-            onClick={() => handleStatusChange("accepted")}
-            className="w-full h-8 text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 border-none"
-          >
-            Accept Referral Transfer
-          </Button>
+        {/* Receiving / Destination Facility Actions */}
+        {isDestination && !isOrigin && (
+          <>
+            {statusLower === "pending" && (
+              <div className="flex items-center gap-2">
+                <Button 
+                  disabled={actionLoading}
+                  onClick={() => handleStatusChange("accepted")}
+                  className="flex-1 h-8 text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 border-none"
+                >
+                  <Check className="h-3.5 w-3.5 mr-1" />
+                  Accept Referral Transfer
+                </Button>
+                <Button 
+                  disabled={actionLoading}
+                  variant="outline"
+                  onClick={() => handleStatusChange("rejected")}
+                  className="h-8 text-xs font-medium text-destructive border-destructive/30 hover:bg-destructive/10"
+                >
+                  <Ban className="h-3.5 w-3.5 mr-1" />
+                  Decline
+                </Button>
+              </div>
+            )}
+            {statusLower === "accepted" && (
+              <Button 
+                disabled={actionLoading}
+                onClick={() => handleStatusChange("completed")}
+                className="w-full h-8 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 border-none"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                Mark Transfer Completed
+              </Button>
+            )}
+          </>
         )}
-        <div className="flex items-center gap-2">
-          <Button 
-            disabled={actionLoading}
-            variant="outline"
-            onClick={() => handleStatusChange("cancelled")}
-            className="flex-1 h-8 text-xs font-medium text-amber-600 border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-700"
-          >
-            Cancel Transfer
-          </Button>
-          {onDelete && (
-            <Button
-              disabled={actionLoading}
-              onClick={() => onDelete(referral)}
-              className="flex-1 h-8 text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 border-none"
-            >
-              Delete Referral
-            </Button>
-          )}
-        </div>
+
+        {/* Referring / Origin Facility Actions */}
+        {isOrigin && (
+          <div className="flex items-center gap-2">
+            {statusLower === "pending" && (
+              <Button 
+                disabled={actionLoading}
+                variant="outline"
+                onClick={() => handleStatusChange("cancelled")}
+                className="flex-1 h-8 text-xs font-medium text-amber-600 border-amber-500/30 hover:bg-amber-500/10 hover:text-amber-700"
+              >
+                Cancel Transfer
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                disabled={actionLoading}
+                onClick={() => onDelete(referral)}
+                className="flex-1 h-8 text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 border-none"
+              >
+                Delete Referral
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* System Admin or unassociated viewer fallback */}
+        {!isOrigin && !isDestination && (
+          <div className="flex items-center gap-2">
+            {onDelete && (
+              <Button
+                disabled={actionLoading}
+                onClick={() => onDelete(referral)}
+                className="w-full h-8 text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 border-none"
+              >
+                Delete Referral
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

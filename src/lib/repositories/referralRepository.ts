@@ -27,6 +27,13 @@ export const referralRepository = {
 
           const formattedRemote: LocalReferral[] = remoteList.map((r: any) => {
             const canonicalId = r.referral_id || r._id || r.id
+            const motherUser = r.pregnancy?.mother?.user
+            const resolvedMotherName = motherUser
+              ? `${motherUser.first_name || ""} ${motherUser.last_name || ""}`.trim()
+              : (r.pregnancy?.mother?.first_name 
+                  ? `${r.pregnancy.mother.first_name} ${r.pregnancy.mother.last_name || ""}`.trim()
+                  : (r.motherName || r.mother_name || undefined))
+
             return {
               ...r,
               id: canonicalId,
@@ -49,6 +56,7 @@ export const referralRepository = {
               pregnancy: r.pregnancy,
               fromFacility: r.fromFacility,
               toFacility: r.toFacility,
+              motherName: resolvedMotherName,
             }
           })
 
@@ -91,6 +99,7 @@ export const referralRepository = {
     to_facility_id?: string
     external_facility_name?: string
     reason: string
+    mother_name?: string
   }): Promise<LocalReferral> {
     const tempId = `temp-ref-${Date.now()}`
     const nowIso = new Date().toISOString()
@@ -103,6 +112,7 @@ export const referralRepository = {
       to_facility_id: payload.to_facility_id || undefined,
       external_facility_name: payload.external_facility_name || undefined,
       reason: payload.reason,
+      motherName: payload.mother_name || undefined,
       date_referred: nowIso,
       status: "pending",
       is_completed: false,
@@ -112,7 +122,8 @@ export const referralRepository = {
 
     if (syncEngine.isNetworkOnline()) {
       try {
-        const response = await apiClient.post("/api/v1/referral/register", payload)
+        const { mother_name, ...apiPayload } = payload
+        const response = await apiClient.post("/api/v1/referral/register", apiPayload)
         const created = response.data?.data || response.data
 
         const savedItem: LocalReferral = {
@@ -120,6 +131,7 @@ export const referralRepository = {
           ...created,
           id: created.referral_id || created.id || tempId,
           referral_id: created.referral_id || tempId,
+          motherName: payload.mother_name || created.motherName || localItem.motherName,
           sync_status: "synced",
           updated_at: Date.now(),
         }

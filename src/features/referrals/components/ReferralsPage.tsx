@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   FileSpreadsheet,
   WifiOff,
-  CloudOff
+  CloudOff,
+  ExternalLink
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -51,6 +52,7 @@ import { referralRepository } from "@/lib/repositories/referralRepository"
 import type { LocalReferral } from "@/lib/db/bmsDatabase"
 import { useNetworkStatus } from "@/hooks/useNetworkStatus"
 import { syncEngine } from "@/lib/sync/syncEngine"
+import { extractRiskLevel } from "@/lib/riskUtils"
 import { toast } from "sonner"
 
 export function ReferralsPage() {
@@ -121,6 +123,28 @@ export function ReferralsPage() {
     }
   }
 
+  // Logged-in user information
+  const currentUser = useMemo(() => {
+    try {
+      const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null
+      return userStr ? JSON.parse(userStr) : null
+    } catch {
+      return null
+    }
+  }, [])
+  const currentFacilityId = currentUser?.facility_id || currentUser?.facilityId
+
+  // Helper to extract risk level consistently
+  const resolveRisk = (ref: LocalReferral) => {
+    const calculated = extractRiskLevel(
+      ref.pregnancy?.mother || ref,
+      ref.pregnancy ? [ref.pregnancy] : [],
+      ref.pregnancy?.prenatalVisits || []
+    )
+    if (calculated && calculated !== "Low Risk") return calculated
+    return ref.pregnancy?.risk_flag || ref.riskFlag || calculated || "Low Risk"
+  }
+
   // Filter referrals based on tab, search query, and risk filters
   const filteredReferrals = useMemo(() => {
     return referrals.filter((ref) => {
@@ -141,7 +165,7 @@ export function ReferralsPage() {
       }
 
       // Risk Level Filter
-      const risk = ref.pregnancy?.risk_flag || ref.riskFlag || "Low Risk"
+      const risk = resolveRisk(ref)
       if (selectedRiskFilters.length > 0 && !selectedRiskFilters.includes(risk)) {
         return false
       }
@@ -373,15 +397,26 @@ export function ReferralsPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredReferrals.map((ref) => {
-                      const motherName = ref.pregnancy?.mother 
-                        ? `${ref.pregnancy.mother.first_name || ""} ${ref.pregnancy.mother.last_name || ""}`.trim()
-                        : (ref.motherName || "Patient Record")
+                      const motherUser = ref.pregnancy?.mother?.user
+                      const motherName = motherUser 
+                        ? `${motherUser.first_name || ""} ${motherUser.last_name || ""}`.trim()
+                        : (ref.pregnancy?.mother?.first_name 
+                            ? `${ref.pregnancy.mother.first_name} ${ref.pregnancy.mother.last_name || ""}`.trim()
+                            : (ref.motherName || "Patient Record"))
                       const initiatedAt = ref.date_referred ? new Date(ref.date_referred).toLocaleString() : (ref.initiatedAt || "N/A")
-                      const riskFlag = ref.pregnancy?.risk_flag || ref.riskFlag || "Low Risk"
+                      const riskFlag = resolveRisk(ref)
+                      const riskLower = riskFlag.toLowerCase()
+                      const isHighRisk = riskLower.includes("high")
+                      const isMedRisk = riskLower.includes("med") || riskLower.includes("moderate")
+
                       const status = ref.status ? (ref.status.charAt(0).toUpperCase() + ref.status.slice(1)) : "Pending"
+                      const statusLower = (ref.status || "pending").toLowerCase()
                       const recordLink = ref.secure_link || ref.recordLink || "N/A"
                       const transferCode = ref.shared_pin || ref.transferCode || "N/A"
                       const destination = ref.toFacility?.facility_name || ref.external_facility_name || ref.destination || "N/A"
+
+                      const isOrigin = Boolean(currentFacilityId && ref.from_facility_id === currentFacilityId)
+                      const isDestination = currentUser?.role === "SystemAdmin" || Boolean(currentFacilityId && ref.to_facility_id === currentFacilityId)
 
                       return (
                         <TableRow 
@@ -397,29 +432,42 @@ export function ReferralsPage() {
                             />
                           </TableCell>
                           <TableCell className="text-xs font-medium text-card-foreground whitespace-nowrap">
-                            {motherName}
+                            <div className="flex items-center gap-2">
+                              <span>{motherName}</span>
+                              {isOrigin && (
+                                <span className="text-[9px] font-medium px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                                  Out
+                                </span>
+                              )}
+                              {isDestination && !isOrigin && (
+                                <span className="text-[9px] font-medium px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                  In
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-xs text-card-foreground whitespace-nowrap">
                             {initiatedAt}
                           </TableCell>
                           <TableCell>
                             <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
-                              riskFlag === 'High Risk' ? 'bg-red-500/10 text-red-500' : 
-                              riskFlag === 'Medium Risk' ? 'bg-amber-500/10 text-amber-500' : 
+                              isHighRisk ? 'bg-red-500/10 text-red-500' : 
+                              isMedRisk ? 'bg-amber-500/10 text-amber-500' : 
                               'bg-green-500/10 text-green-500'
                             }`}>
-                              {riskFlag === 'High Risk' ? <Activity className="h-3 w-3" /> : riskFlag === 'Medium Risk' ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                              {isHighRisk ? <Activity className="h-3 w-3" /> : isMedRisk ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
                               {riskFlag}
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1 items-start">
                               <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
-                                status === 'Accepted' || status === 'Completed' ? 'bg-green-500/10 text-green-500' : 
-                                status === 'Pending' ? 'bg-amber-500/10 text-amber-500' : 
+                                statusLower === 'accepted' || statusLower === 'completed' ? 'bg-green-500/10 text-green-500' : 
+                                statusLower === 'pending' ? 'bg-amber-500/10 text-amber-500' : 
+                                statusLower === 'rejected' || statusLower === 'cancelled' ? 'bg-red-500/10 text-red-500' :
                                 'bg-blue-500/10 text-blue-500'
                               }`}>
-                                {status === 'Accepted' || status === 'Completed' ? <CheckCircle2 className="h-3 w-3" /> : status === 'Pending' ? <Clock className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
+                                {statusLower === 'accepted' || statusLower === 'completed' ? <CheckCircle2 className="h-3 w-3" /> : statusLower === 'pending' ? <Clock className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
                                 {status}
                               </div>
                               {ref.sync_status && ref.sync_status !== "synced" && (
@@ -430,16 +478,31 @@ export function ReferralsPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-xs text-card-foreground whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              {recordLink !== "N/A" ? (
-                                <a href={recordLink} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">{recordLink}</a>
-                              ) : (
-                                <span className="text-muted-foreground">N/A</span>
-                              )}
-                              {recordLink !== "N/A" && (
-                                <Copy className="h-3 w-3 text-muted-foreground cursor-pointer hover:text-foreground" onClick={(e) => handleCopyText(recordLink, "Link", e)} />
-                              )}
-                            </div>
+                            {recordLink !== "N/A" ? (
+                              <div className="flex items-center gap-1.5 max-w-[170px]" onClick={(e) => e.stopPropagation()}>
+                                <a 
+                                  href={recordLink} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  title={recordLink}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors text-[11px] font-medium max-w-[130px] truncate"
+                                >
+                                  <ExternalLink className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">{recordLink.replace(/^https?:\/\/[^/]+/, "") || "View Link"}</span>
+                                </a>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+                                  title="Copy Referral Link"
+                                  onClick={(e) => handleCopyText(recordLink, "Link", e)}
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">N/A</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-xs font-mono text-card-foreground whitespace-nowrap">
                             <div className="flex items-center gap-2">
@@ -461,12 +524,22 @@ export function ReferralsPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
                                 <DropdownMenuItem onClick={() => setSelectedReferral(ref)} className="text-xs cursor-pointer rounded-md">View Details</DropdownMenuItem>
-                                <DropdownMenuItem onClick={async () => {
-                                  await referralRepository.respondToReferral(ref.referral_id || ref.id, { status: "cancelled" })
-                                  loadReferrals()
-                                }} className="text-xs cursor-pointer rounded-md text-amber-600 hover:!text-amber-600 hover:!bg-amber-500/10">
-                                  Cancel Transfer
-                                </DropdownMenuItem>
+                                {isDestination && !isOrigin && statusLower === "pending" && (
+                                  <DropdownMenuItem onClick={async () => {
+                                    await referralRepository.respondToReferral(ref.referral_id || ref.id, { status: "accepted" })
+                                    loadReferrals()
+                                  }} className="text-xs cursor-pointer rounded-md text-emerald-600 hover:!text-emerald-600 hover:!bg-emerald-500/10">
+                                    Accept Transfer
+                                  </DropdownMenuItem>
+                                )}
+                                {isOrigin && statusLower === "pending" && (
+                                  <DropdownMenuItem onClick={async () => {
+                                    await referralRepository.respondToReferral(ref.referral_id || ref.id, { status: "cancelled" })
+                                    loadReferrals()
+                                  }} className="text-xs cursor-pointer rounded-md text-amber-600 hover:!text-amber-600 hover:!bg-amber-500/10">
+                                    Cancel Transfer
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem onClick={() => setReferralToDelete(ref)} className="text-xs cursor-pointer rounded-md text-red-500 hover:!text-red-500 hover:!bg-red-500/10">
                                   Delete Referral
                                 </DropdownMenuItem>
@@ -503,10 +576,18 @@ export function ReferralsPage() {
                   ? `${ref.pregnancy.mother.first_name || ""} ${ref.pregnancy.mother.last_name || ""}`.trim()
                   : (ref.motherName || "Patient Record")
                 const initiatedAt = ref.date_referred ? new Date(ref.date_referred).toLocaleString() : (ref.initiatedAt || "N/A")
-                const riskFlag = ref.pregnancy?.risk_flag || ref.riskFlag || "Low Risk"
+                const riskFlag = resolveRisk(ref)
+                const riskLower = riskFlag.toLowerCase()
+                const isHighRisk = riskLower.includes("high")
+                const isMedRisk = riskLower.includes("med") || riskLower.includes("moderate")
+
                 const status = ref.status ? (ref.status.charAt(0).toUpperCase() + ref.status.slice(1)) : "Pending"
+                const statusLower = (ref.status || "pending").toLowerCase()
                 const transferCode = ref.shared_pin || ref.transferCode || "N/A"
                 const destination = ref.toFacility?.facility_name || ref.external_facility_name || ref.destination || "N/A"
+
+                const isOrigin = Boolean(currentFacilityId && ref.from_facility_id === currentFacilityId)
+                const isDestination = currentUser?.role === "SystemAdmin" || Boolean(currentFacilityId && ref.to_facility_id === currentFacilityId)
 
                 return (
                   <div 
@@ -516,24 +597,37 @@ export function ReferralsPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex flex-col gap-1">
-                        <h3 className="text-sm font-semibold text-card-foreground">{motherName}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-card-foreground">{motherName}</h3>
+                          {isOrigin && (
+                            <span className="text-[9px] font-medium px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                              Out
+                            </span>
+                          )}
+                          {isDestination && !isOrigin && (
+                            <span className="text-[9px] font-medium px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                              In
+                            </span>
+                          )}
+                        </div>
                         <span className="text-xs text-muted-foreground">{initiatedAt}</span>
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
-                          riskFlag === 'High Risk' ? 'bg-red-500/10 text-red-500' : 
-                          riskFlag === 'Medium Risk' ? 'bg-amber-500/10 text-amber-500' : 
+                          isHighRisk ? 'bg-red-500/10 text-red-500' : 
+                          isMedRisk ? 'bg-amber-500/10 text-amber-500' : 
                           'bg-green-500/10 text-green-500'
                         }`}>
-                          {riskFlag === 'High Risk' ? <Activity className="h-3 w-3" /> : riskFlag === 'Medium Risk' ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                          {isHighRisk ? <Activity className="h-3 w-3" /> : isMedRisk ? <AlertTriangle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
                           {riskFlag}
                         </div>
                         <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
-                          status === 'Accepted' || status === 'Completed' ? 'bg-green-500/10 text-green-500' : 
-                          status === 'Pending' ? 'bg-amber-500/10 text-amber-500' : 
+                          statusLower === 'accepted' || statusLower === 'completed' ? 'bg-green-500/10 text-green-500' : 
+                          statusLower === 'pending' ? 'bg-amber-500/10 text-amber-500' : 
+                          statusLower === 'rejected' || statusLower === 'cancelled' ? 'bg-red-500/10 text-red-500' :
                           'bg-blue-500/10 text-blue-500'
                         }`}>
-                          {status === 'Accepted' || status === 'Completed' ? <CheckCircle2 className="h-3 w-3" /> : status === 'Pending' ? <Clock className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
+                          {statusLower === 'accepted' || statusLower === 'completed' ? <CheckCircle2 className="h-3 w-3" /> : statusLower === 'pending' ? <Clock className="h-3 w-3" /> : <Activity className="h-3 w-3" />}
                           {status}
                         </div>
                         {ref.sync_status && ref.sync_status !== "synced" && (
@@ -569,12 +663,22 @@ export function ReferralsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
                           <DropdownMenuItem onClick={() => setSelectedReferral(ref)} className="text-xs cursor-pointer rounded-md">View Details</DropdownMenuItem>
-                          <DropdownMenuItem onClick={async () => {
-                            await referralRepository.respondToReferral(ref.referral_id || ref.id, { status: "cancelled" })
-                            loadReferrals()
-                          }} className="text-xs cursor-pointer rounded-md text-amber-600 hover:!text-amber-600 hover:!bg-amber-500/10">
-                            Cancel Transfer
-                          </DropdownMenuItem>
+                          {isDestination && !isOrigin && statusLower === "pending" && (
+                            <DropdownMenuItem onClick={async () => {
+                              await referralRepository.respondToReferral(ref.referral_id || ref.id, { status: "accepted" })
+                              loadReferrals()
+                            }} className="text-xs cursor-pointer rounded-md text-emerald-600 hover:!text-emerald-600 hover:!bg-emerald-500/10">
+                              Accept Transfer
+                            </DropdownMenuItem>
+                          )}
+                          {isOrigin && statusLower === "pending" && (
+                            <DropdownMenuItem onClick={async () => {
+                              await referralRepository.respondToReferral(ref.referral_id || ref.id, { status: "cancelled" })
+                              loadReferrals()
+                            }} className="text-xs cursor-pointer rounded-md text-amber-600 hover:!text-amber-600 hover:!bg-amber-500/10">
+                              Cancel Transfer
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => setReferralToDelete(ref)} className="text-xs cursor-pointer rounded-md text-red-500 hover:!text-red-500 hover:!bg-red-500/10">
                             Delete Referral
                           </DropdownMenuItem>
