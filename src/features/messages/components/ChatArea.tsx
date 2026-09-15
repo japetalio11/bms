@@ -110,20 +110,12 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
 
     return db.messages
       .filter(msg => {
-        if (isStaff && targetContactInfo?.isMother) {
-          // Facility staff seeing patient messages: include incoming from mother and outgoing from any facility staff
-          return msg.sender_id === targetUserId ||
-                 msg.receiver_id === targetUserId ||
-                 (targetMotherId && (msg.sender_id === targetMotherId || msg.receiver_id === targetMotherId))
-        }
-
-        // Direct 1-on-1 or mother reading clinic messages
+        // Strictly 1-to-1 conversation between logged-in user and target contact
         return (msg.sender_id === currentUserId && (msg.receiver_id === targetUserId || msg.receiver_id === targetMotherId)) ||
-               (msg.receiver_id === currentUserId && (msg.sender_id === targetUserId || msg.sender_id === targetMotherId)) ||
-               (msg.sender_id === targetUserId || msg.receiver_id === targetUserId)
+               (msg.receiver_id === currentUserId && (msg.sender_id === targetUserId || msg.sender_id === targetMotherId))
       })
       .sortBy('message_date')
-  }, [currentUserId, activeChatId, targetContactInfo, isStaff]) ?? []
+  }, [currentUserId, activeChatId, targetContactInfo]) ?? []
 
   // Mark unread messages as read upon viewing
   React.useEffect(() => {
@@ -265,20 +257,12 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
         {chatMessages.map((msg) => {
           const isSentByMe = msg.sender_id === currentUserId
-          const isOutgoing = targetContactInfo?.isMother
-            ? (msg.sender_id !== targetContactInfo.userId && msg.sender_id !== targetContactInfo.motherId)
-            : isSentByMe
+          const isOutgoing = isSentByMe
           const isImage = msg.message_type === 'image' || (typeof msg.message_content === 'string' && (msg.message_content.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(msg.message_content)))
-          const isFile = msg.message_type === 'file' || (typeof msg.message_content === 'string' && msg.message_content.startsWith('data:application/'))
-          const colleagueSender = (isOutgoing && !isSentByMe) ? (msg.sender_name || "Facility Staff") : null
+          const isFile = msg.message_type === 'file' || (typeof msg.message_content === 'string' && (msg.message_content.startsWith('data:application/') || /\.(pdf|docx?|xlsx?|txt|csv|zip)$/i.test(msg.message_content)))
 
           return (
             <div key={msg.id} className={clsx("flex flex-col gap-1 w-full max-w-[80%]", isOutgoing ? "ml-auto items-end" : "mr-auto items-start")}>
-              {colleagueSender && (
-                <span className="text-[10px] text-muted-foreground font-medium px-1">
-                  {colleagueSender}
-                </span>
-              )}
               <div className={clsx(
                 "p-3 rounded-2xl text-sm leading-relaxed",
                 isOutgoing 

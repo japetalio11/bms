@@ -144,7 +144,7 @@ export interface LocalNotification {
 export interface OfflineQueueItem {
   id?: number // Auto-increment ID
   client_mutation_id: string
-  entity_type: "mother" | "pregnancy" | "prenatal_visit" | "appointment" | "lab_record" | "supplement" | "ehr_doc" | "message" | "referral" | "notification" | "custom_request"
+  entity_type: "mother" | "pregnancy" | "prenatal_visit" | "appointment" | "lab_record" | "supplement" | "ehr_doc" | "message" | "referral" | "notification" | "custom_request" | "user"
   action: "CREATE" | "UPDATE" | "DELETE"
   endpoint: string
   method: "POST" | "PUT" | "DELETE"

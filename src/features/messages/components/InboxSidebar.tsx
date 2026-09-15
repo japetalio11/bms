@@ -83,57 +83,36 @@ export function InboxSidebar({ activeChatId, setActiveChatId }: InboxSidebarProp
       if (mother._id) motherByMotherId.set(mother._id, mother)
     })
 
-    // Process existing messages
+    // Process existing messages (strictly 1-to-1: only messages involving current user)
     messages.forEach(msg => {
-      let contactId: string | null = null
+      const isSentByMe = currentUserId && msg.sender_id === currentUserId
+      const isReceivedByMe = currentUserId && msg.receiver_id === currentUserId
+
+      // Skip messages that do not involve the logged-in user
+      if (!isSentByMe && !isReceivedByMe) return
+
+      let contactId: string | null = isSentByMe ? msg.receiver_id : msg.sender_id
       let contactName = msg.contact_name
       let contactAvatar = msg.contact_avatar || ""
-      let isIncomingFromPatient = false
+      let isIncomingFromPatient = isReceivedByMe
 
       if (isStaff) {
         const senderMother =
-          motherByUserId.get(msg.sender_id) ||
-          motherByMotherId.get(msg.sender_id) ||
-          facilityMothers.find((m: any) => m.id === msg.sender_id || m.mother_id === msg.sender_id || m.user_id === msg.sender_id || (m.user && m.user.user_id === msg.sender_id))
-        const receiverMother =
-          motherByUserId.get(msg.receiver_id) ||
-          motherByMotherId.get(msg.receiver_id) ||
-          facilityMothers.find((m: any) => m.id === msg.receiver_id || m.mother_id === msg.receiver_id || m.user_id === msg.receiver_id || (m.user && m.user.user_id === msg.receiver_id))
+          motherByUserId.get(contactId) ||
+          motherByMotherId.get(contactId) ||
+          facilityMothers.find((m: any) => m.id === contactId || m.mother_id === contactId || m.user_id === contactId || (m.user && m.user.user_id === contactId))
 
         if (senderMother) {
           contactId = senderMother.user_id || senderMother.user?.user_id || senderMother.mother_id || senderMother.id
           contactName = `${senderMother.first_name || senderMother.user?.first_name || ''} ${senderMother.last_name || senderMother.user?.last_name || ''}`.trim() || contactName
           contactAvatar = senderMother.photo_url || senderMother.user?.profile_url || contactAvatar
-          isIncomingFromPatient = true
-        } else if (receiverMother) {
-          contactId = receiverMother.user_id || receiverMother.user?.user_id || receiverMother.mother_id || receiverMother.id
-          contactName = `${receiverMother.first_name || receiverMother.user?.first_name || ''} ${receiverMother.last_name || receiverMother.user?.last_name || ''}`.trim() || contactName
-          contactAvatar = receiverMother.photo_url || receiverMother.user?.profile_url || contactAvatar
-          isIncomingFromPatient = false
         } else if (msg.sender_role === "Mother" || msg.sender?.role === "Mother") {
-          contactId = msg.sender_id
           contactName = msg.sender_name || contactName
           contactAvatar = msg.sender?.profile_url || contactAvatar
-          isIncomingFromPatient = true
         } else if (msg.receiver_role === "Mother" || msg.receiver?.role === "Mother") {
-          contactId = msg.receiver_id
           contactName = msg.contact_name || contactName
           contactAvatar = msg.receiver?.profile_url || contactAvatar
-          isIncomingFromPatient = false
-        } else {
-          // Direct staff-to-staff message
-          if (msg.sender_id === currentUserId) {
-            contactId = msg.receiver_id
-          } else if (msg.receiver_id === currentUserId) {
-            contactId = msg.sender_id
-            isIncomingFromPatient = true
-          }
         }
-      } else {
-        // Mother logged in
-        const isMe = msg.sender_id === currentUserId
-        contactId = isMe ? msg.receiver_id : msg.sender_id
-        isIncomingFromPatient = !isMe
       }
 
       if (!contactId) return

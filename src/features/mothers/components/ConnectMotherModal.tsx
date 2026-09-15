@@ -3,7 +3,7 @@ import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { QrCode, CheckCircle2, AlertCircle, Loader2, Camera, X } from "lucide-react"
+import { QrCode, CheckCircle2, AlertCircle, Loader2, Camera, X, Upload } from "lucide-react"
 import { Html5Qrcode } from "html5-qrcode"
 import { mothersApi } from "../api"
 
@@ -22,6 +22,7 @@ export function ConnectMotherModal({
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null)
   const [isScanning, setIsScanning] = React.useState(false)
   const scannerRef = React.useRef<Html5Qrcode | null>(null)
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
 
   const stopScanner = async () => {
     if (scannerRef.current) {
@@ -38,6 +39,76 @@ export function ConnectMotherModal({
     setIsScanning(false)
   }
 
+  const connectMotherWithCode = async (targetCode: string) => {
+    let clean = targetCode.trim()
+    if (!clean) {
+      setError("Please enter or scan a Mother Code.")
+      return
+    }
+
+    if (clean.includes("{") && clean.includes("}")) {
+      try {
+        const start = clean.indexOf("{")
+        const end = clean.lastIndexOf("}")
+        const parsed = JSON.parse(clean.substring(start, end + 1))
+        clean = (parsed.mother_id || parsed.user_id || parsed.motherCode || parsed.code || parsed.id || clean).trim()
+      } catch (e) {}
+    }
+
+    setLoading(true)
+    setError(null)
+    setSuccessMsg(null)
+
+    try {
+      const res = await mothersApi.assignFacility(clean)
+      const motherName = res?.user ? `${res.user.first_name} ${res.user.last_name}` : "Mother"
+      const facilityName = res?.user?.facility?.facility_name || "your facility"
+      
+      setSuccessMsg(`${motherName} successfully connected to ${facilityName}!`)
+      setCode("")
+      await stopScanner()
+      
+      setTimeout(() => {
+        setSuccessMsg(null)
+        onOpenChange(false)
+        onSuccess?.()
+      }, 1500)
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err.message || "Failed to connect mother to facility.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setLoading(true)
+    setError(null)
+    setSuccessMsg(null)
+
+    try {
+      const html5QrCode = new Html5Qrcode("qr-file-scanner-hidden")
+      const decodedText = await html5QrCode.scanFile(file, true)
+      await html5QrCode.clear()
+
+      let extracted = decodedText.trim()
+      try {
+        const parsed = JSON.parse(decodedText)
+        extracted = parsed.mother_id || parsed.user_id || parsed.motherCode || parsed.code || parsed.id || decodedText
+      } catch (err) {}
+
+      setCode(extracted)
+      await connectMotherWithCode(extracted)
+    } catch (err: any) {
+      setError("Could not read a valid QR code from this image. Please ensure the QR code is clearly visible or enter the code manually.")
+    } finally {
+      setLoading(false)
+      if (e.target) e.target.value = ""
+    }
+  }
+
   const startScanner = () => {
     setError(null)
     setIsScanning(true)
@@ -49,28 +120,65 @@ export function ConnectMotherModal({
         const html5QrCode = new Html5Qrcode("qr-reader")
         scannerRef.current = html5QrCode
 
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 220, height: 220 },
-          },
-          (decodedText) => {
-            let extracted = decodedText.trim()
-            try {
-              const parsed = JSON.parse(decodedText)
-              extracted = parsed.motherCode || parsed.code || parsed.id || decodedText
-            } catch (e) {
-              // Raw text string
+        const scanConfig = {
+          fps: 15,
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight)
+            return {
+              width: Math.max(200, Math.floor(minEdge * 0.8)),
+              height: Math.max(200, Math.floor(minEdge * 0.8)),
             }
-
-            setCode(extracted)
-            stopScanner()
           },
-          () => {
-            // Ignore frame scan errors
+          aspectRatio: 1.0,
+        }
+
+        const onScanSuccess = async (decodedText: string) => {
+          let extracted = decodedText.trim()
+          try {
+            const parsed = JSON.parse(decodedText)
+            // Prioritize unique database IDs (mother_id / user_id) first, then short code
+            extracted = parsed.mother_id || parsed.user_id || parsed.motherCode || parsed.code || parsed.id || decodedText
+          } catch (e) {
+            // Raw text string
           }
-        )
+
+          setCode(extracted)
+          await stopScanner()
+          await connectMotherWithCode(extracted)
+        }
+
+        try {
+          // Attempt rear/environment camera first (ideal for phones/tablets)
+          await html5QrCode.start(
+            { facingMode: "environment" },
+            scanConfig,
+            onScanSuccess,
+            () => {}
+          )
+        } catch (camErr) {
+          console.warn("Environment camera not available, falling back to default/user camera:", camErr)
+          try {
+            await html5QrCode.start(
+              { facingMode: "user" },
+              scanConfig,
+              onScanSuccess,
+              () => {}
+            )
+          } catch (userCamErr) {
+            console.warn("User facing camera mode failed, attempting first available camera:", userCamErr)
+            const devices = await Html5Qrcode.getCameras()
+            if (devices && devices.length > 0) {
+              await html5QrCode.start(
+                devices[0].id,
+                scanConfig,
+                onScanSuccess,
+                () => {}
+              )
+            } else {
+              throw userCamErr
+            }
+          }
+        }
       } catch (err: any) {
         console.error("Camera scanner initialization error:", err)
         setError("Unable to access camera. Please allow camera permissions or enter code manually.")
@@ -102,34 +210,7 @@ export function ConnectMotherModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!code.trim()) {
-      setError("Please enter or scan a Mother Code.")
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-    setSuccessMsg(null)
-
-    try {
-      const res = await mothersApi.assignFacility(code.trim())
-      const motherName = res?.user ? `${res.user.first_name} ${res.user.last_name}` : "Mother"
-      const facilityName = res?.user?.facility?.facility_name || "your facility"
-      
-      setSuccessMsg(`${motherName} successfully connected to ${facilityName}!`)
-      setCode("")
-      await stopScanner()
-      
-      setTimeout(() => {
-        setSuccessMsg(null)
-        onOpenChange(false)
-        onSuccess?.()
-      }, 1500)
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err.message || "Failed to connect mother to facility.")
-    } finally {
-      setLoading(false)
-    }
+    await connectMotherWithCode(code)
   }
 
   return (
@@ -214,9 +295,30 @@ export function ConnectMotherModal({
             </div>
           )}
 
-          <p className="text-xs text-muted-foreground pt-1">
-            Type the code shown on the mother's profile (e.g. MTH-XXXXXXXX) or scan her QR code directly using your camera or a barcode scanner.
-          </p>
+          {/* Hidden scanner element & file input for image upload */}
+          <div id="qr-file-scanner-hidden" style={{ display: "none" }} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+            <span>Type the mother code, scan with camera, or:</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading}
+              className="h-6 px-2 text-[11px] gap-1 text-primary hover:text-primary hover:bg-primary/10"
+            >
+              <Upload className="h-3 w-3" />
+              Upload QR Image
+            </Button>
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 pt-4">

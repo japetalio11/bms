@@ -44,22 +44,15 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
 
     const targetUserId = mother?.user_id || mother?.user?.user_id || activeChatId
     const targetMotherId = mother?.mother_id || mother?.id
-    const isStaff = currentUser?.role && currentUser.role !== 'Mother'
 
     return db.messages
       .filter(msg => {
-        if (isStaff && mother) {
-          return msg.sender_id === targetUserId ||
-                 msg.receiver_id === targetUserId ||
-                 (targetMotherId && (msg.sender_id === targetMotherId || msg.receiver_id === targetMotherId))
-        }
-
+        // Strictly 1-to-1: messages between current user and target contact
         return (msg.sender_id === currentUserId && (msg.receiver_id === targetUserId || msg.receiver_id === targetMotherId)) ||
-               (msg.receiver_id === currentUserId && (msg.sender_id === targetUserId || msg.sender_id === targetMotherId)) ||
-               (msg.sender_id === targetUserId || msg.receiver_id === targetUserId)
+               (msg.receiver_id === currentUserId && (msg.sender_id === targetUserId || msg.sender_id === targetMotherId))
       })
       .toArray()
-  }, [currentUserId, activeChatId, currentUser?.role]) ?? []
+  }, [currentUserId, activeChatId]) ?? []
 
   // Query EHR documents for this contact if contact is a mother
   const ehrDocs = useLiveQuery(async () => {

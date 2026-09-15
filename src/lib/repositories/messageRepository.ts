@@ -38,20 +38,10 @@ export const messageRepository = {
               const msgId = msg.message_id || msg._id || msg.id
               const existing = localById.get(msgId)
               
-              // Identify the external contact (mother) vs facility staff
-              let contactUser = null
-              if (isStaff) {
-                if (msg.sender?.role === "Mother") {
-                  contactUser = msg.sender
-                } else if (msg.receiver?.role === "Mother") {
-                  contactUser = msg.receiver
-                } else if (currentUserId && msg.sender_id === currentUserId) {
-                  contactUser = msg.receiver
-                } else {
-                  contactUser = msg.sender || msg.receiver
-                }
-              } else {
-                contactUser = (currentUserId && msg.sender_id === currentUserId) ? msg.receiver : msg.sender
+              // Identify the other party in the 1-to-1 conversation
+              let contactUser = (currentUserId && msg.sender_id === currentUserId) ? msg.receiver : msg.sender
+              if (!contactUser && isStaff) {
+                contactUser = msg.sender?.role === "Mother" ? msg.sender : (msg.receiver?.role === "Mother" ? msg.receiver : null)
               }
 
               const contactName = contactUser
