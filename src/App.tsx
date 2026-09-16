@@ -16,6 +16,7 @@ import { MessagesPage } from "@/features/messages/components/MessagesPage"
 import { EhrPage } from "@/features/ehr/components/EhrPage"
 import { TestSmsPage } from "@/pages/TestSmsPage"
 import { PublicReferralPage } from "@/features/referrals/components/PublicReferralPage"
+import { PublicSharedJourneyPage } from "@/features/mothers/components/PublicSharedJourneyPage"
 
 export function App() {
   return (
@@ -24,6 +25,10 @@ export function App() {
         <Routes>
           {/* Public Referral Link Route */}
           <Route path="/referral/:id" element={<PublicReferralPage />} />
+
+          {/* Public Mother Pregnancy Journey Shared Route */}
+          <Route path="/shared-journey/:token" element={<PublicSharedJourneyPage />} />
+          <Route path="/m/:token" element={<PublicSharedJourneyPage />} />
 
           {/* Auth Routes */}
           <Route path="/" element={<AuthForm />} />

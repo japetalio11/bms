@@ -1,11 +1,22 @@
 import axios from "axios"
 import { syncEngine } from "@/lib/sync/syncEngine"
 
-const BASE_URL = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_BACKEND_API_URL
+  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+    return envUrl
+  }
+  if (typeof window !== "undefined" && window.location?.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+    return `http://${window.location.hostname}:6700`
+  }
+  return envUrl || "http://localhost:6700"
+}
+
+const BASE_URL = getApiBaseUrl()
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 15000,
+  timeout: 30000,
 })
 
 apiClient.interceptors.request.use(
