@@ -5,6 +5,33 @@ import { syncEngine } from "@/lib/sync/syncEngine"
 
 export const messageRepository = {
   /**
+   * Uploads an attachment file (image or document) to the backend storage.
+   */
+  async uploadAttachment(file: File): Promise<{ fileUrl: string; fileName: string; fileType: string; fileSize: string }> {
+    const formData = new FormData()
+    formData.append("file", file)
+
+    const response = await apiClient.post("/api/v1/message/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    })
+
+    const data = response.data
+    const fileUrl = data.file_url || data.fileUrl || data.url || ""
+    const fileName = data.fileName || data.file_name || file.name
+    const fileType = data.fileType || data.file_type || (file.type.startsWith("image/") ? "image" : "file")
+    const fileSize = data.fileSize || data.file_size || `${(file.size / 1024).toFixed(1)} KB`
+
+    return {
+      fileUrl,
+      fileName,
+      fileType,
+      fileSize,
+    }
+  },
+
+  /**
    * Retrieves all messages for the user.
    * Reads local Dexie DB first, then syncs with backend if online.
    */

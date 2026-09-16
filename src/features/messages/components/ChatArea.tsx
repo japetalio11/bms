@@ -10,6 +10,7 @@ import { format, parseISO } from "date-fns"
 import { messageRepository } from "@/lib/repositories/messageRepository"
 import { useNetworkStatus } from "@/hooks/useNetworkStatus"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { resolveFileUrl } from "@/lib/apiClient"
 
 interface ChatAreaProps {
   activeChatId: string | null
@@ -133,34 +134,58 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
     if (!file || !currentUser || !activeChatId || isSending) return
 
     const targetReceiverId = targetContactInfo?.userId || activeChatId
+    const msgType = isImageOnly || file.type.startsWith('image/') ? 'image' : 'file'
 
     setIsSending(true)
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const dataUrl = reader.result as string
-      const msgType = isImageOnly || file.type.startsWith('image/') ? 'image' : 'file'
+    try {
+      if (isOnline) {
+        // 1. Upload via multipart FormData to backend storage
+        const uploadRes = await messageRepository.uploadAttachment(file)
+        const serverUrl = uploadRes.fileUrl || uploadRes.fileName
 
-      try {
         await messageRepository.sendMessage({
           receiver_id: targetReceiverId,
-          message_content: dataUrl,
+          message_content: serverUrl,
           message_type: msgType,
-          file_name: file.name,
-          file_size: `${(file.size / 1024).toFixed(1)} KB`,
+          file_name: uploadRes.fileName || file.name,
+          file_size: uploadRes.fileSize || `${(file.size / 1024).toFixed(1)} KB`,
           contact_name: activeContact?.name,
           contact_avatar: activeContact?.avatar,
         })
-      } catch (err) {
-        console.error("Failed to send attachment", err)
-      } finally {
-        setIsSending(false)
-        if (e.target) e.target.value = ""
+      } else {
+        // Offline fallback: encode as DataURL for offline Dexie queuing
+        const reader = new FileReader()
+        reader.onload = async () => {
+          const dataUrl = reader.result as string
+          try {
+            await messageRepository.sendMessage({
+              receiver_id: targetReceiverId,
+              message_content: dataUrl,
+              message_type: msgType,
+              file_name: file.name,
+              file_size: `${(file.size / 1024).toFixed(1)} KB`,
+              contact_name: activeContact?.name,
+              contact_avatar: activeContact?.avatar,
+            })
+          } catch (err) {
+            console.error("Failed to send offline attachment", err)
+          } finally {
+            setIsSending(false)
+            if (e.target) e.target.value = ""
+          }
+        }
+        reader.onerror = () => {
+          setIsSending(false)
+        }
+        reader.readAsDataURL(file)
+        return
       }
-    }
-    reader.onerror = () => {
+    } catch (err) {
+      console.error("Failed to send attachment", err)
+    } finally {
       setIsSending(false)
+      if (e.target) e.target.value = ""
     }
-    reader.readAsDataURL(file)
   }
 
   const handleSendMessage = async () => {
@@ -272,11 +297,11 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
                 {isImage ? (
                   <button 
                     type="button" 
-                    onClick={() => setPreviewImage(msg.message_content)}
+                    onClick={() => setPreviewImage(resolveFileUrl(msg.message_content))}
                     className="block cursor-pointer overflow-hidden rounded-lg group p-0 text-left border-0 bg-transparent"
                   >
                     <img 
-                      src={msg.message_content} 
+                      src={resolveFileUrl(msg.message_content)} 
                       alt="Shared Attachment" 
                       className="max-w-[260px] max-h-[260px] rounded-lg object-cover group-hover:opacity-90 transition-opacity" 
                     />
@@ -290,7 +315,13 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
                       <span className="text-xs font-semibold truncate max-w-[180px]">{msg.file_name || "Document.pdf"}</span>
                       <span className="text-[10px] opacity-75">{msg.file_size || "File Attachment"}</span>
                     </div>
-                    <a href={msg.message_content} download={msg.file_name || "file"} className="ml-2 p-1.5 rounded hover:bg-muted/80 shrink-0">
+                    <a 
+                      href={resolveFileUrl(msg.message_content)} 
+                      download={msg.file_name || "file"} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="ml-2 p-1.5 rounded hover:bg-muted/80 shrink-0"
+                    >
                       <Download className="h-4 w-4" />
                     </a>
                   </div>
@@ -395,7 +426,7 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
           {previewImage && (
             <div className="flex flex-col items-center justify-center p-2">
               <img
-                src={previewImage}
+                src={resolveFileUrl(previewImage)}
                 alt="Enlarged preview"
                 className="max-h-[80vh] w-auto max-w-full rounded-md object-contain"
               />

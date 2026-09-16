@@ -47,3 +47,29 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+export { BASE_URL }
+
+export const resolveFileUrl = (url?: string | null): string => {
+  if (!url) return ""
+
+  // Preserve inline data URLs and blob URLs
+  if (url.startsWith("data:") || url.startsWith("blob:")) {
+    return url
+  }
+
+  let normalizedUrl = url
+
+  // If URL contains Android emulator IP (10.0.2.2) or local loopbacks, normalize host to active BASE_URL
+  if (normalizedUrl.includes("10.0.2.2:6700") || normalizedUrl.includes("localhost:6700") || normalizedUrl.includes("127.0.0.1:6700")) {
+    normalizedUrl = normalizedUrl.replace(/http:\/\/(10\.0\.2\.2|localhost|127\.0\.0\.1):6700/, BASE_URL)
+  }
+
+  // If already absolute http/https, return normalized URL
+  if (normalizedUrl.startsWith("http://") || normalizedUrl.startsWith("https://")) {
+    return normalizedUrl
+  }
+
+  // Relative path fallback
+  return `${BASE_URL}${normalizedUrl.startsWith("/") ? "" : "/"}${normalizedUrl}`
+}

@@ -4,6 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks"
 import { db } from "@/lib/db/bmsDatabase"
 import { format, parseISO } from "date-fns"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { resolveFileUrl } from "@/lib/apiClient"
 
 interface ChatDetailsProps {
   activeChatId: string | null
@@ -100,7 +101,7 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
       name: msg.file_name || (msg.message_content.startsWith('data:') ? 'Attached_Document.pdf' : msg.message_content.split('/').pop() || 'Document.pdf'),
       size: msg.file_size || 'File Attachment',
       date: msg.message_date,
-      url: msg.file_url || msg.message_content
+      url: resolveFileUrl(msg.file_url || msg.message_content)
     }))
 
     const filesFromEhr = ehrDocs.map(doc => ({
@@ -179,10 +180,10 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
                     <button 
                       key={media.id} 
                       type="button"
-                      onClick={() => setPreviewImage(media.message_content)}
+                      onClick={() => setPreviewImage(resolveFileUrl(media.message_content))}
                       className="aspect-square bg-muted rounded-md border border-border overflow-hidden group block relative cursor-pointer text-left p-0"
                     >
-                      <img src={media.message_content} alt="Media" className="h-full w-full object-cover group-hover:scale-105 transition-transform" />
+                      <img src={resolveFileUrl(media.message_content)} alt="Media" className="h-full w-full object-cover group-hover:scale-105 transition-transform" />
                     </button>
                   ))}
                 </div>
@@ -280,7 +281,7 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
           {previewImage && (
             <div className="flex flex-col items-center justify-center p-2">
               <img
-                src={previewImage}
+                src={resolveFileUrl(previewImage)}
                 alt="Enlarged preview"
                 className="max-h-[80vh] w-auto max-w-full rounded-md object-contain"
               />
