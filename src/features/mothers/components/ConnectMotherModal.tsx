@@ -3,7 +3,15 @@ import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { QrCode, CheckCircle2, AlertCircle, Loader2, Camera, X, Upload } from "lucide-react"
+import {
+  QrCode,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Camera,
+  X,
+  Upload,
+} from "lucide-react"
 import { Html5Qrcode } from "html5-qrcode"
 import { mothersApi } from "../api"
 
@@ -51,7 +59,14 @@ export function ConnectMotherModal({
         const start = clean.indexOf("{")
         const end = clean.lastIndexOf("}")
         const parsed = JSON.parse(clean.substring(start, end + 1))
-        clean = (parsed.mother_id || parsed.user_id || parsed.motherCode || parsed.code || parsed.id || clean).trim()
+        clean = (
+          parsed.mother_id ||
+          parsed.user_id ||
+          parsed.motherCode ||
+          parsed.code ||
+          parsed.id ||
+          clean
+        ).trim()
       } catch (e) {}
     }
 
@@ -61,20 +76,26 @@ export function ConnectMotherModal({
 
     try {
       const res = await mothersApi.assignFacility(clean)
-      const motherName = res?.user ? `${res.user.first_name} ${res.user.last_name}` : "Mother"
+      const motherName = res?.user
+        ? `${res.user.first_name} ${res.user.last_name}`
+        : "Mother"
       const facilityName = res?.user?.facility?.facility_name || "your facility"
-      
+
       setSuccessMsg(`${motherName} successfully connected to ${facilityName}!`)
       setCode("")
       await stopScanner()
-      
+
       setTimeout(() => {
         setSuccessMsg(null)
         onOpenChange(false)
         onSuccess?.()
       }, 1500)
     } catch (err: any) {
-      setError(err?.response?.data?.error || err.message || "Failed to connect mother to facility.")
+      setError(
+        err?.response?.data?.error ||
+          err.message ||
+          "Failed to connect mother to facility."
+      )
     } finally {
       setLoading(false)
     }
@@ -96,13 +117,21 @@ export function ConnectMotherModal({
       let extracted = decodedText.trim()
       try {
         const parsed = JSON.parse(decodedText)
-        extracted = parsed.mother_id || parsed.user_id || parsed.motherCode || parsed.code || parsed.id || decodedText
+        extracted =
+          parsed.mother_id ||
+          parsed.user_id ||
+          parsed.motherCode ||
+          parsed.code ||
+          parsed.id ||
+          decodedText
       } catch (err) {}
 
       setCode(extracted)
       await connectMotherWithCode(extracted)
     } catch (err: any) {
-      setError("Could not read a valid QR code from this image. Please ensure the QR code is clearly visible or enter the code manually.")
+      setError(
+        "Could not read a valid QR code from this image. Please ensure the QR code is clearly visible or enter the code manually."
+      )
     } finally {
       setLoading(false)
       if (e.target) e.target.value = ""
@@ -136,11 +165,15 @@ export function ConnectMotherModal({
           let extracted = decodedText.trim()
           try {
             const parsed = JSON.parse(decodedText)
-            // Prioritize unique database IDs (mother_id / user_id) first, then short code
-            extracted = parsed.mother_id || parsed.user_id || parsed.motherCode || parsed.code || parsed.id || decodedText
-          } catch (e) {
-            // Raw text string
-          }
+
+            extracted =
+              parsed.mother_id ||
+              parsed.user_id ||
+              parsed.motherCode ||
+              parsed.code ||
+              parsed.id ||
+              decodedText
+          } catch (e) {}
 
           setCode(extracted)
           await stopScanner()
@@ -148,7 +181,6 @@ export function ConnectMotherModal({
         }
 
         try {
-          // Attempt rear/environment camera first (ideal for phones/tablets)
           await html5QrCode.start(
             { facingMode: "environment" },
             scanConfig,
@@ -156,7 +188,10 @@ export function ConnectMotherModal({
             () => {}
           )
         } catch (camErr) {
-          console.warn("Environment camera not available, falling back to default/user camera:", camErr)
+          console.warn(
+            "Environment camera not available, falling back to default/user camera:",
+            camErr
+          )
           try {
             await html5QrCode.start(
               { facingMode: "user" },
@@ -165,7 +200,10 @@ export function ConnectMotherModal({
               () => {}
             )
           } catch (userCamErr) {
-            console.warn("User facing camera mode failed, attempting first available camera:", userCamErr)
+            console.warn(
+              "User facing camera mode failed, attempting first available camera:",
+              userCamErr
+            )
             const devices = await Html5Qrcode.getCameras()
             if (devices && devices.length > 0) {
               await html5QrCode.start(
@@ -181,7 +219,9 @@ export function ConnectMotherModal({
         }
       } catch (err: any) {
         console.error("Camera scanner initialization error:", err)
-        setError("Unable to access camera. Please allow camera permissions or enter code manually.")
+        setError(
+          "Unable to access camera. Please allow camera permissions or enter code manually."
+        )
         setIsScanning(false)
       }
     }, 150)
@@ -195,7 +235,6 @@ export function ConnectMotherModal({
     }
   }
 
-  // Cleanup camera when modal closes or component unmounts
   React.useEffect(() => {
     if (!open) {
       stopScanner()
@@ -225,15 +264,15 @@ export function ConnectMotherModal({
     >
       <form onSubmit={handleSubmit} className="space-y-4 pt-2">
         {error && (
-          <div className="flex items-center gap-2 p-3 text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
+            <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="flex items-center gap-2 p-3 text-sm text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-500">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
@@ -243,9 +282,8 @@ export function ConnectMotherModal({
             Mother QR Code or ID <span className="text-red-400">*</span>
           </Label>
 
-          {/* Perfectly Aligned Input Bar with Integrated Camera Scan Toggle */}
           <div className="relative flex items-center">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-muted-foreground pointer-events-none z-10">
+            <div className="pointer-events-none absolute top-1/2 left-3 z-10 flex -translate-y-1/2 items-center justify-center text-muted-foreground">
               <QrCode className="h-4 w-4" />
             </div>
             <Input
@@ -253,7 +291,7 @@ export function ConnectMotherModal({
               placeholder="e.g. MTH-8F3A2190 or scan QR code"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className="pl-9 pr-24 h-10 font-mono text-xs border-sidebar-border focus-visible:ring-1"
+              className="h-10 border-sidebar-border pr-24 pl-9 font-mono text-xs focus-visible:ring-1"
               autoFocus
               disabled={loading}
             />
@@ -263,10 +301,10 @@ export function ConnectMotherModal({
               size="sm"
               onClick={toggleScanner}
               disabled={loading}
-              className={`absolute right-1.5 top-1/2 -translate-y-1/2 h-7 px-2 text-[11px] gap-1.5 font-medium transition-colors ${
+              className={`absolute top-1/2 right-1.5 h-7 -translate-y-1/2 gap-1.5 px-2 text-[11px] font-medium transition-colors ${
                 isScanning
-                  ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
-                  : "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+                  ? "border border-red-500/20 bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                  : "border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20"
               }`}
             >
               {isScanning ? (
@@ -283,19 +321,18 @@ export function ConnectMotherModal({
             </Button>
           </div>
 
-          {/* Live Camera Scanner Viewport */}
           {isScanning && (
-            <div className="flex flex-col gap-2 pt-2 animate-in fade-in-0 zoom-in-95 duration-200">
-              <div className="relative w-full rounded-xl overflow-hidden border border-primary/30 shadow-inner bg-black min-h-[250px]">
-                <div id="qr-reader" className="w-full h-full" />
+            <div className="flex animate-in flex-col gap-2 pt-2 duration-200 fade-in-0 zoom-in-95">
+              <div className="relative min-h-[250px] w-full overflow-hidden rounded-xl border border-primary/30 bg-black shadow-inner">
+                <div id="qr-reader" className="h-full w-full" />
               </div>
-              <p className="text-[11px] text-center text-muted-foreground">
-                Point your camera at the QR code displayed on the mother's app screen.
+              <p className="text-center text-[11px] text-muted-foreground">
+                Point your camera at the QR code displayed on the mother's app
+                screen.
               </p>
             </div>
           )}
 
-          {/* Hidden scanner element & file input for image upload */}
           <div id="qr-file-scanner-hidden" style={{ display: "none" }} />
           <input
             ref={fileInputRef}
@@ -305,7 +342,7 @@ export function ConnectMotherModal({
             onChange={handleFileUpload}
           />
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+          <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">
             <span>Type the mother code, scan with camera, or:</span>
             <Button
               type="button"
@@ -313,7 +350,7 @@ export function ConnectMotherModal({
               size="sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={loading}
-              className="h-6 px-2 text-[11px] gap-1 text-primary hover:text-primary hover:bg-primary/10"
+              className="h-6 gap-1 px-2 text-[11px] text-primary hover:bg-primary/10 hover:text-primary"
             >
               <Upload className="h-3 w-3" />
               Upload QR Image

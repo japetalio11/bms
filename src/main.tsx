@@ -6,7 +6,6 @@ import { initStoragePersistence } from "@/lib/db/storagePersist"
 import { syncEngine } from "@/lib/sync/syncEngine"
 import { db } from "@/lib/db/bmsDatabase"
 
-// Expose cache reset utility globally on window for easy developer & testing access
 ;(window as any).clearMotherCache = async (reload = true) => {
   try {
     await Promise.all([
@@ -34,17 +33,14 @@ window.addEventListener("bms:purge-mother-cache", async () => {
   await (window as any).clearMotherCache?.(true)
 })
 
-// Initialize browser storage persistence for Dexie IndexedDB
 initStoragePersistence().then((persisted) => {
   console.log(`[BMS App] Dexie IndexedDB storage persistence state: ${persisted ? "Persisted" : "Default"}`)
 })
 
-// Trigger background outbox sync check on startup
 if (navigator.onLine) {
   syncEngine.processQueue()
 }
 
-// Register PWA Service Worker if supported
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     const swUrl = import.meta.env.DEV ? "/dev-sw.js?dev-sw" : "/sw.js"
@@ -52,7 +48,6 @@ if ("serviceWorker" in navigator) {
       .register(swUrl, { type: import.meta.env.DEV ? "module" : "classic" })
       .then((reg) => console.log("[SW] Service Worker registered successfully:", reg.scope))
       .catch((err) => {
-        // Fallback to /sw.js
         navigator.serviceWorker
           .register("/sw.js")
           .then((reg) => console.log("[SW] Fallback SW registered:", reg.scope))

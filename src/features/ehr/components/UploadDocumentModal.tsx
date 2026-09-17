@@ -3,7 +3,13 @@ import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { UploadCloud, CheckCircle2 } from "lucide-react"
 import { mothersApi } from "@/features/mothers/api"
 import { syncEngine } from "@/lib/sync/syncEngine"
@@ -19,7 +25,7 @@ export function UploadDocumentModal({
   children,
   open: externalOpen,
   onOpenChange: externalOnOpenChange,
-  onSuccess
+  onSuccess,
 }: UploadDocumentModalProps) {
   const [internalOpen, setInternalOpen] = React.useState(false)
   const isControlled = externalOpen !== undefined
@@ -55,7 +61,6 @@ export function UploadDocumentModal({
     fetchMothers()
   }, [])
 
-  // Create compressed lightweight Data URL to fit comfortably in localStorage
   const createCompressedDataUrl = (selectedFile: File): Promise<string> => {
     return new Promise((resolve) => {
       if (!selectedFile.type.startsWith("image/")) {
@@ -112,10 +117,10 @@ export function UploadDocumentModal({
         console.error("Failed to generate file preview Data URL", err)
       }
 
-      // Auto-set document title from file name
       const rawName = selectedFile.name
-      const nameWithoutExt = rawName.substring(0, rawName.lastIndexOf('.')) || rawName
-      const formattedTitle = nameWithoutExt.replace(/[-_]/g, ' ').trim()
+      const nameWithoutExt =
+        rawName.substring(0, rawName.lastIndexOf(".")) || rawName
+      const formattedTitle = nameWithoutExt.replace(/[-_]/g, " ").trim()
 
       if (formattedTitle) {
         setTitle(formattedTitle)
@@ -125,7 +130,11 @@ export function UploadDocumentModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const finalTitle = title.trim() || (file ? file.name.substring(0, file.name.lastIndexOf('.')) || file.name : "Facility Document")
+    const finalTitle =
+      title.trim() ||
+      (file
+        ? file.name.substring(0, file.name.lastIndexOf(".")) || file.name
+        : "Facility Document")
     if (!finalTitle) {
       setError("Please select a file or enter a document title.")
       return
@@ -144,7 +153,10 @@ export function UploadDocumentModal({
             finalFileUrl = res.file_url || res.fileUrl || res.url
           }
         } catch (uploadErr: any) {
-          console.warn("[UploadDocumentModal] Supabase online upload failed, using local document data:", uploadErr)
+          console.warn(
+            "[UploadDocumentModal] Supabase online upload failed, using local document data:",
+            uploadErr
+          )
         }
       }
 
@@ -154,11 +166,17 @@ export function UploadDocumentModal({
         category,
         patientName: patientName || "Facility General",
         securityLevel,
-        format: file ? file.name.split('.').pop()?.toUpperCase() || "PDF" : "PDF",
+        format: file
+          ? file.name.split(".").pop()?.toUpperCase() || "PDF"
+          : "PDF",
         size: file ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : "1.2 MB",
-        dateUploaded: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        dateUploaded: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
         uploadedBy: "Current Healthcare Staff",
-        fileUrl: finalFileUrl
+        fileUrl: finalFileUrl,
       }
 
       if (onSuccess) {
@@ -177,7 +195,11 @@ export function UploadDocumentModal({
       }, 800)
     } catch (err: any) {
       console.error("Failed to upload document:", err)
-      setError(err?.response?.data?.error || err?.message || "Failed to upload document")
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          "Failed to upload document"
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -191,64 +213,97 @@ export function UploadDocumentModal({
       title="Upload EHR & Facility Record"
       description="Store clinical documents, patient archives, and health unit protocols."
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 py-1 text-foreground max-h-[75vh] overflow-y-auto pr-1.5">
+      <form
+        onSubmit={handleSubmit}
+        className="flex max-h-[75vh] flex-col gap-3.5 overflow-y-auto py-1 pr-1.5 text-foreground"
+      >
         {error && (
           <div className="rounded border border-destructive/50 bg-destructive/10 p-2.5 text-center text-xs font-medium text-destructive">
             {error}
           </div>
         )}
         {isSuccess ? (
-          <div className="flex flex-col items-center justify-center py-8 gap-3 text-emerald-500">
+          <div className="flex flex-col items-center justify-center gap-3 py-8 text-emerald-500">
             <CheckCircle2 className="h-12 w-12 animate-bounce" />
-            <p className="text-sm font-semibold">Document Uploaded Successfully!</p>
+            <p className="text-sm font-semibold">
+              Document Uploaded Successfully!
+            </p>
           </div>
         ) : (
           <>
-            {/* Title */}
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="doc-title" className="text-xs font-medium">Document Title *</Label>
-              <Input 
-                id="doc-title" 
-                placeholder="e.g. Prenatal Care Standard Protocol 2026" 
-                value={title} 
-                onChange={(e) => setTitle(e.target.value)} 
+              <Label htmlFor="doc-title" className="text-xs font-medium">
+                Document Title *
+              </Label>
+              <Input
+                id="doc-title"
+                placeholder="e.g. Prenatal Care Standard Protocol 2026"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 className="h-9 text-xs"
                 required
               />
             </div>
 
-            {/* Category */}
-            <div className="flex flex-col gap-1.5 min-w-0">
-              <Label htmlFor="doc-category" className="text-xs font-medium">Category</Label>
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <Label htmlFor="doc-category" className="text-xs font-medium">
+                Category
+              </Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger id="doc-category" className="h-9 text-xs w-full min-w-0">
+                <SelectTrigger
+                  id="doc-category"
+                  className="h-9 w-full min-w-0 text-xs"
+                >
                   <SelectValue placeholder="Select Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Clinical Protocols">Clinical Protocols</SelectItem>
-                  <SelectItem value="Lab & Diagnostics">Lab & Diagnostics</SelectItem>
-                  <SelectItem value="Maternal Records">Maternal Records</SelectItem>
-                  <SelectItem value="Facility Audit & Accreditation">Facility Audit & Accreditation</SelectItem>
-                  <SelectItem value="Referral Archives">Referral Archives</SelectItem>
+                  <SelectItem value="Clinical Protocols">
+                    Clinical Protocols
+                  </SelectItem>
+                  <SelectItem value="Lab & Diagnostics">
+                    Lab & Diagnostics
+                  </SelectItem>
+                  <SelectItem value="Maternal Records">
+                    Maternal Records
+                  </SelectItem>
+                  <SelectItem value="Facility Audit & Accreditation">
+                    Facility Audit & Accreditation
+                  </SelectItem>
+                  <SelectItem value="Referral Archives">
+                    Referral Archives
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Associated Mother / Patient */}
-            <div className="flex flex-col gap-1.5 min-w-0">
-              <Label htmlFor="doc-patient" className="text-xs font-medium">Associated Mother / Patient</Label>
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <Label htmlFor="doc-patient" className="text-xs font-medium">
+                Associated Mother / Patient
+              </Label>
               <Select value={patientName} onValueChange={setPatientName}>
-                <SelectTrigger id="doc-patient" className="h-9 text-xs w-full min-w-0">
+                <SelectTrigger
+                  id="doc-patient"
+                  className="h-9 w-full min-w-0 text-xs"
+                >
                   <SelectValue placeholder="Select Mother / Patient" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Facility General">Facility General (No specific mother)</SelectItem>
+                  <SelectItem value="Facility General">
+                    Facility General (No specific mother)
+                  </SelectItem>
                   {mothers.map((m: any) => {
                     const userObj = m.user || m
-                    const name = [userObj.first_name, userObj.middle_name, userObj.last_name].filter(Boolean).join(" ") 
-                      || m.name 
-                      || m.full_name 
-                      || "Patient Record"
+                    const name =
+                      [
+                        userObj.first_name,
+                        userObj.middle_name,
+                        userObj.last_name,
+                      ]
+                        .filter(Boolean)
+                        .join(" ") ||
+                      m.name ||
+                      m.full_name ||
+                      "Patient Record"
                     const motherKey = m.mother_id || m.id || m.user_id
                     return (
                       <SelectItem key={motherKey} value={name}>
@@ -260,27 +315,47 @@ export function UploadDocumentModal({
               </Select>
             </div>
 
-            {/* File Dropzone */}
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium">Attachment File (PDF, DOCX, PNG)</Label>
-              <label htmlFor="file-upload" className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-accent/50 transition-colors bg-card">
-                <UploadCloud className="h-6 w-6 text-muted-foreground mb-1" />
+              <Label className="text-xs font-medium">
+                Attachment File (PDF, DOCX, PNG)
+              </Label>
+              <label
+                htmlFor="file-upload"
+                className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-card p-3.5 transition-colors hover:bg-accent/50"
+              >
+                <UploadCloud className="mb-1 h-6 w-6 text-muted-foreground" />
                 <span className="text-xs font-medium text-card-foreground">
                   {file ? file.name : "Click or drag file to upload"}
                 </span>
-                <span className="text-[10px] text-muted-foreground mt-0.5">
-                  {file ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : "Supports PDF, DOCX, CSV up to 25MB"}
+                <span className="mt-0.5 text-[10px] text-muted-foreground">
+                  {file
+                    ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+                    : "Supports PDF, DOCX, CSV up to 25MB"}
                 </span>
-                <input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,.docx,.doc,.csv,.png,.jpg" />
+                <input
+                  id="file-upload"
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileChange}
+                  accept=".pdf,.docx,.doc,.csv,.png,.jpg"
+                />
               </label>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} className="flex-1 h-9 text-xs">
+            <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => handleOpenChange(false)}
+                className="h-9 flex-1 text-xs"
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="flex-1 h-9 text-xs bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="h-9 flex-1 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+              >
                 {isSubmitting ? "Uploading..." : "Save Record"}
               </Button>
             </div>

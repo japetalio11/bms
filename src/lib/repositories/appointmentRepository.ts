@@ -10,7 +10,9 @@ const DEFAULT_APPOINTMENTS: LocalAppointment[] = [
     mother_id: "MOTH-1001",
     user_id: "USR-1001",
     facility_id: "default",
-    appointment_date: new Date(Date.now() + 86400000).toISOString().split("T")[0],
+    appointment_date: new Date(Date.now() + 86400000)
+      .toISOString()
+      .split("T")[0],
     appointment_time: "09:00 AM",
     appointment_type: "Prenatal Checkup",
     status: "Scheduled",
@@ -20,8 +22,8 @@ const DEFAULT_APPOINTMENTS: LocalAppointment[] = [
     user: {
       first_name: "Maria",
       last_name: "Santos",
-      phone_number: "09171234567"
-    }
+      phone_number: "09171234567",
+    },
   },
   {
     id: "APPT-1002",
@@ -29,7 +31,9 @@ const DEFAULT_APPOINTMENTS: LocalAppointment[] = [
     mother_id: "MOTH-1002",
     user_id: "USR-1002",
     facility_id: "default",
-    appointment_date: new Date(Date.now() + 172800000).toISOString().split("T")[0],
+    appointment_date: new Date(Date.now() + 172800000)
+      .toISOString()
+      .split("T")[0],
     appointment_time: "10:30 AM",
     appointment_type: "High-Risk Consultation",
     status: "Scheduled",
@@ -39,8 +43,8 @@ const DEFAULT_APPOINTMENTS: LocalAppointment[] = [
     user: {
       first_name: "Ana",
       last_name: "Reyes",
-      phone_number: "09189876543"
-    }
+      phone_number: "09189876543",
+    },
   },
   {
     id: "APPT-1003",
@@ -48,7 +52,9 @@ const DEFAULT_APPOINTMENTS: LocalAppointment[] = [
     mother_id: "MOTH-1003",
     user_id: "USR-1003",
     facility_id: "default",
-    appointment_date: new Date(Date.now() - 86400000).toISOString().split("T")[0],
+    appointment_date: new Date(Date.now() - 86400000)
+      .toISOString()
+      .split("T")[0],
     appointment_time: "02:00 PM",
     appointment_type: "Postpartum Follow-up",
     status: "Completed",
@@ -58,74 +64,104 @@ const DEFAULT_APPOINTMENTS: LocalAppointment[] = [
     user: {
       first_name: "Elena",
       last_name: "Torres",
-      phone_number: "09195554321"
-    }
-  }
+      phone_number: "09195554321",
+    },
+  },
 ]
 
 export const appointmentRepository = {
-  /**
-   * Retrieves all appointments for a facility or user.
-   * Reads local Dexie DB, then syncs with backend if online.
-   */
-  async getAllFacilityAppointments(facilityId?: string): Promise<LocalAppointment[]> {
+  async getAllFacilityAppointments(
+    facilityId?: string
+  ): Promise<LocalAppointment[]> {
     let localList: LocalAppointment[] = []
     try {
       localList = await db.appointments.toArray()
     } catch (err) {
-      console.warn("[appointmentRepository] Failed to query local Dexie DB:", err)
+      console.warn(
+        "[appointmentRepository] Failed to query local Dexie DB:",
+        err
+      )
     }
 
-    // Sync with backend if online
     if (syncEngine.isNetworkOnline()) {
       try {
-        const endpoint = facilityId ? `/api/v1/appointment/get/facility/${facilityId}` : "/api/v1/appointment/getAll"
+        const endpoint = facilityId
+          ? `/api/v1/appointment/get/facility/${facilityId}`
+          : "/api/v1/appointment/getAll"
         const response = await apiClient.get(endpoint)
         const data = response.data
-        const remoteList = data?.data || data?.result || (Array.isArray(data) ? data : [])
+        const remoteList =
+          data?.data || data?.result || (Array.isArray(data) ? data : [])
 
         if (Array.isArray(remoteList)) {
           const pendingQueue = await syncEngine.getQueue()
-          const pendingTempIds = new Set(pendingQueue.map((m) => m.temp_id).filter(Boolean))
+          const pendingTempIds = new Set(
+            pendingQueue.map((m) => m.temp_id).filter(Boolean)
+          )
 
-          const formattedRemote: LocalAppointment[] = remoteList.map((a: any) => {
-            const canonicalId = a.appointment_id || a._id || a.id
-            return {
-              ...a,
-              id: canonicalId,
-              appointment_id: canonicalId,
-              mother_id: a.mother_id || a.motherId,
-              user_id: a.user_id || a.userId || a.user?.user_id,
-              facility_id: a.facility_id || a.facilityId || a.user?.facility_id || facilityId,
-              appointment_date: a.appointment_date || a.appointmentDate || a.date,
-              appointment_time: a.appointment_time || a.appointmentTime || a.time,
-              appointment_type: a.appointment_type || a.appointmentType || a.type,
-              status: a.status || "Scheduled",
-              sync_status: "synced" as const,
-              updated_at: Date.now(),
+          const formattedRemote: LocalAppointment[] = remoteList.map(
+            (a: any) => {
+              const canonicalId = a.appointment_id || a._id || a.id
+              return {
+                ...a,
+                id: canonicalId,
+                appointment_id: canonicalId,
+                mother_id: a.mother_id || a.motherId,
+                user_id: a.user_id || a.userId || a.user?.user_id,
+                facility_id:
+                  a.facility_id ||
+                  a.facilityId ||
+                  a.user?.facility_id ||
+                  facilityId,
+                appointment_date:
+                  a.appointment_date || a.appointmentDate || a.date,
+                appointment_time:
+                  a.appointment_time || a.appointmentTime || a.time,
+                appointment_type:
+                  a.appointment_type || a.appointmentType || a.type,
+                status: a.status || "Scheduled",
+                sync_status: "synced" as const,
+                updated_at: Date.now(),
+              }
             }
-          })
+          )
 
           const remoteIds = new Set(formattedRemote.map((a) => a.id))
 
-          // Purge stale local appointments that were deleted on server or duplicated
           const toDelete = localList.filter((a) => {
-            const isPendingInOutbox = (a.id && pendingTempIds.has(a.id)) || (a.appointment_id && pendingTempIds.has(a.appointment_id))
+            const isPendingInOutbox =
+              (a.id && pendingTempIds.has(a.id)) ||
+              (a.appointment_id && pendingTempIds.has(a.appointment_id))
             if (isPendingInOutbox) return false
-            return !remoteIds.has(a.id) && (!a.appointment_id || !remoteIds.has(a.appointment_id))
+            return (
+              !remoteIds.has(a.id) &&
+              (!a.appointment_id || !remoteIds.has(a.appointment_id))
+            )
           })
 
           for (const item of toDelete) {
             if (item.id) await db.appointments.delete(item.id).catch(() => {})
-            if (item.appointment_id) await db.appointments.where("appointment_id").equals(item.appointment_id).delete().catch(() => {})
+            if (item.appointment_id)
+              await db.appointments
+                .where("appointment_id")
+                .equals(item.appointment_id)
+                .delete()
+                .catch(() => {})
           }
 
-          const pendingItems = localList.filter((a) => (a.id && pendingTempIds.has(a.id)) || (a.appointment_id && pendingTempIds.has(a.appointment_id)))
+          const pendingItems = localList.filter(
+            (a) =>
+              (a.id && pendingTempIds.has(a.id)) ||
+              (a.appointment_id && pendingTempIds.has(a.appointment_id))
+          )
           await db.appointments.bulkPut([...formattedRemote, ...pendingItems])
           localList = await db.appointments.toArray()
         }
       } catch (err) {
-        console.warn("[appointmentRepository] Remote appointment fetch failed:", err)
+        console.warn(
+          "[appointmentRepository] Remote appointment fetch failed:",
+          err
+        )
       }
     } else {
       if (localList.length === 0) {
@@ -133,14 +169,20 @@ export const appointmentRepository = {
           await db.appointments.bulkPut(DEFAULT_APPOINTMENTS)
           localList = DEFAULT_APPOINTMENTS
         } catch (e) {
-          console.warn("[appointmentRepository] Failed to seed default appointments:", e)
+          console.warn(
+            "[appointmentRepository] Failed to seed default appointments:",
+            e
+          )
         }
       }
     }
 
     if (facilityId) {
       const filtered = localList.filter(
-        (a) => !a.facility_id || a.facility_id === facilityId || a.facilityId === facilityId
+        (a) =>
+          !a.facility_id ||
+          a.facility_id === facilityId ||
+          a.facilityId === facilityId
       )
       return filtered.length > 0 ? filtered : localList
     }
@@ -148,9 +190,6 @@ export const appointmentRepository = {
     return localList
   },
 
-  /**
-   * Creates an appointment offline-first.
-   */
   async createAppointment(payload: any): Promise<LocalAppointment> {
     let userId = payload.user_id || payload.userId || payload.mother_id || ""
 
@@ -158,7 +197,12 @@ export const appointmentRepository = {
       try {
         const allMothers = await db.mothers.toArray()
         const matched = allMothers.find(
-          (m) => m.id === userId || m.temp_id === userId || m._id === userId || m.mother_id === userId || m.user_id === userId
+          (m) =>
+            m.id === userId ||
+            m.temp_id === userId ||
+            m._id === userId ||
+            m.mother_id === userId ||
+            m.user_id === userId
         )
         if (matched) {
           if (!payload.mother_id) {
@@ -175,8 +219,15 @@ export const appointmentRepository = {
 
     if (syncEngine.isNetworkOnline()) {
       try {
-        const response = await apiClient.post("/api/v1/appointment/register", payload)
-        const a = response.data?.data || response.data?.appointment || response.data?.result || response.data
+        const response = await apiClient.post(
+          "/api/v1/appointment/register",
+          payload
+        )
+        const a =
+          response.data?.data ||
+          response.data?.appointment ||
+          response.data?.result ||
+          response.data
         const canonicalId = a?.appointment_id || a?._id || a?.id
 
         if (canonicalId) {
@@ -187,10 +238,23 @@ export const appointmentRepository = {
             appointment_id: canonicalId,
             mother_id: payload.mother_id || payload.motherId || a.mother_id,
             user_id: payload.user_id || payload.userId || a.user_id,
-            facility_id: payload.facility_id || payload.facilityId || a.facility_id,
-            appointment_date: payload.appointment_date || payload.appointmentDate || payload.date || a.appointment_date,
-            appointment_time: payload.appointment_time || payload.appointmentTime || payload.time || a.appointment_time,
-            appointment_type: payload.appointment_type || payload.appointmentType || payload.type || a.appointment_type,
+            facility_id:
+              payload.facility_id || payload.facilityId || a.facility_id,
+            appointment_date:
+              payload.appointment_date ||
+              payload.appointmentDate ||
+              payload.date ||
+              a.appointment_date,
+            appointment_time:
+              payload.appointment_time ||
+              payload.appointmentTime ||
+              payload.time ||
+              a.appointment_time,
+            appointment_type:
+              payload.appointment_type ||
+              payload.appointmentType ||
+              payload.type ||
+              a.appointment_type,
             status: payload.status || a.status || "Scheduled",
             sync_status: "synced",
             updated_at: Date.now(),
@@ -199,7 +263,10 @@ export const appointmentRepository = {
           return syncedAppt
         }
       } catch (err) {
-        console.warn("[appointmentRepository] Online createAppointment failed, falling back to offline outbox:", err)
+        console.warn(
+          "[appointmentRepository] Online createAppointment failed, falling back to offline outbox:",
+          err
+        )
       }
     }
 
@@ -212,9 +279,12 @@ export const appointmentRepository = {
       mother_id: payload.mother_id || payload.motherId,
       user_id: payload.user_id || payload.userId,
       facility_id: payload.facility_id || payload.facilityId,
-      appointment_date: payload.appointment_date || payload.appointmentDate || payload.date,
-      appointment_time: payload.appointment_time || payload.appointmentTime || payload.time,
-      appointment_type: payload.appointment_type || payload.appointmentType || payload.type,
+      appointment_date:
+        payload.appointment_date || payload.appointmentDate || payload.date,
+      appointment_time:
+        payload.appointment_time || payload.appointmentTime || payload.time,
+      appointment_type:
+        payload.appointment_type || payload.appointmentType || payload.type,
       status: payload.status || "Scheduled",
       sync_status: "pending_create",
       updated_at: Date.now(),
@@ -234,16 +304,18 @@ export const appointmentRepository = {
     return newAppointment
   },
 
-  /**
-   * Retrieves appointments for a specific user / mother without fetching entire facility DB.
-   */
-  async getAppointmentsForMother(userId: string, motherId?: string): Promise<LocalAppointment[]> {
+  async getAppointmentsForMother(
+    userId: string,
+    motherId?: string
+  ): Promise<LocalAppointment[]> {
     let localList: LocalAppointment[] = []
     try {
       const all = await db.appointments.toArray()
-      localList = all.filter((a: any) => 
-        a.user_id === userId || a.mother_id === userId || 
-        (motherId && (a.mother_id === motherId || a.user_id === motherId))
+      localList = all.filter(
+        (a: any) =>
+          a.user_id === userId ||
+          a.mother_id === userId ||
+          (motherId && (a.mother_id === motherId || a.user_id === motherId))
       )
     } catch (e) {
       console.warn("[appointmentRepository] Local query failed:", e)
@@ -251,9 +323,12 @@ export const appointmentRepository = {
 
     if (syncEngine.isNetworkOnline() && userId && !userId.startsWith("temp-")) {
       try {
-        const response = await apiClient.get(`/api/v1/appointment/get/user/${userId}`)
+        const response = await apiClient.get(
+          `/api/v1/appointment/get/user/${userId}`
+        )
         const data = response.data
-        const remoteList = data?.data || data?.result || (Array.isArray(data) ? data : [])
+        const remoteList =
+          data?.data || data?.result || (Array.isArray(data) ? data : [])
         if (Array.isArray(remoteList) && remoteList.length > 0) {
           const formatted = remoteList.map((a: any) => {
             const canonicalId = a.appointment_id || a._id || a.id
@@ -270,29 +345,37 @@ export const appointmentRepository = {
           })
           await db.appointments.bulkPut(formatted)
           const all = await db.appointments.toArray()
-          return all.filter((a: any) => 
-            a.user_id === userId || a.mother_id === userId || 
-            (motherId && (a.mother_id === motherId || a.user_id === motherId))
+          return all.filter(
+            (a: any) =>
+              a.user_id === userId ||
+              a.mother_id === userId ||
+              (motherId && (a.mother_id === motherId || a.user_id === motherId))
           )
         }
       } catch (err) {
-        console.warn(`[appointmentRepository] Fetch appointments for user ${userId} failed:`, err)
+        console.warn(
+          `[appointmentRepository] Fetch appointments for user ${userId} failed:`,
+          err
+        )
       }
     }
 
     return localList
   },
 
-  /**
-   * Cancels or updates an appointment offline-first.
-   */
   async cancelAppointment(appointmentId: string, payload?: any) {
-    const local = await db.appointments.get(appointmentId) || 
-                  await db.appointments.where("appointment_id").equals(appointmentId).first()
-    
-    // Guard: Completed appointments cannot be cancelled
-    if (local && (local.status?.toLowerCase() === "completed")) {
-      return { success: false, error: "Completed appointments cannot be cancelled" }
+    const local =
+      (await db.appointments.get(appointmentId)) ||
+      (await db.appointments
+        .where("appointment_id")
+        .equals(appointmentId)
+        .first())
+
+    if (local && local.status?.toLowerCase() === "completed") {
+      return {
+        success: false,
+        error: "Completed appointments cannot be cancelled",
+      }
     }
 
     const targetKey = local?.id || appointmentId
@@ -300,7 +383,10 @@ export const appointmentRepository = {
       await db.appointments.update(targetKey, {
         ...payload,
         status: "Cancelled",
-        sync_status: local.sync_status === "pending_create" ? "pending_create" : "pending_update",
+        sync_status:
+          local.sync_status === "pending_create"
+            ? "pending_create"
+            : "pending_update",
         updated_at: Date.now(),
       })
     }
@@ -317,20 +403,26 @@ export const appointmentRepository = {
     return { success: true }
   },
 
-  /**
-   * Marks an appointment as completed offline-first.
-   */
   async completeAppointment(appointmentId: string, payload?: any) {
-    const local = await db.appointments.get(appointmentId) || 
-                  await db.appointments.where("appointment_id").equals(appointmentId).first()
-    
+    const local =
+      (await db.appointments.get(appointmentId)) ||
+      (await db.appointments
+        .where("appointment_id")
+        .equals(appointmentId)
+        .first())
+
     const targetKey = local?.id || appointmentId
-    await db.appointments.update(targetKey, {
-      ...payload,
-      status: "Completed",
-      sync_status: local?.sync_status === "pending_create" ? "pending_create" : "pending_update",
-      updated_at: Date.now(),
-    }).catch(() => {})
+    await db.appointments
+      .update(targetKey, {
+        ...payload,
+        status: "Completed",
+        sync_status:
+          local?.sync_status === "pending_create"
+            ? "pending_create"
+            : "pending_update",
+        updated_at: Date.now(),
+      })
+      .catch(() => {})
 
     await syncEngine.enqueueMutation({
       entity_type: "appointment",
@@ -344,16 +436,17 @@ export const appointmentRepository = {
     return { success: true }
   },
 
-  /**
-   * Deletes an appointment offline-first.
-   */
   async deleteAppointment(appointmentId: string) {
     if (appointmentId.startsWith("temp-")) {
       await syncEngine.cancelPendingMutation(appointmentId)
     }
 
     await db.appointments.delete(appointmentId).catch(() => {})
-    await db.appointments.where("appointment_id").equals(appointmentId).delete().catch(() => {})
+    await db.appointments
+      .where("appointment_id")
+      .equals(appointmentId)
+      .delete()
+      .catch(() => {})
 
     if (!appointmentId.startsWith("temp-")) {
       if (syncEngine.isNetworkOnline()) {
@@ -361,7 +454,10 @@ export const appointmentRepository = {
           await apiClient.delete(`/api/v1/appointment/delete/${appointmentId}`)
           return { success: true }
         } catch (apiErr) {
-          console.warn("[appointmentRepository] Online deleteAppointment failed, queueing mutation:", apiErr)
+          console.warn(
+            "[appointmentRepository] Online deleteAppointment failed, queueing mutation:",
+            apiErr
+          )
         }
       }
 
@@ -377,4 +473,3 @@ export const appointmentRepository = {
     return { success: true }
   },
 }
-

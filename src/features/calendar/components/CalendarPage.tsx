@@ -4,7 +4,17 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
 import type { Event as RBCEvent } from "react-big-calendar"
 import { Calendar, dateFnsLocalizer } from "react-big-calendar"
-import { format, parse, startOfWeek, getDay, addMonths, subMonths, addWeeks, subWeeks, startOfDay } from "date-fns"
+import {
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  addMonths,
+  subMonths,
+  addWeeks,
+  subWeeks,
+  startOfDay,
+} from "date-fns"
 import { enUS } from "date-fns/locale"
 
 import { CustomToolbar } from "./CustomToolbar"
@@ -34,7 +44,7 @@ const localizer = dateFnsLocalizer({
 
 export interface AppEvent extends RBCEvent {
   id?: string
-  type?: 'appointment' | 'availability'
+  type?: "appointment" | "availability"
   status?: string
   risk?: string
   travelTime?: string
@@ -50,14 +60,16 @@ export function CalendarPage() {
     isMobileRef.current = isMobile
   }, [isMobile])
 
-  const [view, setView] = useState<any>('month')
+  const [view, setView] = useState<any>("month")
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
-  
+
   const [rawAppointments, setRawAppointments] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [selectedTypeFilters, setSelectedTypeFilters] = useState<string[]>([])
-  const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>([])
+  const [selectedStatusFilters, setSelectedStatusFilters] = useState<string[]>(
+    []
+  )
   const [selectedRiskFilters, setSelectedRiskFilters] = useState<string[]>([])
 
   const [mothersMap, setMothersMap] = useState<Map<string, any>>(new Map())
@@ -75,7 +87,13 @@ export function CalendarPage() {
       const map = new Map<string, any>()
       if (Array.isArray(mothers)) {
         mothers.forEach((m: any) => {
-          const keys = [m.id, m._id, m.mother_id, m.user_id, m.user?.user_id].filter(Boolean)
+          const keys = [
+            m.id,
+            m._id,
+            m.mother_id,
+            m.user_id,
+            m.user?.user_id,
+          ].filter(Boolean)
           keys.forEach((k) => map.set(k, m))
         })
       }
@@ -93,12 +111,16 @@ export function CalendarPage() {
     fetchAppointments()
   }, [])
 
-  const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(null)
+  const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(
+    null
+  )
   const [isCancelling, setIsCancelling] = useState(false)
 
   const handleCancelAppointment = (appointmentId: string) => {
-    const appt = rawAppointments.find((a: any) => (a.id === appointmentId || a.appointment_id === appointmentId))
-    if (appt && (appt.status?.toLowerCase() === "completed")) {
+    const appt = rawAppointments.find(
+      (a: any) => a.id === appointmentId || a.appointment_id === appointmentId
+    )
+    if (appt && appt.status?.toLowerCase() === "completed") {
       toast.error("Completed appointments cannot be cancelled.")
       return
     }
@@ -124,27 +146,41 @@ export function CalendarPage() {
     }
   }
 
-  // Swipe gesture handling
-  const [touchStartPos, setTouchStartPos] = useState<{x: number, y: number} | null>(null)
-  const [touchEndPos, setTouchEndPos] = useState<{x: number, y: number} | null>(null)
+  const [touchStartPos, setTouchStartPos] = useState<{
+    x: number
+    y: number
+  } | null>(null)
+  const [touchEndPos, setTouchEndPos] = useState<{
+    x: number
+    y: number
+  } | null>(null)
   const minSwipeDistance = 50
 
   const onTouchStart = (e: React.TouchEvent) => {
     setTouchEndPos(null)
-    setTouchStartPos({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY })
+    setTouchStartPos({
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY,
+    })
   }
 
   const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEndPos({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY })
+    setTouchEndPos({
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY,
+    })
   }
 
   const onTouchEndHandler = () => {
     if (!touchStartPos || !touchEndPos) return
-    
+
     const distanceX = touchStartPos.x - touchEndPos.x
     const distanceY = Math.abs(touchStartPos.y - touchEndPos.y)
-    
-    if (Math.abs(distanceX) > distanceY && Math.abs(distanceX) > minSwipeDistance) {
+
+    if (
+      Math.abs(distanceX) > distanceY &&
+      Math.abs(distanceX) > minSwipeDistance
+    ) {
       const isLeftSwipe = distanceX > minSwipeDistance
       const isRightSwipe = distanceX < -minSwipeDistance
 
@@ -163,21 +199,42 @@ export function CalendarPage() {
   const [viewDate, setViewDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
 
-  // Transform raw appointments to RBC events and apply toolbar filters
   const events: AppEvent[] = useMemo(() => {
     const list: AppEvent[] = rawAppointments.map((item: any) => {
-      const targetKey = item.mother_id || item.user_id || item.motherId || item.userId
+      const targetKey =
+        item.mother_id || item.user_id || item.motherId || item.userId
       const matchedMother = targetKey ? mothersMap.get(targetKey) : null
-      const motherUser = item.user || item.patient?.user || item.patient || matchedMother?.user || matchedMother
+      const motherUser =
+        item.user ||
+        item.patient?.user ||
+        item.patient ||
+        matchedMother?.user ||
+        matchedMother
 
-      const name = [motherUser?.first_name || matchedMother?.first_name, motherUser?.middle_name || matchedMother?.middle_name, motherUser?.last_name || matchedMother?.last_name]
-        .filter(Boolean)
-        .join(" ") || motherUser?.name || matchedMother?.name || "Unknown Mother"
+      const name =
+        [
+          motherUser?.first_name || matchedMother?.first_name,
+          motherUser?.middle_name || matchedMother?.middle_name,
+          motherUser?.last_name || matchedMother?.last_name,
+        ]
+          .filter(Boolean)
+          .join(" ") ||
+        motherUser?.name ||
+        matchedMother?.name ||
+        "Unknown Mother"
 
-      const risk = extractRiskLevel(matchedMother || item, matchedMother?.pregnancies, matchedMother?.prenatalVisits)
+      const risk = extractRiskLevel(
+        matchedMother || item,
+        matchedMother?.pregnancies,
+        matchedMother?.prenatalVisits
+      )
       let status = item.status || "Pending"
       const lowerStatus = status.toLowerCase()
-      if (lowerStatus === "confirmed" || lowerStatus === "active" || lowerStatus === "scheduled") {
+      if (
+        lowerStatus === "confirmed" ||
+        lowerStatus === "active" ||
+        lowerStatus === "scheduled"
+      ) {
         status = "Confirmed"
       } else if (lowerStatus === "completed") {
         status = "Completed"
@@ -213,85 +270,116 @@ export function CalendarPage() {
       return {
         id: item.appointment_id || item.id,
         raw: item,
-        mother_id: item.mother_id || matchedMother?.mother_id || matchedMother?.id || item.user_id,
+        mother_id:
+          item.mother_id ||
+          matchedMother?.mother_id ||
+          matchedMother?.id ||
+          item.user_id,
         user_id: item.user_id || matchedMother?.user_id,
-        pregnancy_id: item.pregnancy_id || (matchedMother?.pregnancies?.[0]?.pregnancy_id || matchedMother?.pregnancies?.[0]?.id),
+        pregnancy_id:
+          item.pregnancy_id ||
+          matchedMother?.pregnancies?.[0]?.pregnancy_id ||
+          matchedMother?.pregnancies?.[0]?.id,
         mother: matchedMother,
-        title: `${item.appointment_type || 'Prenatal Checkup'} - ${name}`,
+        title: `${item.appointment_type || "Prenatal Checkup"} - ${name}`,
         start: startDate,
         end: endDate,
         allDay: false,
-        type: 'appointment' as const,
+        type: "appointment" as const,
         motherName: name,
         name,
         risk,
         status,
-        date: `${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} - ${item.appointment_time || "08:00 AM"}`
+        date: `${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} - ${item.appointment_time || "08:00 AM"}`,
       }
     })
 
     return list.filter((ev) => {
       if (selectedTypeFilters.length > 0) {
-        const match = selectedTypeFilters.some(t => String(ev.title || '').toLowerCase().includes(t.toLowerCase()))
+        const match = selectedTypeFilters.some((t) =>
+          String(ev.title || "")
+            .toLowerCase()
+            .includes(t.toLowerCase())
+        )
         if (!match) return false
       }
       if (selectedStatusFilters.length > 0) {
-        const match = selectedStatusFilters.some(s => String(ev.status || '').toLowerCase().includes(s.toLowerCase()))
+        const match = selectedStatusFilters.some((s) =>
+          String(ev.status || "")
+            .toLowerCase()
+            .includes(s.toLowerCase())
+        )
         if (!match) return false
       }
       if (selectedRiskFilters.length > 0) {
-        const match = selectedRiskFilters.some(r => String(ev.risk || '').toLowerCase().includes(r.toLowerCase()))
+        const match = selectedRiskFilters.some((r) =>
+          String(ev.risk || "")
+            .toLowerCase()
+            .includes(r.toLowerCase())
+        )
         if (!match) return false
       }
       return true
     })
-  }, [rawAppointments, selectedTypeFilters, selectedStatusFilters, selectedRiskFilters])
+  }, [
+    rawAppointments,
+    selectedTypeFilters,
+    selectedStatusFilters,
+    selectedRiskFilters,
+  ])
 
-  const dayPropGetter = React.useCallback((currentDay: Date) => {
-    if (currentDay.getDate() === selectedDate.getDate() && currentDay.getMonth() === selectedDate.getMonth() && currentDay.getFullYear() === selectedDate.getFullYear()) {
-      return {
-        className: 'bg-white/5 dark:bg-white/10 transition-colors',
+  const dayPropGetter = React.useCallback(
+    (currentDay: Date) => {
+      if (
+        currentDay.getDate() === selectedDate.getDate() &&
+        currentDay.getMonth() === selectedDate.getMonth() &&
+        currentDay.getFullYear() === selectedDate.getFullYear()
+      ) {
+        return {
+          className: "bg-white/5 dark:bg-white/10 transition-colors",
+        }
       }
-    }
-    return {}
-  }, [selectedDate])
+      return {}
+    },
+    [selectedDate]
+  )
 
   const CustomDateCellWrapper = ({ children, value }: any) => {
     return React.cloneElement(React.Children.only(children), {
-      style: { ...children.props.style, position: 'relative' },
+      style: { ...children.props.style, position: "relative" },
       onClick: (e: any) => {
-        if (children.props.onClick) children.props.onClick(e);
+        if (children.props.onClick) children.props.onClick(e)
         if (isMobile) {
-          handleSelectSlot({ start: value });
+          handleSelectSlot({ start: value })
         }
       },
     })
   }
 
   const formats = {
-    dateFormat: 'd',
-    weekdayFormat: 'EEE',
+    dateFormat: "d",
+    weekdayFormat: "EEE",
   }
 
-  const handleNavigate = (action: 'PREV' | 'NEXT' | 'TODAY' | Date) => {
+  const handleNavigate = (action: "PREV" | "NEXT" | "TODAY" | Date) => {
     if (action instanceof Date) {
       setViewDate(action)
       return
     }
 
-    if (action === 'TODAY') {
+    if (action === "TODAY") {
       const today = startOfDay(new Date())
       setViewDate(today)
       setSelectedDate(today)
       return
     }
 
-    if (view === 'month') {
-      if (action === 'PREV') setViewDate(prev => subMonths(prev, 1))
-      if (action === 'NEXT') setViewDate(prev => addMonths(prev, 1))
-    } else if (view === 'week') {
-      if (action === 'PREV') setViewDate(prev => subWeeks(prev, 1))
-      if (action === 'NEXT') setViewDate(prev => addWeeks(prev, 1))
+    if (view === "month") {
+      if (action === "PREV") setViewDate((prev) => subMonths(prev, 1))
+      if (action === "NEXT") setViewDate((prev) => addMonths(prev, 1))
+    } else if (view === "week") {
+      if (action === "PREV") setViewDate((prev) => subWeeks(prev, 1))
+      if (action === "NEXT") setViewDate((prev) => addWeeks(prev, 1))
     }
   }
 
@@ -309,22 +397,24 @@ export function CalendarPage() {
   }
 
   const selectedDateEvents = useMemo(() => {
-    return events.filter(e => e.start && selectedDate &&
-      e.start.getDate() === selectedDate.getDate() &&
-      e.start.getMonth() === selectedDate.getMonth() &&
-      e.start.getFullYear() === selectedDate.getFullYear()
+    return events.filter(
+      (e) =>
+        e.start &&
+        selectedDate &&
+        e.start.getDate() === selectedDate.getDate() &&
+        e.start.getMonth() === selectedDate.getMonth() &&
+        e.start.getFullYear() === selectedDate.getFullYear()
     )
   }, [events, selectedDate])
 
   return (
-    <div 
-      className="flex flex-col h-full bg-background p-4 text-foreground relative min-h-0 w-full overflow-hidden"
+    <div
+      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-background p-4 text-foreground"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEndHandler}
     >
-      {/* Extracted Toolbar */}
-      <div className="shrink-0 mb-4 z-10">
+      <div className="z-10 mb-4 shrink-0">
         <CustomToolbar
           date={viewDate}
           view={view}
@@ -342,12 +432,15 @@ export function CalendarPage() {
         />
       </div>
 
-      <div className={`flex-1 w-full bg-transparent relative overflow-hidden ${isMobile ? 'flex flex-col' : ''}`}>
+      <div
+        className={`relative w-full flex-1 overflow-hidden bg-transparent ${isMobile ? "flex flex-col" : ""}`}
+      >
         <div
-          className={`absolute inset-0 transition-all duration-300 ease-in-out ${view === 'month'
-            ? 'opacity-100 translate-x-0 pointer-events-auto z-10'
-            : 'opacity-0 -translate-x-4 pointer-events-none z-0'
-            }`}
+          className={`absolute inset-0 transition-all duration-300 ease-in-out ${
+            view === "month"
+              ? "pointer-events-auto z-10 translate-x-0 opacity-100"
+              : "pointer-events-none z-0 -translate-x-4 opacity-0"
+          }`}
         >
           <Calendar
             localizer={localizer}
@@ -355,7 +448,7 @@ export function CalendarPage() {
             startAccessor="start"
             endAccessor="end"
             view="month"
-            onView={() => { }}
+            onView={() => {}}
             date={viewDate}
             onNavigate={handleNavigate}
             selectable
@@ -364,22 +457,25 @@ export function CalendarPage() {
             onSelectEvent={handleSelectEvent}
             titleAccessor={(event: AppEvent) => String(event.title || "")}
             dayPropGetter={dayPropGetter}
-            components={{
-              toolbar: () => null,
-              event: (isMobile ? () => null : CustomEvent) as any,
-              dateCellWrapper: CustomDateCellWrapper,
-            } as any}
+            components={
+              {
+                toolbar: () => null,
+                event: (isMobile ? () => null : CustomEvent) as any,
+                dateCellWrapper: CustomDateCellWrapper,
+              } as any
+            }
             tooltipAccessor={(() => "") as any}
             formats={formats}
-            className="w-full h-full custom-calendar"
+            className="custom-calendar h-full w-full"
           />
         </div>
 
         <div
-          className={`absolute inset-0 transition-all duration-300 ease-in-out flex flex-col ${view === 'week'
-            ? 'opacity-100 translate-x-0 pointer-events-auto z-10'
-            : 'opacity-0 translate-x-4 pointer-events-none z-0'
-            }`}
+          className={`absolute inset-0 flex flex-col transition-all duration-300 ease-in-out ${
+            view === "week"
+              ? "pointer-events-auto z-10 translate-x-0 opacity-100"
+              : "pointer-events-none z-0 translate-x-4 opacity-0"
+          }`}
         >
           <WeeklyScheduleView
             viewDate={viewDate}
@@ -392,17 +488,22 @@ export function CalendarPage() {
         </div>
       </div>
 
-      {/* Mobile Selected Date Events (Bottom Section) */}
-      {isMobile && view === 'month' && (
-        <div className="shrink-0 mt-4 border-t border-sidebar-border pt-4 pb-28">
-          <h3 className="text-sm font-semibold mb-3">Events on {format(selectedDate, 'MMM d, yyyy')}</h3>
-          <div className="flex flex-col gap-2 min-h-[60px] max-h-[180px] overflow-y-auto no-scrollbar pr-1">
+      {isMobile && view === "month" && (
+        <div className="mt-4 shrink-0 border-t border-sidebar-border pt-4 pb-28">
+          <h3 className="mb-3 text-sm font-semibold">
+            Events on {format(selectedDate, "MMM d, yyyy")}
+          </h3>
+          <div className="no-scrollbar flex max-h-[180px] min-h-[60px] flex-col gap-2 overflow-y-auto pr-1">
             {selectedDateEvents.length > 0 ? (
-              selectedDateEvents.map(event => (
-                <CustomEvent key={event.id} event={event} onClick={handleSelectEvent} />
+              selectedDateEvents.map((event) => (
+                <CustomEvent
+                  key={event.id}
+                  event={event}
+                  onClick={handleSelectEvent}
+                />
               ))
             ) : (
-              <div className="text-sm text-muted-foreground italic flex items-center justify-center h-full">
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground italic">
                 No events on this day
               </div>
             )}
@@ -410,55 +511,74 @@ export function CalendarPage() {
         </div>
       )}
 
-      <CreateAppointmentModal 
-        open={isCreateModalOpen} 
+      <CreateAppointmentModal
+        open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onSuccess={fetchAppointments}
       />
 
-      {/* Desktop Floating Sidepeek Overlay */}
       {!isMobile && (
         <>
           {selectedAppointment && (
-            <div 
-              className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40 transition-opacity"
+            <div
+              className="fixed inset-0 z-40 bg-black/20 transition-opacity dark:bg-black/40"
               onClick={() => setSelectedAppointment(null)}
             />
           )}
           <div
-            className={`fixed top-0 right-0 h-screen w-[100%] sm:w-[400px] z-50 transition-transform duration-300 ease-in-out shadow-2xl ${selectedAppointment ? 'translate-x-0' : 'translate-x-full'}`}
+            className={`fixed top-0 right-0 z-50 h-screen w-[100%] shadow-2xl transition-transform duration-300 ease-in-out sm:w-[400px] ${selectedAppointment ? "translate-x-0" : "translate-x-full"}`}
           >
             <AppointmentSidepeek
               appointment={selectedAppointment}
               onClose={() => setSelectedAppointment(null)}
               onCancelAppointment={handleCancelAppointment}
               onStatusChange={(id, newStatus, newRisk) => {
-                setRawAppointments(prev => prev.map(a => {
-                  const targetId = a.appointment_id || a.id
-                  if (targetId === id) {
-                    return { 
-                      ...a, 
-                      status: newStatus,
-                      ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                setRawAppointments((prev) =>
+                  prev.map((a) => {
+                    const targetId = a.appointment_id || a.id
+                    if (targetId === id) {
+                      return {
+                        ...a,
+                        status: newStatus,
+                        ...(newRisk
+                          ? {
+                              risk: newRisk,
+                              risk_level: newRisk,
+                              risk_flag: newRisk,
+                            }
+                          : {}),
+                      }
                     }
-                  }
-                  return a
-                }))
-                setSelectedAppointment((prev: any) => prev ? { 
-                  ...prev, 
-                  status: newStatus,
-                  ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
-                } : null)
+                    return a
+                  })
+                )
+                setSelectedAppointment((prev: any) =>
+                  prev
+                    ? {
+                        ...prev,
+                        status: newStatus,
+                        ...(newRisk
+                          ? {
+                              risk: newRisk,
+                              risk_level: newRisk,
+                              risk_flag: newRisk,
+                            }
+                          : {}),
+                      }
+                    : null
+                )
               }}
             />
           </div>
         </>
       )}
 
-      {/* Mobile Sidepeek Drawer */}
       {isMobile && (
-        <Drawer open={!!selectedAppointment} onOpenChange={(open) => !open && setSelectedAppointment(null)}>
-          <DrawerContent className="p-0 bg-card text-card-foreground border-t border-border border-x-0 border-b-0 before:hidden rounded-t-xl overflow-hidden !h-[80dvh] flex flex-col focus-visible:outline-none">
+        <Drawer
+          open={!!selectedAppointment}
+          onOpenChange={(open) => !open && setSelectedAppointment(null)}
+        >
+          <DrawerContent className="flex !h-[80dvh] flex-col overflow-hidden rounded-t-xl border-x-0 border-t border-b-0 border-border bg-card p-0 text-card-foreground before:hidden focus-visible:outline-none">
             <div className="sr-only">
               <DrawerTitle>Appointment Details</DrawerTitle>
             </div>
@@ -467,22 +587,40 @@ export function CalendarPage() {
               onClose={() => setSelectedAppointment(null)}
               onCancelAppointment={handleCancelAppointment}
               onStatusChange={(id, newStatus, newRisk) => {
-                setRawAppointments(prev => prev.map(a => {
-                  const targetId = a.appointment_id || a.id
-                  if (targetId === id) {
-                    return { 
-                      ...a, 
-                      status: newStatus,
-                      ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                setRawAppointments((prev) =>
+                  prev.map((a) => {
+                    const targetId = a.appointment_id || a.id
+                    if (targetId === id) {
+                      return {
+                        ...a,
+                        status: newStatus,
+                        ...(newRisk
+                          ? {
+                              risk: newRisk,
+                              risk_level: newRisk,
+                              risk_flag: newRisk,
+                            }
+                          : {}),
+                      }
                     }
-                  }
-                  return a
-                }))
-                setSelectedAppointment((prev: any) => prev ? { 
-                  ...prev, 
-                  status: newStatus,
-                  ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
-                } : null)
+                    return a
+                  })
+                )
+                setSelectedAppointment((prev: any) =>
+                  prev
+                    ? {
+                        ...prev,
+                        status: newStatus,
+                        ...(newRisk
+                          ? {
+                              risk: newRisk,
+                              risk_level: newRisk,
+                              risk_flag: newRisk,
+                            }
+                          : {}),
+                      }
+                    : null
+                )
               }}
             />
           </DrawerContent>
@@ -501,4 +639,3 @@ export function CalendarPage() {
     </div>
   )
 }
-

@@ -29,27 +29,40 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
 
   const [activeTab, setActiveTab] = useState("pregnancy")
 
-  // Modals state
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [avatarModalOpen, setAvatarModalOpen] = useState(false)
   const [logVitalsModalOpen, setLogVitalsModalOpen] = useState(false)
-  const [registerPregnancyModalOpen, setRegisterPregnancyModalOpen] = useState(false)
+  const [registerPregnancyModalOpen, setRegisterPregnancyModalOpen] =
+    useState(false)
   const [appointmentModalOpen, setAppointmentModalOpen] = useState(false)
   const [labModalOpen, setLabModalOpen] = useState(false)
   const [supplementModalOpen, setSupplementModalOpen] = useState(false)
 
-  // Side sheet state
   const [sideSheetOpen, setSideSheetOpen] = useState(false)
-  const [sideSheetType, setSideSheetType] = useState<"pregnancy" | "visitation" | "appointment" | "laboratory" | "prescription" | null>(null)
+  const [sideSheetType, setSideSheetType] = useState<
+    | "pregnancy"
+    | "visitation"
+    | "appointment"
+    | "laboratory"
+    | "prescription"
+    | null
+  >(null)
   const [selectedRecord, setSelectedRecord] = useState<any>(null)
 
-  const openSideSheet = (type: "pregnancy" | "visitation" | "appointment" | "laboratory" | "prescription", record: any) => {
+  const openSideSheet = (
+    type:
+      | "pregnancy"
+      | "visitation"
+      | "appointment"
+      | "laboratory"
+      | "prescription",
+    record: any
+  ) => {
     setSideSheetType(type)
     setSelectedRecord(record)
     setSideSheetOpen(true)
   }
 
-  // Reactive SWR hook (<10ms local Dexie cache + background composite sync)
   const {
     mother,
     pregnancies,
@@ -62,17 +75,19 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
     refresh,
   } = useMotherProfile(targetId)
 
-  // Redirect if temporary ID has reconciled to a permanent canonical ID
   useEffect(() => {
     if (mother) {
       const canonicalId = mother.mother_id || mother._id || mother.id
-      if (canonicalId && canonicalId !== targetId && targetId?.startsWith("temp-")) {
+      if (
+        canonicalId &&
+        canonicalId !== targetId &&
+        targetId?.startsWith("temp-")
+      ) {
         navigate(`/dashboard/mothers/${canonicalId}`, { replace: true })
       }
     }
   }, [mother, targetId, navigate])
 
-  // Listen for background sync temp-id reconciliations
   useEffect(() => {
     const handleReconciled = (e: any) => {
       const { tempId, canonicalId } = e.detail || {}
@@ -84,24 +99,47 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
     }
 
     window.addEventListener("bms:temp-id-reconciled", handleReconciled)
-    return () => window.removeEventListener("bms:temp-id-reconciled", handleReconciled)
+    return () =>
+      window.removeEventListener("bms:temp-id-reconciled", handleReconciled)
   }, [targetId, navigate, refresh])
 
-  // Compute composite data for legacy modal compatibility
   const fullMotherData = useMemo(() => {
     if (!mother) return null
     return {
       ...mother,
-      mother_id: mother.mother_id || mother.user_id || mother._id || mother.id || targetId,
-      _id: mother.mother_id || mother.user_id || mother._id || mother.id || targetId,
-      id: mother.mother_id || mother.user_id || mother._id || mother.id || targetId,
+      mother_id:
+        mother.mother_id ||
+        mother.user_id ||
+        mother._id ||
+        mother.id ||
+        targetId,
+      _id:
+        mother.mother_id ||
+        mother.user_id ||
+        mother._id ||
+        mother.id ||
+        targetId,
+      id:
+        mother.mother_id ||
+        mother.user_id ||
+        mother._id ||
+        mother.id ||
+        targetId,
       pregnancies,
       prenatalVisits,
       appointments,
       labRecords,
       supplementationRecords: supplements,
     }
-  }, [mother, pregnancies, prenatalVisits, appointments, labRecords, supplements, targetId])
+  }, [
+    mother,
+    pregnancies,
+    prenatalVisits,
+    appointments,
+    labRecords,
+    supplements,
+    targetId,
+  ])
 
   const motherName = useMemo(() => {
     if (!mother) return "Mother Profile"
@@ -110,7 +148,11 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
         mother.user?.first_name || mother.first_name,
         mother.user?.middle_name || mother.middle_name,
         mother.user?.last_name || mother.last_name,
-      ].filter(Boolean).join(" ") || mother.name || "Mother Profile"
+      ]
+        .filter(Boolean)
+        .join(" ") ||
+      mother.name ||
+      "Mother Profile"
     )
   }, [mother])
 
@@ -118,12 +160,12 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
     return extractRiskLevel(mother, pregnancies, prenatalVisits)
   }, [mother, pregnancies, prenatalVisits])
 
-  const tabTriggerClass = "text-xs font-medium data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground rounded-md px-3 py-1 h-full transition-all"
+  const tabTriggerClass =
+    "text-xs font-medium data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground rounded-md px-3 py-1 h-full transition-all"
 
-  // Only block the UI if Dexie has zero cached data and initial sync is running
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center w-full h-full p-8 text-xs text-muted-foreground bg-background gap-3">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-background p-8 text-xs text-muted-foreground">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
         <span>Loading mother profile...</span>
       </div>
@@ -131,33 +173,28 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
   }
 
   return (
-    <div className="relative flex items-start w-full h-full overflow-hidden bg-background">
-      {/* Main Content Area */}
-      <div className="flex flex-col w-full h-full text-foreground min-w-0 overflow-y-auto relative">
-        {/* Scrollable Content */}
-        <div className="flex flex-col gap-4 p-4 pl-3 pr-4 pb-24 md:pb-4">
-          
-          {/* Top Bar with Back Button & Sync Indicator */}
-          <div className="flex items-center justify-between -mb-2">
+    <div className="relative flex h-full w-full items-start overflow-hidden bg-background">
+      <div className="relative flex h-full w-full min-w-0 flex-col overflow-y-auto text-foreground">
+        <div className="flex flex-col gap-4 p-4 pr-4 pb-24 pl-3 md:pb-4">
+          <div className="-mb-2 flex items-center justify-between">
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-2 text-xs font-medium text-muted-foreground hover:text-foreground gap-1 -ml-2"
-              onClick={() => navigate('/dashboard/mothers')}
+              className="-ml-2 h-8 gap-1 px-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+              onClick={() => navigate("/dashboard/mothers")}
             >
               <ChevronLeft className="h-4 w-4" />
               Back to Masterlist
             </Button>
 
             {isSyncing && (
-              <div className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-muted-foreground bg-muted/50 rounded-md">
+              <div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin text-primary" />
                 <span>Updating profile...</span>
               </div>
             )}
           </div>
 
-          {/* Section A: Profile Header */}
           <ProfileHeader
             motherData={fullMotherData}
             pregnancies={pregnancies}
@@ -167,20 +204,32 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
             onAvatarClick={() => setAvatarModalOpen(true)}
           />
 
-          {/* Tabs Navigation */}
-          <div className="sticky top-0 z-10 w-full overflow-x-auto shrink-0 pb-2 -mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] bg-background pt-2">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-max">
-              <TabsList className="bg-muted border border-border h-9 w-full md:w-max justify-start rounded-lg p-1 gap-1 *:flex-1 md:*:flex-initial">
-                <TabsTrigger value="pregnancy" className={tabTriggerClass}>Pregnancy</TabsTrigger>
-                <TabsTrigger value="encounters" className={tabTriggerClass}>Visitation</TabsTrigger>
-                <TabsTrigger value="appointments" className={tabTriggerClass}>Appointments</TabsTrigger>
-                <TabsTrigger value="laboratory" className={tabTriggerClass}>Laboratory Records</TabsTrigger>
-                <TabsTrigger value="prescriptions" className={tabTriggerClass}>Prescriptions & Supplements</TabsTrigger>
+          <div className="sticky top-0 z-10 -mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto bg-background pt-2 pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full md:w-max"
+            >
+              <TabsList className="h-9 w-full justify-start gap-1 rounded-lg border border-border bg-muted p-1 *:flex-1 md:w-max md:*:flex-initial">
+                <TabsTrigger value="pregnancy" className={tabTriggerClass}>
+                  Pregnancy
+                </TabsTrigger>
+                <TabsTrigger value="encounters" className={tabTriggerClass}>
+                  Visitation
+                </TabsTrigger>
+                <TabsTrigger value="appointments" className={tabTriggerClass}>
+                  Appointments
+                </TabsTrigger>
+                <TabsTrigger value="laboratory" className={tabTriggerClass}>
+                  Laboratory Records
+                </TabsTrigger>
+                <TabsTrigger value="prescriptions" className={tabTriggerClass}>
+                  Prescriptions & Supplements
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
 
-          {/* Section B: Tabbed Content */}
           <div className="w-full">
             {activeTab === "pregnancy" && (
               <PregnancyTab
@@ -241,7 +290,6 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
         </div>
       </div>
 
-      {/* Modals & Sheets */}
       <EditMotherModal
         open={editModalOpen}
         onOpenChange={setEditModalOpen}

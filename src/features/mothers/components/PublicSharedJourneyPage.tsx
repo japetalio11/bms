@@ -42,12 +42,18 @@ import {
   FileCheck,
   Info,
   Layers,
-  ChevronDown
+  ChevronDown,
 } from "lucide-react"
 import { extractRiskLevel } from "@/lib/riskUtils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -153,7 +159,6 @@ export function PublicSharedJourneyPage() {
   const [generalError, setGeneralError] = useState("")
   const [activeTab, setActiveTab] = useState("overview")
 
-  // Modal / Lightbox state for Lab documents & Ultrasound scans
   const [selectedMediaUrl, setSelectedMediaUrl] = useState<string | null>(null)
   const [selectedMediaTitle, setSelectedMediaTitle] = useState<string>("")
   const [copyNotice, setCopyNotice] = useState("")
@@ -165,8 +170,12 @@ export function PublicSharedJourneyPage() {
     setGeneralError("")
 
     const pinParam = pinToUse !== undefined ? pinToUse : enteredPin
-    console.log(`[SharedJourney] 🔍 Fetching shared journey: token=${token}, pin=${pinParam || "(none)"}`)
-    console.log(`[SharedJourney] 🌐 Endpoint target: ${apiClient.defaults.baseURL}/api/v1/mother/shared/${token}`)
+    console.log(
+      `[SharedJourney] 🔍 Fetching shared journey: token=${token}, pin=${pinParam || "(none)"}`
+    )
+    console.log(
+      `[SharedJourney] 🌐 Endpoint target: ${apiClient.defaults.baseURL}/api/v1/mother/shared/${token}`
+    )
 
     try {
       const res = await apiClient.get(`/api/v1/mother/shared/${token}`, {
@@ -178,11 +187,15 @@ export function PublicSharedJourneyPage() {
       setData(result)
 
       if (result.isPinRequired && !result.isPinVerified && pinParam) {
-        const errMsg = result.pinError || "Invalid 6-digit security PIN. Please request the current code from the mother."
+        const errMsg =
+          result.pinError ||
+          "Invalid 6-digit security PIN. Please request the current code from the mother."
         console.warn(`[SharedJourney] ⚠️ PIN verification rejected: ${errMsg}`)
         setPinError(errMsg)
       } else if (result.isPinVerified) {
-        console.log(`[SharedJourney] 🎉 PIN Verified! Patient: ${result.patient?.name}`)
+        console.log(
+          `[SharedJourney] 🎉 PIN Verified! Patient: ${result.patient?.name}`
+        )
       }
     } catch (err: any) {
       console.error("[SharedJourney] ❌ Request failed:", {
@@ -201,9 +214,15 @@ export function PublicSharedJourneyPage() {
       }
 
       if (err.response?.status === 404) {
-        setGeneralError("This pregnancy record link is invalid, deactivated, or has expired.")
+        setGeneralError(
+          "This pregnancy record link is invalid, deactivated, or has expired."
+        )
       } else {
-        const msg = err.response?.data?.error || err.response?.data?.message || err.message || "Failed to load shared pregnancy record. Please check connection."
+        const msg =
+          err.response?.data?.error ||
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to load shared pregnancy record. Please check connection."
         setPinError(msg)
       }
     } finally {
@@ -222,14 +241,14 @@ export function PublicSharedJourneyPage() {
     console.log(`[SharedJourney] 🚀 PIN submit triggered: "${cleanPin}"`)
 
     if (!cleanPin || cleanPin.length !== 6) {
-      setPinError("Please enter the complete 6-digit PIN code displayed on the mother's screen.")
+      setPinError(
+        "Please enter the complete 6-digit PIN code displayed on the mother's screen."
+      )
       return
     }
 
-    // First fetch the verified data
     await fetchSharedJourney(cleanPin)
 
-    // Update query params without triggering full history push
     try {
       setSearchParams({ pin: cleanPin }, { replace: true })
     } catch (e) {}
@@ -245,7 +264,6 @@ export function PublicSharedJourneyPage() {
     setTheme(theme === "dark" ? "light" : "dark")
   }
 
-  // Derived metrics
   const patient = data?.patient
   const currentPregnancy = data?.current_pregnancy
   const latestVitals = currentPregnancy?.latest_vitals
@@ -255,29 +273,34 @@ export function PublicSharedJourneyPage() {
   const deliveryOutcomes = data?.delivery_outcomes || []
   const allPregnancies = data?.all_pregnancies || []
 
-  // Resolve Clinical Risk Level
   const resolvedRiskLevel = useMemo(() => {
     if (!patient) return "Low Risk"
-    const risk = extractRiskLevel(
-      patient,
-      allPregnancies,
-      prenatalVisits
-    ) || latestVitals?.risk_level || "Low Risk"
+    const risk =
+      extractRiskLevel(patient, allPregnancies, prenatalVisits) ||
+      latestVitals?.risk_level ||
+      "Low Risk"
     return risk
   }, [patient, allPregnancies, prenatalVisits, latestVitals])
 
   const riskLower = (resolvedRiskLevel || "").toLowerCase()
   const isHighRisk = riskLower.includes("high")
-  const isMediumRisk = riskLower.includes("med") || riskLower.includes("moderate")
+  const isMediumRisk =
+    riskLower.includes("med") || riskLower.includes("moderate")
 
   const riskBadgeClass = isHighRisk
     ? "bg-red-500/10 text-red-500 border border-red-500/20"
     : isMediumRisk
-    ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-    : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+      ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+      : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
 
-  const gestationalWeeks = currentPregnancy?.gestational_age_weeks || latestVitals?.gestational_age_weeks || 0
-  const progressPercent = Math.min(100, Math.max(0, Math.round((gestationalWeeks / 40) * 100)))
+  const gestationalWeeks =
+    currentPregnancy?.gestational_age_weeks ||
+    latestVitals?.gestational_age_weeks ||
+    0
+  const progressPercent = Math.min(
+    100,
+    Math.max(0, Math.round((gestationalWeeks / 40) * 100))
+  )
 
   const getTrimester = (weeks: number) => {
     if (weeks === 0) return "Pre-natal"
@@ -291,43 +314,60 @@ export function PublicSharedJourneyPage() {
     setSelectedMediaTitle(title)
   }
 
-  // 1. PIN GATE VIEW (When not yet verified)
   if (data?.isPinRequired && !data.isPinVerified) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4 relative selection:bg-primary/20">
+      <div className="relative flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground selection:bg-primary/20">
         <div className="absolute top-4 right-4 flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full">
-            {theme === "dark" ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-700" />}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="rounded-full"
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4 text-amber-400" />
+            ) : (
+              <Moon className="h-4 w-4 text-slate-700" />
+            )}
           </Button>
         </div>
 
-        <Card className="w-full max-w-md shadow-2xl border-border bg-card">
-          <CardHeader className="text-center pb-2">
-            <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
-              <Lock className="h-7 w-7 text-primary animate-pulse" />
+        <Card className="w-full max-w-md border-border bg-card shadow-2xl">
+          <CardHeader className="pb-2 text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+              <Lock className="h-7 w-7 animate-pulse text-primary" />
             </div>
-            <CardTitle className="text-xl font-bold text-foreground">Secure Medical Record</CardTitle>
-            <CardDescription className="text-muted-foreground text-xs">
-              This patient pregnancy journey and electronic health record is encrypted and PIN protected.
+            <CardTitle className="text-xl font-bold text-foreground">
+              Secure Medical Record
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              This patient pregnancy journey and electronic health record is
+              encrypted and PIN protected.
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-4 space-y-4">
+          <CardContent className="space-y-4 pt-4">
             {data.patient_preview && (
-              <div className="p-3.5 rounded-xl bg-muted/60 border border-border text-xs space-y-1.5">
-                <div className="flex justify-between items-center">
+              <div className="space-y-1.5 rounded-xl border border-border bg-muted/60 p-3.5 text-xs">
+                <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Patient:</span>
-                  <span className="font-semibold text-foreground">{data.patient_preview.initials}</span>
+                  <span className="font-semibold text-foreground">
+                    {data.patient_preview.initials}
+                  </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Facility of Record:</span>
-                  <span className="font-semibold text-foreground">{data.patient_preview.facility_name}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">
+                    Facility of Record:
+                  </span>
+                  <span className="font-semibold text-foreground">
+                    {data.patient_preview.facility_name}
+                  </span>
                 </div>
               </div>
             )}
 
             <form onSubmit={handlePinSubmit} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-foreground block mb-1.5 text-center">
+                <label className="mb-1.5 block text-center text-xs font-semibold text-foreground">
                   Enter 6-Digit Access PIN
                 </label>
                 <Input
@@ -340,21 +380,26 @@ export function PublicSharedJourneyPage() {
                     setEnteredPin(e.target.value.replace(/\D/g, ""))
                     if (pinError) setPinError("")
                   }}
-                  className="text-center font-mono text-2xl tracking-[0.35em] h-12 bg-background"
+                  className="h-12 bg-background text-center font-mono text-2xl tracking-[0.35em]"
                   autoFocus
                 />
-                <p className="text-[11px] text-muted-foreground text-center mt-1.5">
-                  Ask the mother to read or show the 6-digit code on her mobile app profile.
+                <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
+                  Ask the mother to read or show the 6-digit code on her mobile
+                  app profile.
                 </p>
                 {pinError && (
-                  <p className="text-xs text-red-500 mt-2 font-medium flex items-center justify-center gap-1">
+                  <p className="mt-2 flex items-center justify-center gap-1 text-xs font-medium text-red-500">
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                     {pinError}
                   </p>
                 )}
               </div>
 
-              <Button type="submit" disabled={loading || enteredPin.length !== 6} className="w-full h-10 font-semibold gap-2 shadow-sm">
+              <Button
+                type="submit"
+                disabled={loading || enteredPin.length !== 6}
+                className="h-10 w-full gap-2 font-semibold shadow-sm"
+              >
                 {loading ? "Verifying PIN..." : "Unlock Medical Journey"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -365,108 +410,138 @@ export function PublicSharedJourneyPage() {
     )
   }
 
-  // 2. ERROR STATE VIEW
   if (generalError) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
-        <Card className="w-full max-w-md text-center p-6 shadow-xl border-red-500/20 bg-card">
-          <div className="mx-auto w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground">
+        <Card className="w-full max-w-md border-red-500/20 bg-card p-6 text-center shadow-xl">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
             <ShieldAlert className="h-6 w-6 text-red-500" />
           </div>
-          <CardTitle className="text-xl mb-2 text-foreground">Record Unavailable</CardTitle>
-          <CardDescription className="text-muted-foreground mb-6 text-xs">
+          <CardTitle className="mb-2 text-xl text-foreground">
+            Record Unavailable
+          </CardTitle>
+          <CardDescription className="mb-6 text-xs text-muted-foreground">
             {generalError}
           </CardDescription>
           <Link to="/">
-            <Button variant="outline" className="w-full">Return to BMS Home</Button>
+            <Button variant="outline" className="w-full">
+              Return to BMS Home
+            </Button>
           </Link>
         </Card>
       </div>
     )
   }
 
-  // 3. INITIAL LOADING STATE VIEW
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground">
         <div className="flex flex-col items-center space-y-4">
-          <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground font-medium">Retrieving secured patient EHR & clinical journey...</p>
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm font-medium text-muted-foreground">
+            Retrieving secured patient EHR & clinical journey...
+          </p>
         </div>
       </div>
     )
   }
 
-  // 4. UNLOCKED COMPLETE PREGNANCY JOURNEY VIEW
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col transition-colors">
-      
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-40 w-full border-b border-border bg-card/90 backdrop-blur-md px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between print:hidden">
+    <div className="flex min-h-screen flex-col bg-background text-foreground transition-colors">
+      <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-border bg-card/90 px-4 backdrop-blur-md sm:px-6 lg:px-8 print:hidden">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-base shadow-sm">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-base font-bold text-primary-foreground shadow-sm">
             B
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-foreground tracking-tight">BirthCare Network</span>
-              <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 h-4 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 flex items-center gap-1">
+              <span className="text-sm font-bold tracking-tight text-foreground">
+                BirthCare Network
+              </span>
+              <Badge
+                variant="outline"
+                className="flex h-4 items-center gap-1 border-emerald-500/30 bg-emerald-500/5 px-1.5 py-0 font-mono text-[10px] text-emerald-600 dark:text-emerald-400"
+              >
                 <ShieldCheck className="h-3 w-3" />
                 Verified Clinical Passport
               </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Primary Clinic: <span className="font-semibold text-foreground">{patient?.primary_facility?.facility_name || "Community Health Center"}</span>
+              Primary Clinic:{" "}
+              <span className="font-semibold text-foreground">
+                {patient?.primary_facility?.facility_name ||
+                  "Community Health Center"}
+              </span>
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {copyNotice && (
-            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 animate-fade-in hidden sm:inline">
+            <span className="animate-fade-in hidden text-[11px] font-medium text-emerald-600 sm:inline dark:text-emerald-400">
               {copyNotice}
             </span>
           )}
-          <Button variant="outline" size="sm" onClick={handleCopyLink} className="h-8 gap-1.5 text-xs">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyLink}
+            className="h-8 gap-1.5 text-xs"
+          >
             <Copy className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Share Link</span>
           </Button>
 
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="h-8 gap-1.5 text-xs">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.print()}
+            className="h-8 gap-1.5 text-xs"
+          >
             <Printer className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Print Medical Chart</span>
           </Button>
 
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-8 w-8 rounded-lg" title="Toggle Theme">
-            {theme === "dark" ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-700" />}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="h-8 w-8 rounded-lg"
+            title="Toggle Theme"
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4 text-amber-400" />
+            ) : (
+              <Moon className="h-4 w-4 text-slate-700" />
+            )}
           </Button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-
-        {/* PROFILE HEADER BANNER */}
-        <div className="bg-card border border-border rounded-2xl p-5 sm:p-6 shadow-sm">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            
-            {/* Left: Avatar & Patient Demographics */}
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-4">
-              <Avatar className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl border-2 border-border shadow-sm shrink-0">
-                <AvatarImage src={patient?.profile_url || ""} alt={patient?.name} className="object-cover" />
-                <AvatarFallback className="bg-primary/10 text-primary font-bold text-2xl rounded-2xl">
+              <Avatar className="h-20 w-20 shrink-0 rounded-2xl border-2 border-border shadow-sm sm:h-24 sm:w-24">
+                <AvatarImage
+                  src={patient?.profile_url || ""}
+                  alt={patient?.name}
+                  className="object-cover"
+                />
+                <AvatarFallback className="rounded-2xl bg-primary/10 text-2xl font-bold text-primary">
                   {patient?.name?.slice(0, 2).toUpperCase() || "MO"}
                 </AvatarFallback>
               </Avatar>
 
               <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                  <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
                     {patient?.name || "Patient Record"}
                   </h1>
-                  
-                  {/* Risk Badge */}
-                  <Badge className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold ${riskBadgeClass}`}>
+
+                  <Badge
+                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-[11px] font-semibold ${riskBadgeClass}`}
+                  >
                     <Activity className="h-3 w-3" />
                     {resolvedRiskLevel.toUpperCase()}
                   </Badge>
@@ -499,75 +574,100 @@ export function PublicSharedJourneyPage() {
                   )}
                 </div>
 
-                <div className="text-xs text-muted-foreground pt-1 flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
                   <span>Registered Facility:</span>
-                  <span className="font-semibold text-foreground flex items-center gap-1">
+                  <span className="flex items-center gap-1 font-semibold text-foreground">
                     <Building2 className="h-3.5 w-3.5 text-primary" />
-                    {patient?.primary_facility?.facility_name || "Community Health Center"}
+                    {patient?.primary_facility?.facility_name ||
+                      "Community Health Center"}
                   </span>
                   {patient?.family_serial_no && (
                     <>
                       <span>•</span>
-                      <span>Family Serial: <strong className="font-mono text-foreground">{patient.family_serial_no}</strong></span>
+                      <span>
+                        Family Serial:{" "}
+                        <strong className="font-mono text-foreground">
+                          {patient.family_serial_no}
+                        </strong>
+                      </span>
                     </>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Right: Quick Obstetric Snapshot Pill */}
-            <div className="flex flex-col items-start lg:items-end gap-2 shrink-0">
-              <div className="p-3.5 rounded-xl bg-muted/50 border border-border space-y-1 text-right">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">
+            <div className="flex shrink-0 flex-col items-start gap-2 lg:items-end">
+              <div className="space-y-1 rounded-xl border border-border bg-muted/50 p-3.5 text-right">
+                <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                   Current Pregnancy Stage
                 </span>
                 <p className="text-base font-bold text-primary">
-                  {gestationalWeeks > 0 ? `${gestationalWeeks} Weeks (${getTrimester(gestationalWeeks)})` : "Active Pregnancy"}
+                  {gestationalWeeks > 0
+                    ? `${gestationalWeeks} Weeks (${getTrimester(gestationalWeeks)})`
+                    : "Active Pregnancy"}
                 </p>
-                <div className="w-48 bg-muted rounded-full h-1.5 overflow-hidden">
-                  <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+                <div className="h-1.5 w-48 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500"
+                    style={{ width: `${progressPercent}%` }}
+                  />
                 </div>
-                <span className="text-[10px] text-muted-foreground block">
+                <span className="block text-[10px] text-muted-foreground">
                   {progressPercent}% Gestational Progress
                 </span>
               </div>
             </div>
-
           </div>
 
-          {/* Quick Metrics Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-border">
-            <div className="p-3 rounded-xl bg-muted/40 border border-border/50">
-              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Obstetric History</span>
-              <p className="text-base font-bold text-foreground mt-0.5">
-                G{currentPregnancy?.gravida ?? 1} P{currentPregnancy?.parity ?? 0}
-              </p>
-              <span className="text-[11px] text-muted-foreground">Gravida / Parity</span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-muted/40 border border-border/50">
-              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Est. Due Date (EDD)</span>
-              <p className="text-base font-bold text-foreground mt-0.5">
-                {currentPregnancy?.edd ? new Date(currentPregnancy.edd).toLocaleDateString() : "Pending Scan"}
+          <div className="mt-6 grid grid-cols-2 gap-3 border-t border-border pt-5 sm:grid-cols-4">
+            <div className="rounded-xl border border-border/50 bg-muted/40 p-3">
+              <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                Obstetric History
+              </span>
+              <p className="mt-0.5 text-base font-bold text-foreground">
+                G{currentPregnancy?.gravida ?? 1} P
+                {currentPregnancy?.parity ?? 0}
               </p>
               <span className="text-[11px] text-muted-foreground">
-                LMP: {currentPregnancy?.lmp_date ? new Date(currentPregnancy.lmp_date).toLocaleDateString() : "N/A"}
+                Gravida / Parity
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-muted/40 border border-border/50">
-              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Latest Blood Pressure</span>
-              <p className="text-base font-bold font-mono text-foreground mt-0.5">
+            <div className="rounded-xl border border-border/50 bg-muted/40 p-3">
+              <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                Est. Due Date (EDD)
+              </span>
+              <p className="mt-0.5 text-base font-bold text-foreground">
+                {currentPregnancy?.edd
+                  ? new Date(currentPregnancy.edd).toLocaleDateString()
+                  : "Pending Scan"}
+              </p>
+              <span className="text-[11px] text-muted-foreground">
+                LMP:{" "}
+                {currentPregnancy?.lmp_date
+                  ? new Date(currentPregnancy.lmp_date).toLocaleDateString()
+                  : "N/A"}
+              </span>
+            </div>
+
+            <div className="rounded-xl border border-border/50 bg-muted/40 p-3">
+              <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                Latest Blood Pressure
+              </span>
+              <p className="mt-0.5 font-mono text-base font-bold text-foreground">
                 {latestVitals?.bp || "120/80"}
               </p>
               <span className="text-[11px] text-muted-foreground">
-                PR: {latestVitals?.pulse_rate || 80} bpm • Temp: {latestVitals?.temp || 36.5}°C
+                PR: {latestVitals?.pulse_rate || 80} bpm • Temp:{" "}
+                {latestVitals?.temp || 36.5}°C
               </span>
             </div>
 
-            <div className="p-3 rounded-xl bg-muted/40 border border-border/50">
-              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Clinical Consultations</span>
-              <p className="text-base font-bold text-foreground mt-0.5">
+            <div className="rounded-xl border border-border/50 bg-muted/40 p-3">
+              <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                Clinical Consultations
+              </span>
+              <p className="mt-0.5 text-base font-bold text-foreground">
                 {prenatalVisits.length} Checkups
               </p>
               <span className="text-[11px] text-muted-foreground">
@@ -577,181 +677,270 @@ export function PublicSharedJourneyPage() {
           </div>
         </div>
 
-        {/* TABS NAVIGATION */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="bg-muted/70 p-1 border border-border rounded-xl flex flex-wrap h-auto gap-1 print:hidden">
-            <TabsTrigger value="overview" className="gap-1.5 text-xs font-semibold rounded-lg">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-4"
+        >
+          <TabsList className="flex h-auto flex-wrap gap-1 rounded-xl border border-border bg-muted/70 p-1 print:hidden">
+            <TabsTrigger
+              value="overview"
+              className="gap-1.5 rounded-lg text-xs font-semibold"
+            >
               <FileText className="h-3.5 w-3.5" />
               Journey Overview
             </TabsTrigger>
-            <TabsTrigger value="vitals" className="gap-1.5 text-xs font-semibold rounded-lg">
+            <TabsTrigger
+              value="vitals"
+              className="gap-1.5 rounded-lg text-xs font-semibold"
+            >
               <Heart className="h-3.5 w-3.5" />
               Vitals & Trends
             </TabsTrigger>
-            <TabsTrigger value="visits" className="gap-1.5 text-xs font-semibold rounded-lg">
+            <TabsTrigger
+              value="visits"
+              className="gap-1.5 rounded-lg text-xs font-semibold"
+            >
               <Activity className="h-3.5 w-3.5" />
               Checkups ({prenatalVisits.length})
             </TabsTrigger>
-            <TabsTrigger value="labs" className="gap-1.5 text-xs font-semibold rounded-lg">
+            <TabsTrigger
+              value="labs"
+              className="gap-1.5 rounded-lg text-xs font-semibold"
+            >
               <Microscope className="h-3.5 w-3.5" />
               Diagnostics & Scans ({labScreenings.length})
             </TabsTrigger>
-            <TabsTrigger value="supplements" className="gap-1.5 text-xs font-semibold rounded-lg">
+            <TabsTrigger
+              value="supplements"
+              className="gap-1.5 rounded-lg text-xs font-semibold"
+            >
               <Pill className="h-3.5 w-3.5" />
               Prescriptions ({supplements.length})
             </TabsTrigger>
             {deliveryOutcomes.length > 0 && (
-              <TabsTrigger value="deliveries" className="gap-1.5 text-xs font-semibold rounded-lg">
+              <TabsTrigger
+                value="deliveries"
+                className="gap-1.5 rounded-lg text-xs font-semibold"
+              >
                 <Baby className="h-3.5 w-3.5" />
                 Past Deliveries ({deliveryOutcomes.length})
               </TabsTrigger>
             )}
           </TabsList>
 
-          {/* TAB 1: OVERVIEW & MILESTONES */}
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              
-              {/* Pregnancy Timeline & Risk Profile */}
-              <Card className="lg:col-span-2 border-border shadow-sm bg-card">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <Card className="border-border bg-card shadow-sm lg:col-span-2">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                     <Sparkles className="h-4 w-4 text-primary" />
                     Pregnancy Journey Timeline & Clinical Notes
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Synthesized care continuum recorded across healthcare facilities
+                    Synthesized care continuum recorded across healthcare
+                    facilities
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Trimester Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className={`p-3.5 rounded-xl border ${gestationalWeeks >= 1 ? "bg-primary/5 border-primary/30" : "bg-muted/30 border-border"}`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-foreground">1st Trimester</span>
-                        <Badge variant="outline" className="text-[10px]">Weeks 1 - 12</Badge>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div
+                      className={`rounded-xl border p-3.5 ${gestationalWeeks >= 1 ? "border-primary/30 bg-primary/5" : "border-border bg-muted/30"}`}
+                    >
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground">
+                          1st Trimester
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">
+                          Weeks 1 - 12
+                        </Badge>
                       </div>
                       <p className="text-[11px] text-muted-foreground">
-                        Registration, baseline labs, initial vitals, ultrasound dating.
+                        Registration, baseline labs, initial vitals, ultrasound
+                        dating.
                       </p>
                       {gestationalWeeks > 12 && (
-                        <div className="mt-2 text-[10px] text-emerald-500 font-semibold flex items-center gap-1">
+                        <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-emerald-500">
                           <CheckCircle2 className="h-3 w-3" /> Completed
                         </div>
                       )}
                     </div>
 
-                    <div className={`p-3.5 rounded-xl border ${gestationalWeeks > 12 ? "bg-primary/5 border-primary/30" : "bg-muted/30 border-border"}`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-foreground">2nd Trimester</span>
-                        <Badge variant="outline" className="text-[10px]">Weeks 13 - 27</Badge>
+                    <div
+                      className={`rounded-xl border p-3.5 ${gestationalWeeks > 12 ? "border-primary/30 bg-primary/5" : "border-border bg-muted/30"}`}
+                    >
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground">
+                          2nd Trimester
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">
+                          Weeks 13 - 27
+                        </Badge>
                       </div>
                       <p className="text-[11px] text-muted-foreground">
-                        Fundic height monitoring, fetal heart tone, OGTT, anomaly scans.
+                        Fundic height monitoring, fetal heart tone, OGTT,
+                        anomaly scans.
                       </p>
                       {gestationalWeeks > 27 && (
-                        <div className="mt-2 text-[10px] text-emerald-500 font-semibold flex items-center gap-1">
+                        <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-emerald-500">
                           <CheckCircle2 className="h-3 w-3" /> Completed
                         </div>
                       )}
                     </div>
 
-                    <div className={`p-3.5 rounded-xl border ${gestationalWeeks > 27 ? "bg-primary/5 border-primary/30" : "bg-muted/30 border-border"}`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-foreground">3rd Trimester</span>
-                        <Badge variant="outline" className="text-[10px]">Weeks 28 - 40+</Badge>
+                    <div
+                      className={`rounded-xl border p-3.5 ${gestationalWeeks > 27 ? "border-primary/30 bg-primary/5" : "border-border bg-muted/30"}`}
+                    >
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground">
+                          3rd Trimester
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">
+                          Weeks 28 - 40+
+                        </Badge>
                       </div>
                       <p className="text-[11px] text-muted-foreground">
-                        Birth preparedness, presentation check, frequent vitals & delivery triage.
+                        Birth preparedness, presentation check, frequent vitals
+                        & delivery triage.
                       </p>
                       {gestationalWeeks >= 37 && (
-                        <div className="mt-2 text-[10px] text-primary font-semibold flex items-center gap-1">
+                        <div className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-primary">
                           <Baby className="h-3 w-3" /> Full Term
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Clinical Background & History */}
-                  <div className="p-4 rounded-xl bg-muted/30 border border-border space-y-2">
-                    <span className="text-xs font-bold text-foreground block">Clinical History & Co-morbidities</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-4">
+                    <span className="block text-xs font-bold text-foreground">
+                      Clinical History & Co-morbidities
+                    </span>
+                    <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
                       <div>
-                        <span className="text-muted-foreground block text-[11px]">Co-morbidities / Risk Factors:</span>
-                        <span className="font-medium text-foreground">{currentPregnancy?.co_morbidities || "None recorded (Unremarkable)"}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground block text-[11px]">Previous Delivery Notes:</span>
-                        <span className="font-medium text-foreground">{currentPregnancy?.previous_delivery_history || "No previous complications noted"}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground block text-[11px]">Deworming Dose Given:</span>
+                        <span className="block text-[11px] text-muted-foreground">
+                          Co-morbidities / Risk Factors:
+                        </span>
                         <span className="font-medium text-foreground">
-                          {currentPregnancy?.deworming_given ? `Yes (${new Date(currentPregnancy.deworming_date || "").toLocaleDateString()})` : "Not yet administered"}
+                          {currentPregnancy?.co_morbidities ||
+                            "None recorded (Unremarkable)"}
                         </span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground block text-[11px]">BMI Category:</span>
-                        <span className="font-medium text-foreground">{currentPregnancy?.bmi_category || "Normal"}</span>
+                        <span className="block text-[11px] text-muted-foreground">
+                          Previous Delivery Notes:
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {currentPregnancy?.previous_delivery_history ||
+                            "No previous complications noted"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="block text-[11px] text-muted-foreground">
+                          Deworming Dose Given:
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {currentPregnancy?.deworming_given
+                            ? `Yes (${new Date(currentPregnancy.deworming_date || "").toLocaleDateString()})`
+                            : "Not yet administered"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="block text-[11px] text-muted-foreground">
+                          BMI Category:
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {currentPregnancy?.bmi_category || "Normal"}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Latest Examination Snapshot */}
-              <Card className="border-border shadow-sm bg-card">
+              <Card className="border-border bg-card shadow-sm">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                     <Stethoscope className="h-4 w-4 text-primary" />
                     Latest Triage Snapshot
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    {latestVitals?.visit_date ? `Recorded on ${new Date(latestVitals.visit_date).toLocaleDateString()}` : "Latest vital metrics"}
+                    {latestVitals?.visit_date
+                      ? `Recorded on ${new Date(latestVitals.visit_date).toLocaleDateString()}`
+                      : "Latest vital metrics"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2.5 text-xs">
-                  <div className="flex justify-between items-center py-1.5 border-b border-border/50">
-                    <span className="text-muted-foreground">Blood Pressure</span>
-                    <span className="font-bold font-mono text-foreground text-sm">{latestVitals?.bp || "120/80"}</span>
+                  <div className="flex items-center justify-between border-b border-border/50 py-1.5">
+                    <span className="text-muted-foreground">
+                      Blood Pressure
+                    </span>
+                    <span className="font-mono text-sm font-bold text-foreground">
+                      {latestVitals?.bp || "120/80"}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center py-1.5 border-b border-border/50">
-                    <span className="text-muted-foreground">Pulse / Heart Rate</span>
-                    <span className="font-medium font-mono text-foreground">{latestVitals?.pulse_rate ? `${latestVitals.pulse_rate} bpm` : "80 bpm"}</span>
+                  <div className="flex items-center justify-between border-b border-border/50 py-1.5">
+                    <span className="text-muted-foreground">
+                      Pulse / Heart Rate
+                    </span>
+                    <span className="font-mono font-medium text-foreground">
+                      {latestVitals?.pulse_rate
+                        ? `${latestVitals.pulse_rate} bpm`
+                        : "80 bpm"}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center py-1.5 border-b border-border/50">
+                  <div className="flex items-center justify-between border-b border-border/50 py-1.5">
                     <span className="text-muted-foreground">Temperature</span>
-                    <span className="font-medium font-mono text-foreground">{latestVitals?.temp ? `${latestVitals.temp} °C` : "36.5 °C"}</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {latestVitals?.temp
+                        ? `${latestVitals.temp} °C`
+                        : "36.5 °C"}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center py-1.5 border-b border-border/50">
+                  <div className="flex items-center justify-between border-b border-border/50 py-1.5">
                     <span className="text-muted-foreground">Weight</span>
-                    <span className="font-medium font-mono text-foreground">{latestVitals?.weight_kg ? `${latestVitals.weight_kg} kg` : "N/A"}</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {latestVitals?.weight_kg
+                        ? `${latestVitals.weight_kg} kg`
+                        : "N/A"}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center py-1.5 border-b border-border/50">
+                  <div className="flex items-center justify-between border-b border-border/50 py-1.5">
                     <span className="text-muted-foreground">Fundic Height</span>
-                    <span className="font-medium font-mono text-foreground">{latestVitals?.fundic_height ? `${latestVitals.fundic_height} cm` : "N/A"}</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {latestVitals?.fundic_height
+                        ? `${latestVitals.fundic_height} cm`
+                        : "N/A"}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center py-1.5 border-b border-border/50">
-                    <span className="text-muted-foreground">Fetal Heart Tone</span>
-                    <span className="font-medium font-mono text-foreground">{latestVitals?.fetal_heart_tone ? `${latestVitals.fetal_heart_tone} bpm` : "N/A"}</span>
+                  <div className="flex items-center justify-between border-b border-border/50 py-1.5">
+                    <span className="text-muted-foreground">
+                      Fetal Heart Tone
+                    </span>
+                    <span className="font-mono font-medium text-foreground">
+                      {latestVitals?.fetal_heart_tone
+                        ? `${latestVitals.fetal_heart_tone} bpm`
+                        : "N/A"}
+                    </span>
                   </div>
-                  <div className="flex justify-between items-center py-1.5">
-                    <span className="text-muted-foreground">Risk Assessment</span>
-                    <span className={`font-semibold ${isHighRisk ? "text-red-500 font-bold" : isMediumRisk ? "text-amber-500 font-bold" : "text-emerald-500"}`}>
+                  <div className="flex items-center justify-between py-1.5">
+                    <span className="text-muted-foreground">
+                      Risk Assessment
+                    </span>
+                    <span
+                      className={`font-semibold ${isHighRisk ? "font-bold text-red-500" : isMediumRisk ? "font-bold text-amber-500" : "text-emerald-500"}`}
+                    >
                       {resolvedRiskLevel}
                     </span>
                   </div>
                 </CardContent>
               </Card>
-
             </div>
           </TabsContent>
 
-          {/* TAB 2: VITALS & LONGITUDINAL TRENDS */}
           <TabsContent value="vitals" className="space-y-4">
-            <Card className="border-border shadow-sm bg-card">
+            <Card className="border-border bg-card shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                   <Heart className="h-4 w-4 text-primary" />
                   Longitudinal Vitals Track Record
                 </CardTitle>
@@ -761,53 +950,91 @@ export function PublicSharedJourneyPage() {
               </CardHeader>
               <CardContent className="p-0">
                 {prenatalVisits.length === 0 ? (
-                  <div className="text-center py-10 text-muted-foreground text-xs">
+                  <div className="py-10 text-center text-xs text-muted-foreground">
                     No longitudinal vitals records found for this patient.
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow className="border-border hover:bg-transparent">
-                        <TableHead className="text-xs font-semibold">Visit Date</TableHead>
-                        <TableHead className="text-xs font-semibold">AOG</TableHead>
-                        <TableHead className="text-xs font-semibold">Blood Pressure</TableHead>
-                        <TableHead className="text-xs font-semibold">Heart Rate</TableHead>
-                        <TableHead className="text-xs font-semibold">Temp</TableHead>
-                        <TableHead className="text-xs font-semibold">Weight</TableHead>
-                        <TableHead className="text-xs font-semibold">Fundic Ht / FHT</TableHead>
-                        <TableHead className="text-xs font-semibold">Assessed Risk</TableHead>
+                        <TableHead className="text-xs font-semibold">
+                          Visit Date
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold">
+                          AOG
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold">
+                          Blood Pressure
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold">
+                          Heart Rate
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold">
+                          Temp
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold">
+                          Weight
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold">
+                          Fundic Ht / FHT
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold">
+                          Assessed Risk
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {prenatalVisits.map((v: any, idx: number) => (
-                        <TableRow key={v.visit_id || idx} className="border-border">
+                        <TableRow
+                          key={v.visit_id || idx}
+                          className="border-border"
+                        >
                           <TableCell className="text-xs font-medium whitespace-nowrap">
                             {new Date(v.visit_date).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-xs font-semibold">
-                            {v.age_of_gestation_weeks ? `${v.age_of_gestation_weeks} wks` : "-"}
+                            {v.age_of_gestation_weeks
+                              ? `${v.age_of_gestation_weeks} wks`
+                              : "-"}
                           </TableCell>
-                          <TableCell className="text-xs font-mono font-bold">
+                          <TableCell className="font-mono text-xs font-bold">
                             {v.bp_systolic}/{v.bp_diastolic}
                           </TableCell>
-                          <TableCell className="text-xs font-mono">
+                          <TableCell className="font-mono text-xs">
                             {v.pulse_rate_bpm ? `${v.pulse_rate_bpm} bpm` : "-"}
                           </TableCell>
-                          <TableCell className="text-xs font-mono">
-                            {v.temperature_celsius ? `${v.temperature_celsius}°C` : "-"}
+                          <TableCell className="font-mono text-xs">
+                            {v.temperature_celsius
+                              ? `${v.temperature_celsius}°C`
+                              : "-"}
                           </TableCell>
-                          <TableCell className="text-xs font-mono">
+                          <TableCell className="font-mono text-xs">
                             {v.weight_kg ? `${v.weight_kg} kg` : "-"}
                           </TableCell>
-                          <TableCell className="text-xs font-mono">
-                            {v.fundic_height_cm ? `${v.fundic_height_cm} cm` : "-"} / {v.fetal_heart_tone_bpm ? `${v.fetal_heart_tone_bpm} bpm` : "-"}
+                          <TableCell className="font-mono text-xs">
+                            {v.fundic_height_cm
+                              ? `${v.fundic_height_cm} cm`
+                              : "-"}{" "}
+                            /{" "}
+                            {v.fetal_heart_tone_bpm
+                              ? `${v.fetal_heart_tone_bpm} bpm`
+                              : "-"}
                           </TableCell>
                           <TableCell className="text-xs">
-                            <Badge variant="outline" className={`text-[10px] ${
-                              (v.risk_level_assessed || "").toLowerCase().includes("high") ? "border-red-500/30 text-red-500 bg-red-500/10" :
-                              (v.risk_level_assessed || "").toLowerCase().includes("mod") ? "border-amber-500/30 text-amber-500 bg-amber-500/10" :
-                              "border-emerald-500/30 text-emerald-500 bg-emerald-500/10"
-                            }`}>
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] ${
+                                (v.risk_level_assessed || "")
+                                  .toLowerCase()
+                                  .includes("high")
+                                  ? "border-red-500/30 bg-red-500/10 text-red-500"
+                                  : (v.risk_level_assessed || "")
+                                        .toLowerCase()
+                                        .includes("mod")
+                                    ? "border-amber-500/30 bg-amber-500/10 text-amber-500"
+                                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                              }`}
+                            >
                               {v.risk_level_assessed || "Low Risk"}
                             </Badge>
                           </TableCell>
@@ -820,58 +1047,96 @@ export function PublicSharedJourneyPage() {
             </Card>
           </TabsContent>
 
-          {/* TAB 3: PRENATAL CHECKUPS */}
           <TabsContent value="visits" className="space-y-4">
-            <Card className="border-border shadow-sm bg-card">
+            <Card className="border-border bg-card shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                   <Activity className="h-4 w-4 text-primary" />
                   Prenatal Checkup & Consultation Records
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Detailed clinician notes, chief complaints, danger signs, and attending staff
+                  Detailed clinician notes, chief complaints, danger signs, and
+                  attending staff
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {prenatalVisits.length === 0 ? (
-                  <div className="text-center py-10 text-muted-foreground text-xs">
+                  <div className="py-10 text-center text-xs text-muted-foreground">
                     No prenatal consultations recorded yet.
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {prenatalVisits.map((visit: any, index: number) => (
-                      <div key={visit.visit_id || index} className="p-4 rounded-xl bg-muted/30 border border-border space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-2">
+                      <div
+                        key={visit.visit_id || index}
+                        className="space-y-3 rounded-xl border border-border bg-muted/30 p-4"
+                      >
+                        <div className="flex flex-col justify-between gap-2 border-b border-border/50 pb-2 sm:flex-row sm:items-center">
                           <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs font-semibold">
+                            <Badge
+                              variant="secondary"
+                              className="text-xs font-semibold"
+                            >
                               Visit #{visit.visit_number || index + 1}
                             </Badge>
                             <span className="text-xs font-bold text-foreground">
-                              {new Date(visit.visit_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                              {new Date(visit.visit_date).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "long",
+                                  day: "numeric",
+                                  year: "numeric",
+                                }
+                              )}
                             </span>
-                            <span className="text-xs text-muted-foreground">• Trimester {visit.trimester || 1} ({visit.age_of_gestation_weeks} wks)</span>
+                            <span className="text-xs text-muted-foreground">
+                              • Trimester {visit.trimester || 1} (
+                              {visit.age_of_gestation_weeks} wks)
+                            </span>
                           </div>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
                             <User className="h-3.5 w-3.5" />
-                            Attending: <strong className="text-foreground">{visit.healthWorker ? `${visit.healthWorker.first_name} ${visit.healthWorker.last_name}` : "Healthcare Provider"}</strong>
+                            Attending:{" "}
+                            <strong className="text-foreground">
+                              {visit.healthWorker
+                                ? `${visit.healthWorker.first_name} ${visit.healthWorker.last_name}`
+                                : "Healthcare Provider"}
+                            </strong>
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">
                           <div>
-                            <span className="text-muted-foreground block text-[11px]">Chief Complaint:</span>
-                            <span className="font-medium text-foreground">{visit.chief_complaint || "Routine prenatal assessment"}</span>
+                            <span className="block text-[11px] text-muted-foreground">
+                              Chief Complaint:
+                            </span>
+                            <span className="font-medium text-foreground">
+                              {visit.chief_complaint ||
+                                "Routine prenatal assessment"}
+                            </span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground block text-[11px]">Danger Signs Observed:</span>
-                            <span className={visit.danger_signs_observed ? "text-red-500 font-bold" : "text-foreground"}>
+                            <span className="block text-[11px] text-muted-foreground">
+                              Danger Signs Observed:
+                            </span>
+                            <span
+                              className={
+                                visit.danger_signs_observed
+                                  ? "font-bold text-red-500"
+                                  : "text-foreground"
+                              }
+                            >
                               {visit.danger_signs_observed || "None"}
                             </span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground block text-[11px]">Vitals at Consultation:</span>
+                            <span className="block text-[11px] text-muted-foreground">
+                              Vitals at Consultation:
+                            </span>
                             <span className="font-mono text-foreground">
-                              BP: {visit.bp_systolic}/{visit.bp_diastolic} | PR: {visit.pulse_rate_bpm || "-"} | Temp: {visit.temperature_celsius || "-"}°C
+                              BP: {visit.bp_systolic}/{visit.bp_diastolic} | PR:{" "}
+                              {visit.pulse_rate_bpm || "-"} | Temp:{" "}
+                              {visit.temperature_celsius || "-"}°C
                             </span>
                           </div>
                         </div>
@@ -883,49 +1148,59 @@ export function PublicSharedJourneyPage() {
             </Card>
           </TabsContent>
 
-          {/* TAB 4: LABORATORY & DIAGNOSTICS GALLERY */}
           <TabsContent value="labs" className="space-y-4">
-            <Card className="border-border shadow-sm bg-card">
+            <Card className="border-border bg-card shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                   <Microscope className="h-4 w-4 text-primary" />
                   Diagnostic Reports, Laboratory & Ultrasound Scans
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Click on any scan or laboratory document to view in high resolution or open PDF
+                  Click on any scan or laboratory document to view in high
+                  resolution or open PDF
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {labScreenings.length === 0 ? (
-                  <div className="text-center py-10 text-muted-foreground text-xs">
+                  <div className="py-10 text-center text-xs text-muted-foreground">
                     No diagnostic tests or uploaded scans available.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {labScreenings.map((lab: any, index: number) => {
                       const fileUrl = lab.file_url
-                      const isPdf = fileUrl && (fileUrl.toLowerCase().includes(".pdf") || fileUrl.toLowerCase().includes("/pdf"))
+                      const isPdf =
+                        fileUrl &&
+                        (fileUrl.toLowerCase().includes(".pdf") ||
+                          fileUrl.toLowerCase().includes("/pdf"))
 
                       return (
                         <div
                           key={lab.screening_id || index}
-                          className="p-4 rounded-xl bg-muted/40 border border-border hover:border-primary/40 transition-all flex flex-col justify-between"
+                          className="flex flex-col justify-between rounded-xl border border-border bg-muted/40 p-4 transition-all hover:border-primary/40"
                         >
                           <div>
-                            <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="mb-2 flex items-start justify-between gap-2">
                               <div>
-                                <h4 className="text-xs font-bold text-foreground line-clamp-1">{lab.screening_type}</h4>
+                                <h4 className="line-clamp-1 text-xs font-bold text-foreground">
+                                  {lab.screening_type}
+                                </h4>
                                 <span className="text-[11px] text-muted-foreground">
-                                  {new Date(lab.date_of_screening).toLocaleDateString()}
+                                  {new Date(
+                                    lab.date_of_screening
+                                  ).toLocaleDateString()}
                                 </span>
                               </div>
-                              <Badge variant="outline" className="text-[10px] font-semibold text-primary border-primary/30">
+                              <Badge
+                                variant="outline"
+                                className="border-primary/30 text-[10px] font-semibold text-primary"
+                              >
                                 {lab.result || "Uploaded"}
                               </Badge>
                             </div>
 
                             {lab.remarks && (
-                              <p className="text-[11px] text-muted-foreground mb-3 line-clamp-2">
+                              <p className="mb-3 line-clamp-2 text-[11px] text-muted-foreground">
                                 Remarks: {lab.remarks}
                               </p>
                             )}
@@ -937,31 +1212,33 @@ export function PublicSharedJourneyPage() {
                                 href={fileUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="mt-2 p-2.5 rounded-lg bg-background border border-border flex items-center justify-between text-xs text-primary font-medium hover:bg-muted"
+                                className="mt-2 flex items-center justify-between rounded-lg border border-border bg-background p-2.5 text-xs font-medium text-primary hover:bg-muted"
                               >
                                 <span className="flex items-center gap-1.5 truncate">
-                                  <FileText className="h-4 w-4 text-red-500 shrink-0" />
+                                  <FileText className="h-4 w-4 shrink-0 text-red-500" />
                                   View PDF Report
                                 </span>
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </a>
                             ) : (
                               <div
-                                onClick={() => openMediaViewer(fileUrl, lab.screening_type)}
-                                className="mt-2 relative rounded-lg overflow-hidden border border-border cursor-pointer group h-32 bg-black/5"
+                                onClick={() =>
+                                  openMediaViewer(fileUrl, lab.screening_type)
+                                }
+                                className="group relative mt-2 h-32 cursor-pointer overflow-hidden rounded-lg border border-border bg-black/5"
                               >
                                 <img
                                   src={fileUrl}
                                   alt={lab.screening_type}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                 />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold gap-1.5">
+                                <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/40 text-xs font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
                                   <Eye className="h-4 w-4" /> View Scan
                                 </div>
                               </div>
                             )
                           ) : (
-                            <span className="text-[10px] text-muted-foreground italic mt-2">
+                            <span className="mt-2 text-[10px] text-muted-foreground italic">
                               No image attachment attached
                             </span>
                           )}
@@ -974,48 +1251,64 @@ export function PublicSharedJourneyPage() {
             </Card>
           </TabsContent>
 
-          {/* TAB 5: PRESCRIPTIONS & SUPPLEMENTS */}
           <TabsContent value="supplements" className="space-y-4">
-            <Card className="border-border shadow-sm bg-card">
+            <Card className="border-border bg-card shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                   <Pill className="h-4 w-4 text-primary" />
                   Prescriptions & Micronutrient Supplements Log
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Iron + Folic Acid, Calcium Carbonate, and micronutrient distribution track record
+                  Iron + Folic Acid, Calcium Carbonate, and micronutrient
+                  distribution track record
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {supplements.length === 0 ? (
-                  <div className="text-center py-10 text-muted-foreground text-xs">
+                  <div className="py-10 text-center text-xs text-muted-foreground">
                     No prescription or supplement records found.
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow className="border-border hover:bg-transparent">
-                        <TableHead className="text-xs font-semibold">Supplement / Medication</TableHead>
-                        <TableHead className="text-xs font-semibold">Dosage / Tablets Given</TableHead>
-                        <TableHead className="text-xs font-semibold">Date Prescribed</TableHead>
-                        <TableHead className="text-xs font-semibold">Adherence Status</TableHead>
+                        <TableHead className="text-xs font-semibold">
+                          Supplement / Medication
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold">
+                          Dosage / Tablets Given
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold">
+                          Date Prescribed
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold">
+                          Adherence Status
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {supplements.map((supp: any, idx: number) => (
-                        <TableRow key={supp.supplement_id || idx} className="border-border">
+                        <TableRow
+                          key={supp.supplement_id || idx}
+                          className="border-border"
+                        >
                           <TableCell className="text-xs font-semibold text-foreground">
                             {supp.supplement_type}
                           </TableCell>
-                          <TableCell className="text-xs font-mono">
+                          <TableCell className="font-mono text-xs">
                             {supp.tablets_given_count} Tablets
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {new Date(supp.date_given).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-xs">
-                            <Badge variant="outline" className={`text-[10px] ${supp.is_completed ? "border-emerald-500/30 text-emerald-500 bg-emerald-500/10" : "border-amber-500/30 text-amber-500 bg-amber-500/10"}`}>
-                              {supp.is_completed ? "Course Completed" : "Ongoing Course"}
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] ${supp.is_completed ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500" : "border-amber-500/30 bg-amber-500/10 text-amber-500"}`}
+                            >
+                              {supp.is_completed
+                                ? "Course Completed"
+                                : "Ongoing Course"}
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -1027,31 +1320,51 @@ export function PublicSharedJourneyPage() {
             </Card>
           </TabsContent>
 
-          {/* TAB 6: PAST DELIVERIES */}
           {deliveryOutcomes.length > 0 && (
             <TabsContent value="deliveries" className="space-y-4">
-              <Card className="border-border shadow-sm bg-card">
+              <Card className="border-border bg-card shadow-sm">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                     <Baby className="h-4 w-4 text-primary" />
                     Previous Deliveries & Newborn History
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {deliveryOutcomes.map((d: any, idx: number) => (
-                    <div key={d.delivery_id || idx} className="p-4 rounded-xl bg-muted/30 border border-border space-y-2 text-xs">
-                      <div className="flex justify-between items-center border-b border-border/50 pb-2">
+                    <div
+                      key={d.delivery_id || idx}
+                      className="space-y-2 rounded-xl border border-border bg-muted/30 p-4 text-xs"
+                    >
+                      <div className="flex items-center justify-between border-b border-border/50 pb-2">
                         <span className="font-bold text-foreground">
-                          Delivery Date: {new Date(d.delivery_date).toLocaleDateString()}
+                          Delivery Date:{" "}
+                          {new Date(d.delivery_date).toLocaleDateString()}
                         </span>
                         <Badge variant="secondary" className="text-[10px]">
                           Mode: {d.mode_of_delivery}
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-muted-foreground">
-                        <div>Place: <strong className="text-foreground">{d.place_of_delivery}</strong></div>
-                        <div>Blood Loss: <strong className="text-foreground">{d.blood_loss_ml ? `${d.blood_loss_ml} mL` : "Normal"}</strong></div>
-                        <div>Complications: <strong className="text-foreground">{d.delivery_complications || "None"}</strong></div>
+                      <div className="grid grid-cols-1 gap-2 text-muted-foreground sm:grid-cols-3">
+                        <div>
+                          Place:{" "}
+                          <strong className="text-foreground">
+                            {d.place_of_delivery}
+                          </strong>
+                        </div>
+                        <div>
+                          Blood Loss:{" "}
+                          <strong className="text-foreground">
+                            {d.blood_loss_ml
+                              ? `${d.blood_loss_ml} mL`
+                              : "Normal"}
+                          </strong>
+                        </div>
+                        <div>
+                          Complications:{" "}
+                          <strong className="text-foreground">
+                            {d.delivery_complications || "None"}
+                          </strong>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1059,27 +1372,36 @@ export function PublicSharedJourneyPage() {
               </Card>
             </TabsContent>
           )}
-
         </Tabs>
       </main>
 
-      {/* LIGHTBOX DIALOG FOR ULTRASOUND / SCAN PREVIEWS */}
-      <Dialog open={!!selectedMediaUrl} onOpenChange={(open) => !open && setSelectedMediaUrl(null)}>
-        <DialogContent className="max-w-4xl p-2 bg-black/95 border-none text-white overflow-hidden">
-          <div className="p-2 flex items-center justify-between border-b border-white/10">
+      <Dialog
+        open={!!selectedMediaUrl}
+        onOpenChange={(open) => !open && setSelectedMediaUrl(null)}
+      >
+        <DialogContent className="max-w-4xl overflow-hidden border-none bg-black/95 p-2 text-white">
+          <div className="flex items-center justify-between border-b border-white/10 p-2">
             <span className="text-xs font-semibold">{selectedMediaTitle}</span>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedMediaUrl(null)} className="text-white hover:bg-white/10 text-xs">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedMediaUrl(null)}
+              className="text-xs text-white hover:bg-white/10"
+            >
               Close
             </Button>
           </div>
           {selectedMediaUrl && (
-            <div className="p-2 flex items-center justify-center max-h-[80vh]">
-              <img src={selectedMediaUrl} alt={selectedMediaTitle} className="max-h-[75vh] w-auto rounded-lg object-contain" />
+            <div className="flex max-h-[80vh] items-center justify-center p-2">
+              <img
+                src={selectedMediaUrl}
+                alt={selectedMediaTitle}
+                className="max-h-[75vh] w-auto rounded-lg object-contain"
+              />
             </div>
           )}
         </DialogContent>
       </Dialog>
-
     </div>
   )
 }

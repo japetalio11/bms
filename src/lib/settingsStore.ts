@@ -37,7 +37,7 @@ export const settingsStore = {
     const current = settingsStore.getSettings()
     const updated = { ...current, ...newSettings }
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated))
-    // Dispatch an event so hooks can listen to changes
+
     window.dispatchEvent(new Event("bms_settings_changed"))
   },
 }

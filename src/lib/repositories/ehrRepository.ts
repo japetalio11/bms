@@ -16,14 +16,13 @@ export interface EhrDocument {
 }
 
 export const ehrRepository = {
-  /**
-   * Retrieves all EHR documents from local Dexie database.
-   * Automatically purges legacy mock records (EHR-1001, EHR-1002, EHR-1003).
-   */
   async getAllDocuments(facilityId?: string): Promise<EhrDocument[]> {
     try {
-      // Purge legacy hardcoded mock items if still present in IndexedDB
-      await db.ehrDocuments.where("id").startsWith("EHR-100").delete().catch(() => {})
+      await db.ehrDocuments
+        .where("id")
+        .startsWith("EHR-100")
+        .delete()
+        .catch(() => {})
 
       const localDocs = await db.ehrDocuments.toArray()
       if (!localDocs || localDocs.length === 0) {
@@ -34,8 +33,10 @@ export const ehrRepository = {
         id: item.id,
         title: item.title || item.document_name || "Facility Document",
         category: item.category || "Clinical Protocols",
-        patientName: item.patientName || item.patient_name || "Facility General",
-        securityLevel: item.securityLevel || item.security_level || "Confidential",
+        patientName:
+          item.patientName || item.patient_name || "Facility General",
+        securityLevel:
+          item.securityLevel || item.security_level || "Confidential",
         format: item.format || "PDF",
         size: item.size || "1.0 MB",
         dateUploaded:
@@ -56,9 +57,6 @@ export const ehrRepository = {
     }
   },
 
-  /**
-   * Saves a new EHR document to local Dexie database.
-   */
   async createDocument(doc: EhrDocument): Promise<EhrDocument> {
     const localItem = {
       ...doc,
@@ -71,9 +69,6 @@ export const ehrRepository = {
     return doc
   },
 
-  /**
-   * Deletes an EHR document from local Dexie database.
-   */
   async deleteDocument(id: string): Promise<void> {
     await db.ehrDocuments.delete(id)
   },

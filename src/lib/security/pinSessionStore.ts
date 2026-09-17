@@ -1,9 +1,3 @@
-/**
- * PIN Session Manager & In-Memory Key Store for BMS PWA
- * Manages 24-hour shift sessions and in-memory AES-256-GCM encryption keys.
- * Preserves 24-hour shift sessions across page refreshes via tab-scoped sessionStorage.
- */
-
 import {
   derivePinKey,
   generateSalt,
@@ -16,7 +10,7 @@ const PIN_SALT_KEY = "bms_pin_salt"
 const PIN_HASH_KEY = "bms_pin_hash"
 const PIN_EXPIRY_KEY = "bms_pin_expiry"
 const PIN_SESSION_VAL_KEY = "bms_pin_session_val"
-const DURATION_24_HOURS_MS = 24 * 60 * 60 * 1000 // 24 Hours in Milliseconds
+const DURATION_24_HOURS_MS = 24 * 60 * 60 * 1000
 
 let activeCryptoKey: CryptoKey | null = null
 let sessionExpiryTime: number | null = null
@@ -28,12 +22,9 @@ function notifyListeners() {
   listeners.forEach((cb) => cb(locked))
 }
 
-/**
- * Automatically restores active 24-hour PIN session on page reload (F5).
- */
 export async function tryRestoreSessionOnReload(): Promise<boolean> {
   if (typeof window === "undefined") return false
-  if (activeCryptoKey) return true // Already active
+  if (activeCryptoKey) return true
 
   const storedExpiryStr = localStorage.getItem(PIN_EXPIRY_KEY)
   const storedSessionPin = sessionStorage.getItem(PIN_SESSION_VAL_KEY)
@@ -45,7 +36,6 @@ export async function tryRestoreSessionOnReload(): Promise<boolean> {
 
   const expiry = parseInt(storedExpiryStr, 10)
   if (isNaN(expiry) || Date.now() > expiry) {
-    // Session expired
     lockPinSession()
     return false
   }
@@ -68,29 +58,26 @@ export async function tryRestoreSessionOnReload(): Promise<boolean> {
   }
 }
 
-// Automatically attempt session restoration on module import / page load
 if (typeof window !== "undefined") {
   tryRestoreSessionOnReload()
 }
 
-/**
- * Checks if a PIN has been configured on this device.
- */
 export function hasPinConfigured(): boolean {
   if (typeof window === "undefined") return false
-  return !!localStorage.getItem(PIN_HASH_KEY) && !!localStorage.getItem(PIN_SALT_KEY)
+  return (
+    !!localStorage.getItem(PIN_HASH_KEY) && !!localStorage.getItem(PIN_SALT_KEY)
+  )
 }
 
-/**
- * Returns true if the 24-hour PIN session has expired or key is missing.
- */
 export function isPinLocked(): boolean {
-  if (!hasPinConfigured()) return false // If no PIN is configured, don't lock UI
+  if (!hasPinConfigured()) return false
   if (isRestoringSession) return false
 
-  // Check stored expiry
-  const storedExpiryStr = typeof window !== "undefined" ? localStorage.getItem(PIN_EXPIRY_KEY) : null
-  const expiry = storedExpiryStr ? parseInt(storedExpiryStr, 10) : sessionExpiryTime
+  const storedExpiryStr =
+    typeof window !== "undefined" ? localStorage.getItem(PIN_EXPIRY_KEY) : null
+  const expiry = storedExpiryStr
+    ? parseInt(storedExpiryStr, 10)
+    : sessionExpiryTime
 
   if (expiry && Date.now() > expiry) {
     lockPinSession()
@@ -98,8 +85,10 @@ export function isPinLocked(): boolean {
   }
 
   if (!activeCryptoKey) {
-    // Attempt sync restoration check
-    const storedSessionPin = typeof window !== "undefined" ? sessionStorage.getItem(PIN_SESSION_VAL_KEY) : null
+    const storedSessionPin =
+      typeof window !== "undefined"
+        ? sessionStorage.getItem(PIN_SESSION_VAL_KEY)
+        : null
     if (storedSessionPin && expiry && Date.now() <= expiry) {
       tryRestoreSessionOnReload()
       return false
@@ -110,17 +99,11 @@ export function isPinLocked(): boolean {
   return false
 }
 
-/**
- * Gets the current active CryptoKey (or null if locked).
- */
 export function getActiveCryptoKey(): CryptoKey | null {
   if (isPinLocked()) return null
   return activeCryptoKey
 }
 
-/**
- * Configures a new 4-digit / 6-digit PIN on this device and unlocks a 24-hour session.
- */
 export async function setupPin(pin: string): Promise<boolean> {
   try {
     const salt = generateSalt(16)
@@ -130,7 +113,6 @@ export async function setupPin(pin: string): Promise<boolean> {
     localStorage.setItem(PIN_SALT_KEY, saltB64)
     localStorage.setItem(PIN_HASH_KEY, pinHash)
 
-    // Derive key and activate 24-hour session
     const key = await derivePinKey(pin, salt)
     const expiry = Date.now() + DURATION_24_HOURS_MS
 
@@ -147,9 +129,6 @@ export async function setupPin(pin: string): Promise<boolean> {
   }
 }
 
-/**
- * Validates entered PIN offline and unlocks the 24-hour session if valid.
- */
 export async function unlockWithPin(pin: string): Promise<boolean> {
   const storedSaltB64 = localStorage.getItem(PIN_SALT_KEY)
   const storedHash = localStorage.getItem(PIN_HASH_KEY)
@@ -164,10 +143,9 @@ export async function unlockWithPin(pin: string): Promise<boolean> {
     const computedHash = await computePinHash(pin, salt)
 
     if (computedHash !== storedHash) {
-      return false // PIN incorrect
+      return false
     }
 
-    // Derive key and set 24-hour session
     const key = await derivePinKey(pin, salt)
     const expiry = Date.now() + DURATION_24_HOURS_MS
 
@@ -184,9 +162,6 @@ export async function unlockWithPin(pin: string): Promise<boolean> {
   }
 }
 
-/**
- * Manually locks the PIN session (e.g. user taps "Lock App").
- */
 export function lockPinSession(): void {
   activeCryptoKey = null
   sessionExpiryTime = null
@@ -197,9 +172,6 @@ export function lockPinSession(): void {
   notifyListeners()
 }
 
-/**
- * Clears all PIN state (e.g., full account logout).
- */
 export function clearPinConfig(): void {
   activeCryptoKey = null
   sessionExpiryTime = null
@@ -212,10 +184,9 @@ export function clearPinConfig(): void {
   notifyListeners()
 }
 
-/**
- * Subscribes to PIN lock state changes.
- */
-export function subscribePinSession(callback: (isLocked: boolean) => void): () => void {
+export function subscribePinSession(
+  callback: (isLocked: boolean) => void
+): () => void {
   listeners.add(callback)
   callback(isPinLocked())
   return () => {

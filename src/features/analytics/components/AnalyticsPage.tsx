@@ -1,14 +1,46 @@
 import * as React from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { LineChart, Line, PieChart, Pie, Cell, Legend, XAxis, YAxis, CartesianGrid } from "recharts"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import {
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Droplet, Activity, Target, Users } from "lucide-react"
 
 const LOCATION_YIELD_DATA = [
   { rank: 1, location: "Bagumbayan Sur, Naga City", donors: 450, units: 410 },
   { rank: 2, location: "San Felipe, Naga City", donors: 380, units: 350 },
-  { rank: 3, location: "Concepcion Pequeña, Naga City", donors: 310, units: 295 },
+  {
+    rank: 3,
+    location: "Concepcion Pequeña, Naga City",
+    donors: 310,
+    units: 295,
+  },
   { rank: 4, location: "Peñafrancia, Naga City", donors: 240, units: 220 },
   { rank: 5, location: "Pacol, Naga City", donors: 150, units: 140 },
 ]
@@ -36,7 +68,7 @@ const PIE_CHART_DATA = [
   { name: "Walk-in", value: 173 },
 ]
 
-const PIE_COLORS = ["#404040", "#737373", "#a3a3a3", "#d4d4d4"] // Grays
+const PIE_COLORS = ["#404040", "#737373", "#a3a3a3", "#d4d4d4"]
 
 const pieChartConfig = {
   Advocacy: { label: "Advocacy", color: PIE_COLORS[0] },
@@ -47,68 +79,86 @@ const pieChartConfig = {
 
 export function AnalyticsPage() {
   return (
-    <div className="flex-1 w-full h-full flex flex-col overflow-y-auto bg-background text-foreground relative">
-      <div className="flex flex-col p-4 md:p-8 max-w-7xl mx-auto w-full">
-        
-        {/* Executive Overview Section */}
-        <div className="grid grid-cols-1 md:grid-cols-4 border border-border rounded-xl bg-card shadow-sm mb-6">
-          
-          {/* Metric 1 */}
-          <div className="flex flex-col p-6 border-b md:border-b-0 md:border-r border-border">
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-sm font-semibold text-card-foreground">Total Blood Units</span>
-              <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
+    <div className="relative flex h-full w-full flex-1 flex-col overflow-y-auto bg-background text-foreground">
+      <div className="mx-auto flex w-full max-w-7xl flex-col p-4 md:p-8">
+        <div className="mb-6 grid grid-cols-1 rounded-xl border border-border bg-card shadow-sm md:grid-cols-4">
+          <div className="flex flex-col border-b border-border p-6 md:border-r md:border-b-0">
+            <div className="mb-2 flex items-start justify-between">
+              <span className="text-sm font-semibold text-card-foreground">
+                Total Blood Units
+              </span>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
                 <Droplet className="h-4 w-4 text-blue-500" />
               </div>
             </div>
-            <div className="text-3xl font-bold text-card-foreground mt-1">1,265</div>
-            <p className="text-[11px] font-medium text-emerald-500 mt-1">+12.5% from last month</p>
+            <div className="mt-1 text-3xl font-bold text-card-foreground">
+              1,265
+            </div>
+            <p className="mt-1 text-[11px] font-medium text-emerald-500">
+              +12.5% from last month
+            </p>
           </div>
 
-          {/* Metric 2 */}
-          <div className="flex flex-col p-6 border-b md:border-b-0 md:border-r border-border">
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-sm font-semibold text-card-foreground">Active Donor Pool</span>
-              <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+          <div className="flex flex-col border-b border-border p-6 md:border-r md:border-b-0">
+            <div className="mb-2 flex items-start justify-between">
+              <span className="text-sm font-semibold text-card-foreground">
+                Active Donor Pool
+              </span>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10">
                 <Users className="h-4 w-4 text-emerald-500" />
               </div>
             </div>
-            <div className="text-3xl font-bold text-card-foreground mt-1">3,842</div>
-            <p className="text-[11px] font-medium text-emerald-500 mt-1">+5.2% from last month</p>
+            <div className="mt-1 text-3xl font-bold text-card-foreground">
+              3,842
+            </div>
+            <p className="mt-1 text-[11px] font-medium text-emerald-500">
+              +5.2% from last month
+            </p>
           </div>
 
-          {/* Metric 3 */}
-          <div className="flex flex-col p-6 border-b md:border-b-0 md:border-r border-border">
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-sm font-semibold text-card-foreground">Goal Attainment</span>
-              <div className="h-8 w-8 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0">
+          <div className="flex flex-col border-b border-border p-6 md:border-r md:border-b-0">
+            <div className="mb-2 flex items-start justify-between">
+              <span className="text-sm font-semibold text-card-foreground">
+                Goal Attainment
+              </span>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-500/10">
                 <Target className="h-4 w-4 text-purple-500" />
               </div>
             </div>
-            <div className="text-3xl font-bold text-card-foreground mt-1">92%</div>
-            <p className="text-[11px] font-medium text-red-500 mt-1">-2.1% from last month</p>
+            <div className="mt-1 text-3xl font-bold text-card-foreground">
+              92%
+            </div>
+            <p className="mt-1 text-[11px] font-medium text-red-500">
+              -2.1% from last month
+            </p>
           </div>
 
-          {/* Metric 4 */}
           <div className="flex flex-col p-6">
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-sm font-semibold text-card-foreground">Capacity Utilization</span>
-              <div className="h-8 w-8 rounded-full bg-orange-500/10 flex items-center justify-center shrink-0">
+            <div className="mb-2 flex items-start justify-between">
+              <span className="text-sm font-semibold text-card-foreground">
+                Capacity Utilization
+              </span>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/10">
                 <Activity className="h-4 w-4 text-orange-500" />
               </div>
             </div>
-            <div className="text-3xl font-bold text-card-foreground mt-1">84%</div>
-            <p className="text-[11px] font-medium text-emerald-500 mt-1">+1.4% from last month</p>
+            <div className="mt-1 text-3xl font-bold text-card-foreground">
+              84%
+            </div>
+            <p className="mt-1 text-[11px] font-medium text-emerald-500">
+              +1.4% from last month
+            </p>
           </div>
         </div>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-          <div className="xl:col-span-2 flex flex-col pt-6 pb-6 rounded-xl border border-border bg-card shadow-sm overflow-hidden w-full h-full">
+        <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-card pt-6 pb-6 shadow-sm xl:col-span-2">
             <div className="flex items-center justify-between px-6 pb-4">
-              <span className="text-sm font-semibold text-card-foreground">Donation Trends</span>
+              <span className="text-sm font-semibold text-card-foreground">
+                Donation Trends
+              </span>
               <Select defaultValue="2026">
-                <SelectTrigger className="w-[85px] h-8 text-xs bg-card border-border text-card-foreground focus:ring-0 focus:ring-offset-0">
+                <SelectTrigger className="h-8 w-[85px] border-border bg-card text-xs text-card-foreground focus:ring-0 focus:ring-offset-0">
                   <SelectValue placeholder="Year" />
                 </SelectTrigger>
                 <SelectContent>
@@ -117,29 +167,79 @@ export function AnalyticsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex-1 min-h-[300px] px-6">
-              <ChartContainer config={{ 
-                  campaigns: { label: "Campaigns", color: "hsl(var(--foreground))" },
-                  walkins: { label: "Walk-ins", color: "hsl(var(--muted-foreground))" }
-                }} className="w-full h-full">
-                <LineChart data={LINE_CHART_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 11}} />
-                  <YAxis tickLine={false} axisLine={false} tick={{fill: 'hsl(var(--muted-foreground))', fontSize: 11}} />
+            <div className="min-h-[300px] flex-1 px-6">
+              <ChartContainer
+                config={{
+                  campaigns: {
+                    label: "Campaigns",
+                    color: "hsl(var(--foreground))",
+                  },
+                  walkins: {
+                    label: "Walk-ins",
+                    color: "hsl(var(--muted-foreground))",
+                  },
+                }}
+                className="h-full w-full"
+              >
+                <LineChart
+                  data={LINE_CHART_DATA}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    vertical={false}
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{
+                      fill: "hsl(var(--muted-foreground))",
+                      fontSize: 11,
+                    }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{
+                      fill: "hsl(var(--muted-foreground))",
+                      fontSize: 11,
+                    }}
+                  />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="campaigns" stroke="var(--color-campaigns)" strokeWidth={2} dot={{ r: 4, fill: "var(--color-campaigns)" }} activeDot={{ r: 6 }} />
-                  <Line type="monotone" dataKey="walkins" stroke="var(--color-walkins)" strokeWidth={2} dot={{ r: 4, fill: "var(--color-walkins)" }} activeDot={{ r: 6 }} />
+                  <Line
+                    type="monotone"
+                    dataKey="campaigns"
+                    stroke="var(--color-campaigns)"
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: "var(--color-campaigns)" }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="walkins"
+                    stroke="var(--color-walkins)"
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: "var(--color-walkins)" }}
+                    activeDot={{ r: 6 }}
+                  />
                 </LineChart>
               </ChartContainer>
             </div>
           </div>
 
-          <div className="xl:col-span-1 flex flex-col pt-6 pb-6 rounded-xl border border-border bg-card shadow-sm overflow-hidden w-full h-full">
+          <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-card pt-6 pb-6 shadow-sm xl:col-span-1">
             <div className="flex items-center justify-between px-6 pb-2">
-              <span className="text-sm font-semibold text-card-foreground">Donations by Type</span>
+              <span className="text-sm font-semibold text-card-foreground">
+                Donations by Type
+              </span>
             </div>
-            <div className="flex-1 min-h-[300px] px-2 flex items-center justify-center">
-              <ChartContainer config={pieChartConfig} className="w-full h-[300px]">
+            <div className="flex min-h-[300px] flex-1 items-center justify-center px-2">
+              <ChartContainer
+                config={pieChartConfig}
+                className="h-[300px] w-full"
+              >
                 <PieChart>
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Pie
@@ -153,23 +253,30 @@ export function AnalyticsPage() {
                     stroke="none"
                   >
                     {PIE_CHART_DATA.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                      />
                     ))}
                   </Pie>
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
+                  <Legend
+                    verticalAlign="bottom"
+                    height={36}
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: "11px" }}
+                  />
                 </PieChart>
               </ChartContainer>
             </div>
           </div>
         </div>
 
-        {/* Tables Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="flex flex-col gap-0 pt-6 pb-6 rounded-xl border border-border bg-card shadow-sm overflow-hidden w-full h-full">
-            <div className="flex items-center gap-2 text-sm font-semibold text-card-foreground px-6 pb-4">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="flex h-full w-full flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card pt-6 pb-6 shadow-sm">
+            <div className="flex items-center gap-2 px-6 pb-4 text-sm font-semibold text-card-foreground">
               Yield by Location
             </div>
-            <div className="overflow-x-auto w-full px-2">
+            <div className="w-full overflow-x-auto px-2">
               <Table>
                 <TableHeader className="bg-muted/50">
                   <TableRow className="border-border hover:bg-transparent">
@@ -181,11 +288,22 @@ export function AnalyticsPage() {
                 </TableHeader>
                 <TableBody>
                   {LOCATION_YIELD_DATA.map((item) => (
-                    <TableRow key={item.rank} className="border-border hover:bg-accent/50">
-                      <TableCell className="font-medium text-card-foreground">#{item.rank}</TableCell>
-                      <TableCell className="text-muted-foreground">{item.location}</TableCell>
-                      <TableCell className="text-right text-card-foreground">{item.donors}</TableCell>
-                      <TableCell className="text-right font-bold text-card-foreground">{item.units}</TableCell>
+                    <TableRow
+                      key={item.rank}
+                      className="border-border hover:bg-accent/50"
+                    >
+                      <TableCell className="font-medium text-card-foreground">
+                        #{item.rank}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {item.location}
+                      </TableCell>
+                      <TableCell className="text-right text-card-foreground">
+                        {item.donors}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-card-foreground">
+                        {item.units}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -193,11 +311,11 @@ export function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-0 pt-6 pb-6 rounded-xl border border-border bg-card shadow-sm overflow-hidden w-full h-full">
-            <div className="flex items-center gap-2 text-sm font-semibold text-card-foreground px-6 pb-4">
+          <div className="flex h-full w-full flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card pt-6 pb-6 shadow-sm">
+            <div className="flex items-center gap-2 px-6 pb-4 text-sm font-semibold text-card-foreground">
               Stakeholder Link Engagement
             </div>
-            <div className="overflow-x-auto w-full px-2">
+            <div className="w-full overflow-x-auto px-2">
               <Table>
                 <TableHeader className="bg-muted/50">
                   <TableRow className="border-border hover:bg-transparent">
@@ -209,11 +327,22 @@ export function AnalyticsPage() {
                 </TableHeader>
                 <TableBody>
                   {STAKEHOLDER_DATA.map((item, idx) => (
-                    <TableRow key={idx} className="border-border hover:bg-accent/50">
-                      <TableCell className="font-medium text-card-foreground">{item.partner}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{item.clicks}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{item.reserved}</TableCell>
-                      <TableCell className="text-right font-bold text-card-foreground">{item.successful}</TableCell>
+                    <TableRow
+                      key={idx}
+                      className="border-border hover:bg-accent/50"
+                    >
+                      <TableCell className="font-medium text-card-foreground">
+                        {item.partner}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {item.clicks}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {item.reserved}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-card-foreground">
+                        {item.successful}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -221,7 +350,6 @@ export function AnalyticsPage() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   )

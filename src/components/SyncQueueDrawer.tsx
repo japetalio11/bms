@@ -60,7 +60,6 @@ export function SyncQueueDrawer({ open, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-xs transition-opacity animate-in fade-in">
       <div className="w-full max-w-md bg-background border-l border-border h-full flex flex-col shadow-2xl animate-in slide-in-from-right">
-        {/* Header */}
         <div className="p-4 border-b border-border flex items-center justify-between bg-muted/40">
           <div className="flex items-center gap-2">
             <Database className="w-5 h-5 text-primary" />
@@ -71,9 +70,7 @@ export function SyncQueueDrawer({ open, onClose }: Props) {
           </Button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {/* Status Box */}
           <div className="rounded-xl border border-border p-4 space-y-3 bg-card shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">Network Connection</span>
@@ -112,7 +109,6 @@ export function SyncQueueDrawer({ open, onClose }: Props) {
             </Button>
           </div>
 
-          {/* Dexie Database Stats */}
           <div className="space-y-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <HardDrive className="w-3.5 h-3.5" />
@@ -134,7 +130,6 @@ export function SyncQueueDrawer({ open, onClose }: Props) {
             </div>
           </div>
 
-          {/* Pending Mutations List */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -184,7 +179,6 @@ export function SyncQueueDrawer({ open, onClose }: Props) {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="p-4 border-t border-border text-xs text-center text-muted-foreground bg-muted/20">
           Dexie IndexedDB ensures 100% memory persistence across restarts.
         </div>
