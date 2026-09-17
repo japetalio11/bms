@@ -75,6 +75,13 @@ export const motherRepository = {
                 }
               }
 
+              const enrollments = m.facilityEnrollments || []
+              const facilityIds = Array.from(new Set([
+                m.facility_id,
+                m.user?.facility_id,
+                ...enrollments.filter((e: any) => e.status === "Active" || !e.status).map((e: any) => e.facility_id)
+              ].filter(Boolean))) as string[]
+
               return {
                 ...m,
                 id: motherId,
@@ -87,6 +94,8 @@ export const motherRepository = {
                 phone_number: phoneNumber,
                 photo_url: photoUrl,
                 facility_id: m.facility_id || m.user?.facility_id || facilityId,
+                facility_ids: facilityIds,
+                facilityEnrollments: enrollments,
                 sync_status: "synced" as const,
                 updated_at: Date.now(),
               }
@@ -94,11 +103,60 @@ export const motherRepository = {
 
           // Safe reconciliation: do NOT clear whole table
           const remoteIds = new Set(formattedRemote.map((m) => m.id))
-          const staleMothers = localMothers.filter((m) => m.sync_status === "synced" && !remoteIds.has(m.id))
+          const staleMothers = localMothers.filter((m) => {
+            if (m.sync_status !== "synced") return false
+            if (remoteIds.has(m.id)) return false
+            if (facilityId) {
+              const matchesThisFacility = m.facility_id === facilityId || m.facility_ids?.includes(facilityId)
+              return matchesThisFacility
+            }
+            return true
+          })
           for (const sm of staleMothers) {
             await db.mothers.delete(sm.id).catch(() => {})
           }
-          await db.mothers.bulkPut([...formattedRemote, ...pendingItems])
+
+          // Auto-reconcile any pending temp mothers that already exist remotely in formattedRemote
+          const remainingPending: LocalMother[] = []
+          for (const pending of pendingItems) {
+            if (pending.id && String(pending.id).startsWith("temp-")) {
+              const pFname = (pending.first_name || pending.user?.first_name || "").toLowerCase().trim()
+              const pLname = (pending.last_name || pending.user?.last_name || "").toLowerCase().trim()
+              const pPhone = (pending.phone_number || pending.user?.phone_number || "").trim()
+              const pEmail = (pending.email || pending.user?.email || "").toLowerCase().trim()
+              const pSerial = (pending.family_serial_no || "").trim()
+
+              const matchedRemote = formattedRemote.find((rm: any) => {
+                const rSerial = (rm.family_serial_no || "").trim()
+                const rPhone = (rm.phone_number || rm.user?.phone_number || "").trim()
+                const rEmail = (rm.email || rm.user?.email || "").toLowerCase().trim()
+                const rFname = (rm.first_name || rm.user?.first_name || "").toLowerCase().trim()
+                const rLname = (rm.last_name || rm.user?.last_name || "").toLowerCase().trim()
+
+                if (pSerial && rSerial && pSerial === rSerial) return true
+                if (pPhone && rPhone && pPhone === rPhone) return true
+                if (pEmail && rEmail && pEmail === rEmail) return true
+                return pFname && pLname && pFname === rFname && pLname === rLname
+              })
+
+              if (matchedRemote) {
+                const canonicalId = matchedRemote.mother_id || matchedRemote.id
+                console.log(`[motherRepository] Auto-reconciling pending temp mother ${pending.id} -> ${canonicalId}`)
+                await db.mothers.delete(pending.id).catch(() => {})
+                await syncEngine.cancelPendingMutation(pending.id).catch(() => {})
+                await db.pregnancies.where("mother_id").equals(pending.id).modify({ mother_id: canonicalId }).catch(() => {})
+                await db.prenatalVisits.where("mother_id").equals(pending.id).modify({ mother_id: canonicalId }).catch(() => {})
+                await db.appointments.where("mother_id").equals(pending.id).modify({ mother_id: canonicalId }).catch(() => {})
+                await db.labRecords.where("mother_id").equals(pending.id).modify({ mother_id: canonicalId }).catch(() => {})
+                await db.supplements.where("mother_id").equals(pending.id).modify({ mother_id: canonicalId }).catch(() => {})
+                await db.ehrDocuments.where("mother_id").equals(pending.id).modify({ mother_id: canonicalId }).catch(() => {})
+                continue
+              }
+            }
+            remainingPending.push(pending)
+          }
+
+          await db.mothers.bulkPut([...formattedRemote, ...remainingPending])
           if (remotePregs.length > 0) await db.pregnancies.bulkPut(remotePregs).catch(() => {})
           if (remoteVisits.length > 0) await db.prenatalVisits.bulkPut(remoteVisits).catch(() => {})
 
@@ -164,7 +222,14 @@ export const motherRepository = {
 
     let result = deduplicated
     if (facilityId) {
-      result = deduplicated.filter((m) => !m.facility_id || m.facility_id === facilityId)
+      result = deduplicated.filter(
+        (m) =>
+          !m.facility_id ||
+          m.facility_id === facilityId ||
+          (Array.isArray(m.facility_ids) && m.facility_ids.includes(facilityId)) ||
+          (Array.isArray(m.facilityEnrollments) &&
+            m.facilityEnrollments.some((e: any) => e.facility_id === facilityId && (e.status === "Active" || !e.status)))
+      )
     }
 
     return result.length > 0 ? result : deduplicated
@@ -262,6 +327,13 @@ export const motherRepository = {
             shouldUpdateMother = false
           }
 
+          const enrollments = data.facilityEnrollments || []
+          const facilityIds = Array.from(new Set([
+            data.facility_id,
+            data.user?.facility_id,
+            ...enrollments.filter((e: any) => e.status === "Active" || !e.status).map((e: any) => e.facility_id)
+          ].filter(Boolean))) as string[]
+
           const syncedMother: LocalMother = {
             ...data,
             id: canonicalId,
@@ -270,6 +342,9 @@ export const motherRepository = {
             user_id: canonicalUid,
             photo_url: photoUrl,
             profile_url: photoUrl,
+            facility_id: data.facility_id || data.user?.facility_id,
+            facility_ids: facilityIds,
+            facilityEnrollments: enrollments,
             user: {
               ...(data.user || {}),
               ...(photoUrl ? { profile_url: photoUrl, photo_url: photoUrl } : {}),
@@ -1446,6 +1521,60 @@ export const motherRepository = {
       return response.data
     } else {
       throw new Error("Connecting a mother via code requires an active network connection.")
+    }
+  },
+
+  async enrollMotherInFacility(motherId: string, facilityId: string, notes?: string): Promise<any> {
+    if (syncEngine.isNetworkOnline()) {
+      const response = await apiClient.post("/api/v1/mother/enroll", {
+        mother_id: motherId,
+        facility_id: facilityId,
+        notes
+      })
+      const local = await db.mothers.get(motherId)
+      if (local) {
+        const currentIds = new Set(local.facility_ids || [local.facility_id].filter(Boolean))
+        currentIds.add(facilityId)
+        await db.mothers.update(motherId, {
+          facility_ids: Array.from(currentIds),
+          updated_at: Date.now()
+        })
+      }
+      return response.data
+    } else {
+      await syncEngine.enqueueMutation({
+        entity_type: "mother",
+        action: "UPDATE",
+        endpoint: "/api/v1/mother/enroll",
+        method: "POST",
+        payload: { mother_id: motherId, facility_id: facilityId, notes }
+      })
+      const local = await db.mothers.get(motherId)
+      if (local) {
+        const currentIds = new Set(local.facility_ids || [local.facility_id].filter(Boolean))
+        currentIds.add(facilityId)
+        await db.mothers.update(motherId, {
+          facility_ids: Array.from(currentIds),
+          updated_at: Date.now()
+        })
+      }
+      return { success: true, offline: true }
+    }
+  },
+
+  async getMotherFacilities(motherId: string): Promise<any> {
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.get(`/api/v1/mother/${motherId}/facilities`)
+        return response.data
+      } catch (e) {
+        console.warn("[motherRepository] Failed to fetch facilities for mother:", e)
+      }
+    }
+    const local = await db.mothers.get(motherId)
+    return {
+      homeFacility: local?.facility || null,
+      enrollments: local?.facilityEnrollments || []
     }
   },
 }

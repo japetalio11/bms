@@ -9,6 +9,7 @@ import {
   User,
   Baby,
   Pencil,
+  Building2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -119,6 +120,30 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(({
 
   const avatarUrl = motherData?.user?.profile_url || motherData?.profile_url || motherData?.photo_url || motherData?.user?.photo_url || ""
 
+  const connectedFacilities = useMemo(() => {
+    const list: Array<{ name: string; type?: string; isHome?: boolean }> = []
+    const homeName = motherData?.user?.facility?.facility_name || motherData?.facility?.facility_name
+    if (homeName) {
+      list.push({
+        name: homeName,
+        type: motherData?.user?.facility?.type || motherData?.facility?.type || "Home Facility",
+        isHome: true
+      })
+    }
+    const enrollments = motherData?.facilityEnrollments || []
+    for (const e of enrollments) {
+      const fName = e.facility?.facility_name
+      if (fName && !list.some(item => item.name === fName)) {
+        list.push({
+          name: fName,
+          type: e.facility?.type || "Enrolled",
+          isHome: false
+        })
+      }
+    }
+    return list
+  }, [motherData])
+
   return (
     <div className="flex flex-col gap-6 p-5 rounded-xl border border-border bg-card text-card-foreground shadow-xs relative">
       {/* Top Tier: Identity & Action Bar */}
@@ -156,9 +181,29 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(({
               <Pencil className="h-2.5 w-2.5" />
             </button>
           </div>
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold text-foreground leading-none">{name}</h2>
-            {getRiskBadge(risk)}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-bold text-foreground leading-none">{name}</h2>
+              {getRiskBadge(risk)}
+            </div>
+            {connectedFacilities.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                {connectedFacilities.map((fac, idx) => (
+                  <span
+                    key={idx}
+                    className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border ${
+                      fac.isHome
+                        ? "bg-primary/10 text-primary border-primary/20"
+                        : "bg-muted/80 text-muted-foreground border-border"
+                    }`}
+                  >
+                    <Building2 className="h-3 w-3 opacity-70" />
+                    {fac.name}
+                    {fac.isHome ? " (Home)" : ""}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

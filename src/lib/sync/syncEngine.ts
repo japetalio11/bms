@@ -316,15 +316,25 @@ class SyncEngine {
         response = await apiClient.delete(item.endpoint)
       }
     } catch (err: any) {
-      const errDetail = err.response?.data?.error || err.response?.data?.message || ""
+      const errDetail = err.response?.data?.error || err.response?.data?.message || err.message || ""
+      const isDuplicateError =
+        typeof errDetail === "string" &&
+        (
+          errDetail.toLowerCase().includes("user already exist") ||
+          errDetail.toLowerCase().includes("already registered") ||
+          errDetail.toLowerCase().includes("already exist") ||
+          errDetail.toLowerCase().includes("same credentials") ||
+          errDetail.toLowerCase().includes("duplicate") ||
+          errDetail.toLowerCase().includes("unique constraint")
+        )
+
       if (
         item.entity_type === "mother" &&
         item.action === "CREATE" &&
         item.temp_id &&
-        typeof errDetail === "string" &&
-        errDetail.toLowerCase().includes("user already exist")
+        isDuplicateError
       ) {
-        console.warn(`[SyncEngine] Mother already exists on backend for ${item.temp_id}. Attempting automatic reconciliation...`)
+        console.warn(`[SyncEngine] Mother duplicate detected on backend for ${item.temp_id} ("${errDetail}"). Attempting automatic reconciliation...`)
         try {
           let remoteList: any[] = []
           try {
@@ -338,12 +348,19 @@ class SyncEngine {
           const fname = payload?.first_name?.toLowerCase()?.trim()
           const lname = payload?.last_name?.toLowerCase()?.trim()
           const serial = payload?.family_serial_no?.trim()
+          const phone = (payload?.phone_number || payload?.phone || "").trim()
+          const email = (payload?.email || "").toLowerCase().trim()
 
           const matched = remoteList.find((m: any) => {
             const mFname = (m.user?.first_name || m.first_name || "").toLowerCase().trim()
             const mLname = (m.user?.last_name || m.last_name || "").toLowerCase().trim()
             const mSerial = (m.family_serial_no || "").trim()
+            const mPhone = (m.user?.phone_number || m.phone_number || "").trim()
+            const mEmail = (m.user?.email || m.email || "").toLowerCase().trim()
+
             if (serial && mSerial && serial === mSerial) return true
+            if (phone && mPhone && phone === mPhone) return true
+            if (email && mEmail && email === mEmail) return true
             return mFname && mLname && mFname === fname && mLname === lname
           })
 
