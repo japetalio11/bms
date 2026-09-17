@@ -11,7 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon, Upload, Check, Loader2 } from "lucide-react"
 import { format } from "date-fns"
@@ -35,7 +39,9 @@ export function RegisterLabModal({
 }: RegisterLabModalProps) {
   const [pregnancyId, setPregnancyId] = React.useState<string>("")
   const [visitId, setVisitId] = React.useState<string>("")
-  const [screeningType, setScreeningType] = React.useState<string>("CBC (Complete Blood Count)")
+  const [screeningType, setScreeningType] = React.useState<string>(
+    "CBC (Complete Blood Count)"
+  )
   const [result, setResult] = React.useState<string>("")
   const [fileUrl, setFileUrl] = React.useState<string>("")
   const [uploading, setUploading] = React.useState(false)
@@ -50,7 +56,9 @@ export function RegisterLabModal({
     if (!file) return
 
     if (file.size > 10 * 1024 * 1024) {
-      setError(`Selected document (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the maximum allowed 10 MB limit.`)
+      setError(
+        `Selected document (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the maximum allowed 10 MB limit.`
+      )
       e.target.value = ""
       return
     }
@@ -58,7 +66,8 @@ export function RegisterLabModal({
     setUploading(true)
     setError(null)
     const token = localStorage.getItem("token")
-    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+    const baseUrl =
+      import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     const formData = new FormData()
     formData.append("file", file)
@@ -69,16 +78,20 @@ export function RegisterLabModal({
         setFileUrl(res.file_url)
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to upload file")
+      setError(
+        err.response?.data?.error || err.message || "Failed to upload file"
+      )
     } finally {
       setUploading(false)
     }
   }
 
   const pregnancies = motherData?.pregnancies || []
-  const allVisits = visitationList.length > 0 ? visitationList : (motherData?.prenatalVisits || [])
+  const allVisits =
+    visitationList.length > 0
+      ? visitationList
+      : motherData?.prenatalVisits || []
 
-  // Filter visits by selected pregnancy, or show all visits if no pregnancy selected or none matched
   const availableVisits = React.useMemo(() => {
     if (!pregnancyId) return allVisits
     const matched = allVisits.filter((v: any) => v.pregnancy_id === pregnancyId)
@@ -87,17 +100,28 @@ export function RegisterLabModal({
 
   React.useEffect(() => {
     if (pregnancies.length > 0 && !pregnancyId) {
-      const activePreg = pregnancies.find((p: any) => p.pregnancy_status?.toLowerCase() === "active") || pregnancies[0]
-      const chosenPId = activePreg.pregnancy_id || activePreg._id || activePreg.id || ""
+      const activePreg =
+        pregnancies.find(
+          (p: any) => p.pregnancy_status?.toLowerCase() === "active"
+        ) || pregnancies[0]
+      const chosenPId =
+        activePreg.pregnancy_id || activePreg._id || activePreg.id || ""
       setPregnancyId(chosenPId)
     }
   }, [motherData, open, pregnancies, pregnancyId])
 
   React.useEffect(() => {
     if (availableVisits.length > 0) {
-      const currentExists = availableVisits.some((v: any) => (v.visit_id || v._id || v.id) === visitId)
+      const currentExists = availableVisits.some(
+        (v: any) => (v.visit_id || v._id || v.id) === visitId
+      )
       if (!currentExists || !visitId) {
-        setVisitId(availableVisits[0].visit_id || availableVisits[0]._id || availableVisits[0].id || "")
+        setVisitId(
+          availableVisits[0].visit_id ||
+            availableVisits[0]._id ||
+            availableVisits[0].id ||
+            ""
+        )
       }
     } else {
       setVisitId("")
@@ -125,7 +149,12 @@ export function RegisterLabModal({
     setLoading(true)
 
     try {
-      const motherId = motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id || ""
+      const motherId =
+        motherData?.mother_id ||
+        motherData?.user_id ||
+        motherData?._id ||
+        motherData?.id ||
+        ""
 
       const payload = {
         mother_id: motherId,
@@ -142,7 +171,10 @@ export function RegisterLabModal({
       onSuccess?.()
       onOpenChange(false)
     } catch (err: any) {
-      const errMsg = err.response?.data?.error || err.message || "Failed to log lab screening"
+      const errMsg =
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to log lab screening"
       setError(errMsg)
     } finally {
       setLoading(false)
@@ -157,7 +189,7 @@ export function RegisterLabModal({
       description="Record laboratory screening test results for this mother."
       className="sm:max-w-[500px]"
     >
-      <div className="flex flex-col gap-4 py-2 overflow-y-auto max-h-[80vh] px-1">
+      <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-1 py-2">
         {error && (
           <div className="rounded border border-destructive/50 bg-destructive/10 p-2.5 text-center text-xs font-medium text-destructive">
             {error}
@@ -166,15 +198,27 @@ export function RegisterLabModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground">Target Pregnancy *</Label>
-            <Select value={pregnancyId} onValueChange={(val) => {
-              setPregnancyId(val)
-              const matching = allVisits.filter((v: any) => v.pregnancy_id === val)
-              if (matching.length > 0) {
-                setVisitId(matching[0].visit_id || matching[0]._id || matching[0].id || "")
-              }
-            }}>
-              <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
+            <Label className="text-xs font-medium text-foreground">
+              Target Pregnancy *
+            </Label>
+            <Select
+              value={pregnancyId}
+              onValueChange={(val) => {
+                setPregnancyId(val)
+                const matching = allVisits.filter(
+                  (v: any) => v.pregnancy_id === val
+                )
+                if (matching.length > 0) {
+                  setVisitId(
+                    matching[0].visit_id ||
+                      matching[0]._id ||
+                      matching[0].id ||
+                      ""
+                  )
+                }
+              }}
+            >
+              <SelectTrigger className="!h-9 border-border bg-card text-xs text-card-foreground">
                 <SelectValue placeholder="Select Pregnancy" />
               </SelectTrigger>
               <SelectContent>
@@ -182,7 +226,8 @@ export function RegisterLabModal({
                   const pId = p.pregnancy_id || p._id || p.id || String(idx)
                   return (
                     <SelectItem key={pId} value={pId}>
-                      Pregnancy #{pregnancies.length - idx} ({p.pregnancy_status || "Active"})
+                      Pregnancy #{pregnancies.length - idx} (
+                      {p.pregnancy_status || "Active"})
                     </SelectItem>
                   )
                 })}
@@ -191,20 +236,28 @@ export function RegisterLabModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground">Associated Visit *</Label>
+            <Label className="text-xs font-medium text-foreground">
+              Associated Visit *
+            </Label>
             <Select value={visitId} onValueChange={setVisitId}>
-              <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
+              <SelectTrigger className="!h-9 border-border bg-card text-xs text-card-foreground">
                 <SelectValue placeholder="Select Visit" />
               </SelectTrigger>
               <SelectContent>
                 {availableVisits.length === 0 ? (
-                  <SelectItem value="none" disabled>No visits recorded yet</SelectItem>
+                  <SelectItem value="none" disabled>
+                    No visits recorded yet
+                  </SelectItem>
                 ) : (
                   availableVisits.map((v: any, idx: number) => {
                     const vId = v.visit_id || v._id || v.id || String(idx)
                     return (
                       <SelectItem key={vId} value={vId}>
-                        Visit #{v.visit_number || idx + 1} ({v.visit_date ? new Date(v.visit_date).toLocaleDateString() : "N/A"})
+                        Visit #{v.visit_number || idx + 1} (
+                        {v.visit_date
+                          ? new Date(v.visit_date).toLocaleDateString()
+                          : "N/A"}
+                        )
                       </SelectItem>
                     )
                   })
@@ -216,14 +269,19 @@ export function RegisterLabModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="screeningType" className="text-xs font-medium text-foreground">Screening Type *</Label>
+            <Label
+              htmlFor="screeningType"
+              className="text-xs font-medium text-foreground"
+            >
+              Screening Type *
+            </Label>
             <Input
               id="screeningType"
               list="common-screening-types"
               placeholder="e.g. CBC, Urinalysis, Blood Typing"
               value={screeningType}
               onChange={(e) => setScreeningType(e.target.value)}
-              className="!h-9 bg-card border-border text-xs text-card-foreground"
+              className="!h-9 border-border bg-card text-xs text-card-foreground"
             />
             <datalist id="common-screening-types">
               <option value="CBC (Complete Blood Count)" />
@@ -239,18 +297,24 @@ export function RegisterLabModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground">Date of Screening *</Label>
+            <Label className="text-xs font-medium text-foreground">
+              Date of Screening *
+            </Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full !h-9 justify-start text-left font-normal bg-card border-border text-xs",
+                    "!h-9 w-full justify-start border-border bg-card text-left text-xs font-normal",
                     !screeningDate && "text-muted-foreground"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                  {screeningDate ? format(screeningDate, "PPP") : <span>Pick Date</span>}
+                  {screeningDate ? (
+                    format(screeningDate, "PPP")
+                  ) : (
+                    <span>Pick Date</span>
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -265,20 +329,27 @@ export function RegisterLabModal({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="labResult" className="text-xs font-medium text-foreground">Screening Result *</Label>
+          <Label
+            htmlFor="labResult"
+            className="text-xs font-medium text-foreground"
+          >
+            Screening Result *
+          </Label>
           <Input
             id="labResult"
             placeholder="e.g. Normal, Non-reactive, Hemoglobin: 12.5 g/dL"
             value={result}
             onChange={(e) => setResult(e.target.value)}
-            className="!h-9 bg-card border-border text-xs text-card-foreground"
+            className="!h-9 border-border bg-card text-xs text-card-foreground"
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label className="text-xs font-medium text-foreground">Document / Lab Attachment (Optional)</Label>
-          <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-border bg-muted/40">
-            <label className="cursor-pointer flex-1">
+          <Label className="text-xs font-medium text-foreground">
+            Document / Lab Attachment (Optional)
+          </Label>
+          <div className="flex items-center gap-3 rounded-lg border border-dashed border-border bg-muted/40 p-3">
+            <label className="flex-1 cursor-pointer">
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/jpg,application/pdf"
@@ -290,7 +361,7 @@ export function RegisterLabModal({
                 type="button"
                 variant="outline"
                 disabled={uploading}
-                className="w-full h-9 px-3 text-xs font-medium border-border gap-2 pointer-events-none bg-card text-card-foreground"
+                className="pointer-events-none h-9 w-full gap-2 border-border bg-card px-3 text-xs font-medium text-card-foreground"
               >
                 {uploading ? (
                   <>
@@ -312,31 +383,40 @@ export function RegisterLabModal({
             </label>
           </div>
           {fileUrl && (
-            <span className="text-[10px] text-emerald-600 font-medium truncate">
-              Attached: {fileUrl.split('/').pop()}
+            <span className="truncate text-[10px] font-medium text-emerald-600">
+              Attached: {fileUrl.split("/").pop()}
             </span>
           )}
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="labRemarks" className="text-xs font-medium text-foreground">Remarks / Findings</Label>
+          <Label
+            htmlFor="labRemarks"
+            className="text-xs font-medium text-foreground"
+          >
+            Remarks / Findings
+          </Label>
           <Textarea
             id="labRemarks"
             placeholder="Enter clinical observations or follow-up notes..."
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
-            className="resize-none h-[65px] bg-card border-border text-xs text-card-foreground"
+            className="h-[65px] resize-none border-border bg-card text-xs text-card-foreground"
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-border mt-1">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-8 text-xs">
+        <div className="mt-1 flex justify-end gap-2 border-t border-border pt-3">
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            className="h-8 text-xs"
+          >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+            className="h-8 bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             {loading ? "Saving..." : "Save Lab Record"}
           </Button>

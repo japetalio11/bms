@@ -4,10 +4,6 @@ import { apiClient } from "@/lib/apiClient"
 import { syncEngine } from "@/lib/sync/syncEngine"
 
 export const referralRepository = {
-  /**
-   * Retrieves all referrals for the user's facility.
-   * Reads local Dexie DB first, then syncs with backend if online.
-   */
   async getAllReferrals(): Promise<LocalReferral[]> {
     let localList: LocalReferral[] = []
     try {
@@ -19,20 +15,24 @@ export const referralRepository = {
     if (syncEngine.isNetworkOnline()) {
       try {
         const response = await apiClient.get("/api/v1/referral/getAll")
-        const remoteList = response.data?.data || (Array.isArray(response.data) ? response.data : [])
+        const remoteList =
+          response.data?.data ||
+          (Array.isArray(response.data) ? response.data : [])
 
         if (Array.isArray(remoteList)) {
           const pendingQueue = await syncEngine.getQueue()
-          const pendingTempIds = new Set(pendingQueue.map((m) => m.temp_id).filter(Boolean))
+          const pendingTempIds = new Set(
+            pendingQueue.map((m) => m.temp_id).filter(Boolean)
+          )
 
           const formattedRemote: LocalReferral[] = remoteList.map((r: any) => {
             const canonicalId = r.referral_id || r._id || r.id
             const motherUser = r.pregnancy?.mother?.user
             const resolvedMotherName = motherUser
               ? `${motherUser.first_name || ""} ${motherUser.last_name || ""}`.trim()
-              : (r.pregnancy?.mother?.first_name 
-                  ? `${r.pregnancy.mother.first_name} ${r.pregnancy.mother.last_name || ""}`.trim()
-                  : (r.motherName || r.mother_name || undefined))
+              : r.pregnancy?.mother?.first_name
+                ? `${r.pregnancy.mother.first_name} ${r.pregnancy.mother.last_name || ""}`.trim()
+                : r.motherName || r.mother_name || undefined
 
             return {
               ...r,
@@ -52,7 +52,9 @@ export const referralRepository = {
               outcome: r.outcome,
               date_responded: r.date_responded,
               sync_status: "synced",
-              updated_at: r.updated_at ? new Date(r.updated_at).getTime() : Date.now(),
+              updated_at: r.updated_at
+                ? new Date(r.updated_at).getTime()
+                : Date.now(),
               pregnancy: r.pregnancy,
               fromFacility: r.fromFacility,
               toFacility: r.toFacility,
@@ -62,19 +64,32 @@ export const referralRepository = {
 
           const remoteIds = new Set(formattedRemote.map((r) => r.id))
 
-          // Purge stale/orphan local referrals that were deleted on server and are not pending in outbox
           const toDelete = localList.filter((r) => {
-            const isPendingInOutbox = (r.id && pendingTempIds.has(r.id)) || (r.referral_id && pendingTempIds.has(r.referral_id))
+            const isPendingInOutbox =
+              (r.id && pendingTempIds.has(r.id)) ||
+              (r.referral_id && pendingTempIds.has(r.referral_id))
             if (isPendingInOutbox) return false
-            return !remoteIds.has(r.id) && (!r.referral_id || !remoteIds.has(r.referral_id))
+            return (
+              !remoteIds.has(r.id) &&
+              (!r.referral_id || !remoteIds.has(r.referral_id))
+            )
           })
 
           for (const item of toDelete) {
             if (item.id) await db.referrals.delete(item.id).catch(() => {})
-            if (item.referral_id) await db.referrals.where("referral_id").equals(item.referral_id).delete().catch(() => {})
+            if (item.referral_id)
+              await db.referrals
+                .where("referral_id")
+                .equals(item.referral_id)
+                .delete()
+                .catch(() => {})
           }
 
-          const pendingItems = localList.filter((r) => (r.id && pendingTempIds.has(r.id)) || (r.referral_id && pendingTempIds.has(r.referral_id)))
+          const pendingItems = localList.filter(
+            (r) =>
+              (r.id && pendingTempIds.has(r.id)) ||
+              (r.referral_id && pendingTempIds.has(r.referral_id))
+          )
           if (formattedRemote.length > 0) {
             await db.referrals.bulkPut(formattedRemote)
           }
@@ -83,16 +98,16 @@ export const referralRepository = {
           return localList
         }
       } catch (apiErr) {
-        console.warn("[referralRepository] Backend fetch failed, returning cached referrals:", apiErr)
+        console.warn(
+          "[referralRepository] Backend fetch failed, returning cached referrals:",
+          apiErr
+        )
       }
     }
 
     return localList
   },
 
-  /**
-   * Creates a new referral.
-   */
   async createReferral(payload: {
     pregnancy_id: string
     from_facility_id: string
@@ -123,7 +138,10 @@ export const referralRepository = {
     if (syncEngine.isNetworkOnline()) {
       try {
         const { mother_name, ...apiPayload } = payload
-        const response = await apiClient.post("/api/v1/referral/register", apiPayload)
+        const response = await apiClient.post(
+          "/api/v1/referral/register",
+          apiPayload
+        )
         const created = response.data?.data || response.data
 
         const savedItem: LocalReferral = {
@@ -131,7 +149,8 @@ export const referralRepository = {
           ...created,
           id: created.referral_id || created.id || tempId,
           referral_id: created.referral_id || tempId,
-          motherName: payload.mother_name || created.motherName || localItem.motherName,
+          motherName:
+            payload.mother_name || created.motherName || localItem.motherName,
           sync_status: "synced",
           updated_at: Date.now(),
         }
@@ -142,11 +161,13 @@ export const referralRepository = {
         if (err.response?.status >= 400 && err.response?.status < 500) {
           throw err
         }
-        console.warn("[referralRepository] Server error, queuing offline mutation:", err)
+        console.warn(
+          "[referralRepository] Server error, queuing offline mutation:",
+          err
+        )
       }
     }
 
-    // Save offline
     localItem.sync_status = "pending_create"
     await db.referrals.put(localItem)
 
@@ -162,9 +183,6 @@ export const referralRepository = {
     return localItem
   },
 
-  /**
-   * Responds to a referral (accept, reject, complete).
-   */
   async respondToReferral(
     referralId: string,
     payload: {
@@ -176,7 +194,10 @@ export const referralRepository = {
   ): Promise<LocalReferral | null> {
     if (syncEngine.isNetworkOnline()) {
       try {
-        const response = await apiClient.put(`/api/v1/referral/respond/${referralId}`, payload)
+        const response = await apiClient.put(
+          `/api/v1/referral/respond/${referralId}`,
+          payload
+        )
         const updated = response.data?.data || response.data
 
         if (updated) {
@@ -194,7 +215,6 @@ export const referralRepository = {
       }
     }
 
-    // Update locally
     const existing = await db.referrals.get(referralId)
     if (existing) {
       const updatedLocal: LocalReferral = {
@@ -223,18 +243,18 @@ export const referralRepository = {
     return null
   },
 
-  /**
-   * Deletes a referral.
-   */
   async deleteReferral(referralId: string): Promise<boolean> {
     try {
       await db.referrals.delete(referralId)
-      await db.referrals.where("referral_id").equals(referralId).delete().catch(() => {})
+      await db.referrals
+        .where("referral_id")
+        .equals(referralId)
+        .delete()
+        .catch(() => {})
     } catch (err) {
       console.warn("[referralRepository] Delete local Dexie error:", err)
     }
 
-    // If it was an offline/pending mutation, remove it from outbox
     await syncEngine.cancelPendingMutation(referralId)
 
     if (referralId.startsWith("temp-")) {

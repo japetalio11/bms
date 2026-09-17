@@ -3,7 +3,14 @@ import { Outlet } from "react-router-dom"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "./AppSidebar"
 import { AppHeader } from "./AppHeader"
-import { PlusCircle, UserPlus, CalendarPlus, HeartPulse, Send, ShieldPlus } from "lucide-react"
+import {
+  PlusCircle,
+  UserPlus,
+  CalendarPlus,
+  HeartPulse,
+  Send,
+  ShieldPlus,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -20,7 +27,6 @@ export function DashboardLayout() {
   const [showPinSetup, setShowPinSetup] = useState<boolean>(false)
 
   useEffect(() => {
-    // Check if user has PIN set up on this device
     if (!hasPinConfigured()) {
       setShowPinSetup(true)
     }
@@ -28,46 +34,51 @@ export function DashboardLayout() {
 
   return (
     <SidebarProvider>
-      <PinSetupModal isOpen={showPinSetup} onClose={() => setShowPinSetup(false)} />
+      <PinSetupModal
+        isOpen={showPinSetup}
+        onClose={() => setShowPinSetup(false)}
+      />
       <AppSidebar />
-      <SidebarInset className="bg-background text-foreground flex flex-col h-screen overflow-hidden">
+      <SidebarInset className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
         <AppHeader />
-        {/* Main Content Area */}
+
         <div className="flex-1 overflow-y-auto">
-          {/* Outlet renders the nested dashboard routes */}
           <Outlet />
         </div>
 
-        {/* Mobile Floating Action Button */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              className="md:hidden fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-foreground text-background hover:bg-foreground/90 border p-0 z-50"
-            >
+            <Button className="fixed right-6 bottom-6 z-50 h-14 w-14 rounded-full border bg-foreground p-0 text-background shadow-lg hover:bg-foreground/90 md:hidden">
               <PlusCircle className="size-6" />
               <span className="sr-only">Quick Create</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" sideOffset={12} className="w-56 rounded-xl border-border shadow-md md:hidden">
-            <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">Quick Create</DropdownMenuLabel>
-            <DropdownMenuItem className="gap-2 cursor-pointer rounded-md">
+          <DropdownMenuContent
+            align="end"
+            sideOffset={12}
+            className="w-56 rounded-xl border-border shadow-md md:hidden"
+          >
+            <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+              Quick Create
+            </DropdownMenuLabel>
+            <DropdownMenuItem className="cursor-pointer gap-2 rounded-md">
               <UserPlus className="h-4 w-4" />
               <span>Register Mother</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer rounded-md">
+            <DropdownMenuItem className="cursor-pointer gap-2 rounded-md">
               <CalendarPlus className="h-4 w-4" />
               <span>New Appointment</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer rounded-md">
+            <DropdownMenuItem className="cursor-pointer gap-2 rounded-md">
               <HeartPulse className="h-4 w-4" />
               <span>Log Vitals</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 cursor-pointer rounded-md">
+            <DropdownMenuItem className="cursor-pointer gap-2 rounded-md">
               <Send className="h-4 w-4" />
               <span>Create Referral</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer rounded-md">
+            <DropdownMenuItem className="cursor-pointer gap-2 rounded-md">
               <ShieldPlus className="h-4 w-4" />
               <span>Invite Team Member</span>
             </DropdownMenuItem>

@@ -8,7 +8,11 @@ interface PinSetupModalProps {
   onSuccess?: () => void
 }
 
-export const PinSetupModal: React.FC<PinSetupModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const PinSetupModal: React.FC<PinSetupModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+}) => {
   const [step, setStep] = useState<"create" | "confirm">("create")
   const [pin, setPin] = useState<string>("")
   const [confirmPin, setConfirmPin] = useState<string>("")
@@ -80,15 +84,16 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ isOpen, onClose, o
   const activeDigits = step === "create" ? pin : confirmPin
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl text-card-foreground text-center">
-        {/* Header Icon */}
+    <div className="fixed inset-0 z-[9999] flex animate-in items-center justify-center bg-background/80 p-4 backdrop-blur-sm duration-200 fade-in">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-center text-card-foreground shadow-2xl">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
           <KeyRound className="h-7 w-7" />
         </div>
 
         <h2 className="text-xl font-bold tracking-tight">
-          {step === "create" ? "Set Offline Security PIN" : "Confirm Your 4-Digit PIN"}
+          {step === "create"
+            ? "Set Offline Security PIN"
+            : "Confirm Your 4-Digit PIN"}
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">
           {step === "create"
@@ -96,37 +101,34 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ isOpen, onClose, o
             : "Re-enter your 4-digit PIN to confirm."}
         </p>
 
-        {/* PIN Indicators */}
         <div className="my-6 flex justify-center gap-3">
           {[0, 1, 2, 3].map((idx) => (
             <div
               key={idx}
               className={`h-4 w-4 rounded-full border-2 transition-all duration-150 ${
                 activeDigits.length > idx
-                  ? "border-primary bg-primary scale-110 shadow-sm"
+                  ? "scale-110 border-primary bg-primary shadow-sm"
                   : "border-muted-foreground/30 bg-muted/40"
               }`}
             />
           ))}
         </div>
 
-        {/* Error Message */}
         {error && (
-          <div className="mb-4 flex items-center justify-center gap-1.5 text-xs text-destructive font-medium animate-in slide-in-from-top-1">
+          <div className="mb-4 flex animate-in items-center justify-center gap-1.5 text-xs font-medium text-destructive slide-in-from-top-1">
             <AlertCircle className="h-3.5 w-3.5" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Keypad Grid */}
-        <div className="grid grid-cols-3 gap-3 my-2">
+        <div className="my-2 grid grid-cols-3 gap-3">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
             <button
               key={digit}
               type="button"
               disabled={isSubmitting}
               onClick={() => handleDigitTap(digit)}
-              className="flex h-14 items-center justify-center rounded-xl bg-muted/50 text-xl font-semibold hover:bg-primary/10 hover:text-primary active:scale-95 transition-all disabled:opacity-50"
+              className="flex h-14 items-center justify-center rounded-xl bg-muted/50 text-xl font-semibold transition-all hover:bg-primary/10 hover:text-primary active:scale-95 disabled:opacity-50"
             >
               {digit}
             </button>
@@ -135,7 +137,7 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ isOpen, onClose, o
             type="button"
             onClick={handleReset}
             disabled={isSubmitting}
-            className="flex h-14 items-center justify-center rounded-xl bg-muted/30 text-xs font-medium text-muted-foreground hover:bg-muted active:scale-95 transition-all"
+            className="flex h-14 items-center justify-center rounded-xl bg-muted/30 text-xs font-medium text-muted-foreground transition-all hover:bg-muted active:scale-95"
           >
             Reset
           </button>
@@ -143,7 +145,7 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ isOpen, onClose, o
             type="button"
             disabled={isSubmitting}
             onClick={() => handleDigitTap("0")}
-            className="flex h-14 items-center justify-center rounded-xl bg-muted/50 text-xl font-semibold hover:bg-primary/10 hover:text-primary active:scale-95 transition-all disabled:opacity-50"
+            className="flex h-14 items-center justify-center rounded-xl bg-muted/50 text-xl font-semibold transition-all hover:bg-primary/10 hover:text-primary active:scale-95 disabled:opacity-50"
           >
             0
           </button>
@@ -151,14 +153,13 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ isOpen, onClose, o
             type="button"
             onClick={handleDelete}
             disabled={isSubmitting || activeDigits.length === 0}
-            className="flex h-14 items-center justify-center rounded-xl bg-muted/30 text-muted-foreground hover:bg-muted active:scale-95 transition-all disabled:opacity-30"
+            className="flex h-14 items-center justify-center rounded-xl bg-muted/30 text-muted-foreground transition-all hover:bg-muted active:scale-95 disabled:opacity-30"
           >
             Clear
           </button>
         </div>
 
-        {/* Footer Security Badge */}
-        <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/70 border-t border-border/50 pt-4">
+        <div className="mt-6 flex items-center justify-center gap-1.5 border-t border-border/50 pt-4 text-[11px] text-muted-foreground/70">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
           <span>PBKDF2 Salted Key Derivation</span>
         </div>

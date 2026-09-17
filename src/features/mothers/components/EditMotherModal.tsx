@@ -11,7 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
@@ -24,7 +28,7 @@ export function EditMotherModal({
   open,
   onOpenChange,
   motherData,
-  onSuccess
+  onSuccess,
 }: {
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -48,14 +52,20 @@ export function EditMotherModal({
     if (motherData) {
       setFirstName(motherData.user?.first_name || motherData.first_name || "")
       setLastName(motherData.user?.last_name || motherData.last_name || "")
-      setMiddleName(motherData.user?.middle_name || motherData.middle_name || "")
+      setMiddleName(
+        motherData.user?.middle_name || motherData.middle_name || ""
+      )
       setPhone(motherData.user?.phone_number || motherData.phone_number || "")
       setEmail(motherData.user?.email || motherData.email || "")
       setAddress(motherData.user?.address || motherData.address || "")
       setFamilySerialNo(motherData.family_serial_no || "")
       setCivilStatus(motherData.civil_status || "Single")
       setBloodType(motherData.blood_type || "O+")
-      const rawDob = motherData.birth_date || motherData.date_of_birth || motherData.user?.birth_date || motherData.user?.date_of_birth
+      const rawDob =
+        motherData.birth_date ||
+        motherData.date_of_birth ||
+        motherData.user?.birth_date ||
+        motherData.user?.date_of_birth
       if (rawDob) {
         setDob(new Date(rawDob))
       }
@@ -64,17 +74,22 @@ export function EditMotherModal({
 
   const handleSave = async () => {
     if (!firstName || !lastName || !address || !dob) {
-      setError("Please fill in required fields (First name, Last name, Address, Date of Birth)")
+      setError(
+        "Please fill in required fields (First name, Last name, Address, Date of Birth)"
+      )
       return
     }
 
     setLoading(true)
     setError(null)
 
-    const motherId = motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id
+    const motherId =
+      motherData?.mother_id ||
+      motherData?.user_id ||
+      motherData?._id ||
+      motherData?.id
 
     try {
-      // Optimistically trigger local update and background sync
       await mothersApi.updateMother(motherId, {
         first_name: firstName,
         last_name: lastName,
@@ -92,7 +107,10 @@ export function EditMotherModal({
       onSuccess?.()
       onOpenChange?.(false)
     } catch (err: any) {
-      const errMsg = err.response?.data?.error || err.message || "Failed to update mother profile"
+      const errMsg =
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to update mother profile"
       setError(errMsg)
       toast.error(errMsg)
     } finally {
@@ -107,7 +125,7 @@ export function EditMotherModal({
       title="Edit Mother Profile"
       description="Update demographic and baseline medical details."
     >
-      <div className="flex flex-col gap-4 py-2 overflow-hidden">
+      <div className="flex flex-col gap-4 overflow-hidden py-2">
         {error && (
           <div className="rounded border border-destructive/50 bg-destructive/10 p-2 text-center text-xs text-destructive">
             {error}
@@ -116,28 +134,60 @@ export function EditMotherModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="editFirstName" className="text-xs font-medium text-foreground">First Name</Label>
-            <Input id="editFirstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="!h-8 bg-card border-border text-xs text-card-foreground" />
+            <Label
+              htmlFor="editFirstName"
+              className="text-xs font-medium text-foreground"
+            >
+              First Name
+            </Label>
+            <Input
+              id="editFirstName"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="!h-8 border-border bg-card text-xs text-card-foreground"
+            />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="editLastName" className="text-xs font-medium text-foreground">Last Name</Label>
-            <Input id="editLastName" value={lastName} onChange={(e) => setLastName(e.target.value)} className="!h-8 bg-card border-border text-xs text-card-foreground" />
+            <Label
+              htmlFor="editLastName"
+              className="text-xs font-medium text-foreground"
+            >
+              Last Name
+            </Label>
+            <Input
+              id="editLastName"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="!h-8 border-border bg-card text-xs text-card-foreground"
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="editMiddleName" className="text-xs font-medium text-foreground">Middle Name</Label>
-            <Input id="editMiddleName" value={middleName} onChange={(e) => setMiddleName(e.target.value)} className="!h-8 bg-card border-border text-xs text-card-foreground" />
+            <Label
+              htmlFor="editMiddleName"
+              className="text-xs font-medium text-foreground"
+            >
+              Middle Name
+            </Label>
+            <Input
+              id="editMiddleName"
+              value={middleName}
+              onChange={(e) => setMiddleName(e.target.value)}
+              className="!h-8 border-border bg-card text-xs text-card-foreground"
+            />
           </div>
           <div className="flex flex-col gap-2">
-            <Label className="text-xs font-medium text-foreground">Date of Birth</Label>
+            <Label className="text-xs font-medium text-foreground">
+              Date of Birth
+            </Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full !h-8 justify-start text-left font-normal bg-card border-border text-xs",
+                    "!h-8 w-full justify-start border-border bg-card text-left text-xs font-normal",
                     !dob && "text-muted-foreground"
                   )}
                 >
@@ -146,11 +196,7 @@ export function EditMotherModal({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={dob}
-                  onSelect={setDob}
-                />
+                <Calendar mode="single" selected={dob} onSelect={setDob} />
               </PopoverContent>
             </Popover>
           </div>
@@ -158,24 +204,57 @@ export function EditMotherModal({
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="editPhone" className="text-xs font-medium text-foreground">Phone Number</Label>
-            <Input id="editPhone" value={phone} onChange={(e) => setPhone(e.target.value)} className="!h-8 bg-card border-border text-xs text-card-foreground" />
+            <Label
+              htmlFor="editPhone"
+              className="text-xs font-medium text-foreground"
+            >
+              Phone Number
+            </Label>
+            <Input
+              id="editPhone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="!h-8 border-border bg-card text-xs text-card-foreground"
+            />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="editEmail" className="text-xs font-medium text-foreground">Email</Label>
-            <Input id="editEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="!h-8 bg-card border-border text-xs text-card-foreground" />
+            <Label
+              htmlFor="editEmail"
+              className="text-xs font-medium text-foreground"
+            >
+              Email
+            </Label>
+            <Input
+              id="editEmail"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="!h-8 border-border bg-card text-xs text-card-foreground"
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="editFamilySerialNo" className="text-xs font-medium text-foreground">Serial No.</Label>
-            <Input id="editFamilySerialNo" value={familySerialNo} onChange={(e) => setFamilySerialNo(e.target.value)} className="!h-8 bg-card border-border text-xs text-card-foreground" />
+            <Label
+              htmlFor="editFamilySerialNo"
+              className="text-xs font-medium text-foreground"
+            >
+              Serial No.
+            </Label>
+            <Input
+              id="editFamilySerialNo"
+              value={familySerialNo}
+              onChange={(e) => setFamilySerialNo(e.target.value)}
+              className="!h-8 border-border bg-card text-xs text-card-foreground"
+            />
           </div>
           <div className="flex flex-col gap-2">
-            <Label className="text-xs font-medium text-foreground">Civil Status</Label>
+            <Label className="text-xs font-medium text-foreground">
+              Civil Status
+            </Label>
             <Select value={civilStatus} onValueChange={setCivilStatus}>
-              <SelectTrigger className="!h-8 bg-card border-border text-xs text-card-foreground">
+              <SelectTrigger className="!h-8 border-border bg-card text-xs text-card-foreground">
                 <SelectValue placeholder="Civil status" />
               </SelectTrigger>
               <SelectContent>
@@ -187,9 +266,11 @@ export function EditMotherModal({
             </Select>
           </div>
           <div className="flex flex-col gap-2">
-            <Label className="text-xs font-medium text-foreground">Blood Type</Label>
+            <Label className="text-xs font-medium text-foreground">
+              Blood Type
+            </Label>
             <Select value={bloodType} onValueChange={setBloodType}>
-              <SelectTrigger className="!h-8 bg-card border-border text-xs text-card-foreground">
+              <SelectTrigger className="!h-8 border-border bg-card text-xs text-card-foreground">
                 <SelectValue placeholder="Blood type" />
               </SelectTrigger>
               <SelectContent>
@@ -207,20 +288,33 @@ export function EditMotherModal({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="editAddress" className="text-xs font-medium text-foreground">Address</Label>
+          <Label
+            htmlFor="editAddress"
+            className="text-xs font-medium text-foreground"
+          >
+            Address
+          </Label>
           <Textarea
             id="editAddress"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="resize-none h-[70px] bg-card border-border text-xs text-card-foreground"
+            className="h-[70px] resize-none border-border bg-card text-xs text-card-foreground"
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t border-border mt-2">
-          <Button variant="ghost" onClick={() => onOpenChange?.(false)} className="h-8 text-xs">
+        <div className="mt-2 flex justify-end gap-2 border-t border-border pt-4">
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange?.(false)}
+            className="h-8 text-xs"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={loading} className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
+          <Button
+            onClick={handleSave}
+            disabled={loading}
+            className="h-8 bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
             {loading ? "Saving..." : "Save Changes"}
           </Button>
         </div>

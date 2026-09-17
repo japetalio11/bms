@@ -11,23 +11,27 @@ export function formatDate(dateInput?: string | Date | number | null): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric"
+    year: "numeric",
   }).format(date)
 }
 
-export function getMessagePreview(content?: string | null, msgType?: string, fileName?: string): string {
+export function getMessagePreview(
+  content?: string | null,
+  msgType?: string,
+  fileName?: string
+): string {
   if (!content) return "No messages yet"
 
-  // Check if it's an image
   if (
     msgType === "image" ||
     msgType === "photo" ||
-    (typeof content === "string" && (content.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif)$/i.test(content)))
+    (typeof content === "string" &&
+      (content.startsWith("data:image/") ||
+        /\.(jpg|jpeg|png|webp|gif)$/i.test(content)))
   ) {
     return "📷 Photo"
   }
 
-  // Check if it's a file
   if (
     msgType === "file" ||
     msgType === "pdf" ||
@@ -37,7 +41,6 @@ export function getMessagePreview(content?: string | null, msgType?: string, fil
     return `📎 ${fileName || "Attachment"}`
   }
 
-  // If raw base64 data url slipped through
   if (typeof content === "string" && content.startsWith("data:")) {
     return "📎 Attachment"
   }

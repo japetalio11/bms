@@ -14,7 +14,6 @@ export function MessagesPage() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const { isOnline } = useNetworkStatus()
 
-  // Sync messages and mothers from backend when online
   const loadAndSyncData = async () => {
     try {
       let currentUser = await db.userSession.get("current_user")
@@ -27,11 +26,14 @@ export function MessagesPage() {
         }
       }
 
-      const facilityId = currentUser?.facility_id || currentUser?.facility?.facility_id
+      const facilityId =
+        currentUser?.facility_id || currentUser?.facility?.facility_id
       if (currentUser?.role !== "Mother") {
-        await motherRepository.getActiveMothers(facilityId || undefined).catch((err) => {
-          console.warn("[MessagesPage] Failed to fetch active mothers:", err)
-        })
+        await motherRepository
+          .getActiveMothers(facilityId || undefined)
+          .catch((err) => {
+            console.warn("[MessagesPage] Failed to fetch active mothers:", err)
+          })
       }
       await messageRepository.getAllMessages().catch((err) => {
         console.warn("[MessagesPage] Failed to fetch all messages:", err)
@@ -59,19 +61,32 @@ export function MessagesPage() {
   }, [])
 
   return (
-    <div className="flex w-full h-[calc(100vh-64px)] overflow-hidden bg-background">
-      <div className="flex w-full h-full overflow-hidden">
-        {/* Left Column (Inbox list: visible on desktop, or on mobile when no active chat is open) */}
-        <div className={clsx("h-full", activeChatId ? "hidden lg:flex" : "flex w-full lg:w-auto")}>
-          <InboxSidebar activeChatId={activeChatId} setActiveChatId={setActiveChatId} />
+    <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-background">
+      <div className="flex h-full w-full overflow-hidden">
+        <div
+          className={clsx(
+            "h-full",
+            activeChatId ? "hidden lg:flex" : "flex w-full lg:w-auto"
+          )}
+        >
+          <InboxSidebar
+            activeChatId={activeChatId}
+            setActiveChatId={setActiveChatId}
+          />
         </div>
 
-        {/* Center Column (Chat area: visible on desktop, or on mobile when a chat is open) */}
-        <div className={clsx("h-full flex-1", activeChatId ? "flex" : "hidden lg:flex")}>
-          <ChatArea activeChatId={activeChatId} onBack={() => setActiveChatId(null)} />
+        <div
+          className={clsx(
+            "h-full flex-1",
+            activeChatId ? "flex" : "hidden lg:flex"
+          )}
+        >
+          <ChatArea
+            activeChatId={activeChatId}
+            onBack={() => setActiveChatId(null)}
+          />
         </div>
 
-        {/* Right Column (Details: visible only on desktop when a chat is selected) */}
         {activeChatId && <ChatDetailsSidepeek activeChatId={activeChatId} />}
       </div>
     </div>

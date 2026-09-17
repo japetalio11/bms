@@ -6,7 +6,6 @@ import { DashboardLayout } from "@/features/dashboard/components/DashboardLayout
 import { UnifiedPageLoader } from "@/components/ui/unified-page-loader"
 import { PinUnlockModal } from "@/features/auth/components/PinUnlockModal"
 
-// Lazy-loaded route components for optimal bundle code-splitting
 const DashboardPage = lazy(() => import("@/features/dashboard/components/DashboardPage").then(m => ({ default: m.DashboardPage })))
 const AppointmentListPage = lazy(() => import("@/features/appointments/components/AppointmentListPage").then(m => ({ default: m.AppointmentListPage })))
 const CalendarPage = lazy(() => import("@/features/calendar/components/CalendarPage").then(m => ({ default: m.CalendarPage })))
@@ -30,14 +29,11 @@ export function App() {
       <BrowserRouter>
         <Suspense fallback={<UnifiedPageLoader />}>
           <Routes>
-            {/* Public Referral Link Route */}
             <Route path="/referral/:id" element={<PublicReferralPage />} />
 
-            {/* Public Mother Pregnancy Journey Shared Route */}
             <Route path="/shared-journey/:token" element={<PublicSharedJourneyPage />} />
             <Route path="/m/:token" element={<PublicSharedJourneyPage />} />
 
-            {/* Auth Routes */}
             <Route path="/" element={<AuthForm />} />
             <Route path="/login" element={<AuthForm />} />
             <Route path="/register" element={<AuthForm />} />
@@ -49,12 +45,10 @@ export function App() {
             <Route path="/test sms" element={<TestSmsPage />} />
             <Route path="/test%20sms" element={<TestSmsPage />} />
             <Route path="/sms-test" element={<TestSmsPage />} />
-            
-            {/* Dashboard Routes */}
+
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<DashboardPage />} />
 
-              {/* Sidebar Routes */}
               <Route path="mothers" element={<MothersPage />} />
               <Route path="mothers/:id" element={<MotherProfilePage />} />
               <Route path="appointments" element={<AppointmentListPage />} />
@@ -66,9 +60,7 @@ export function App() {
               <Route path="team/:id" element={<StaffProfilePage />} />
               <Route path="settings" element={<SettingsPage />} />
 
-              {/* Legacy / Hidden Routes */}
               <Route path="analytics" element={<AnalyticsPage />} />
-
               <Route path="feedback" element={<div className="flex-1 w-full h-full bg-white dark:bg-black" />} />
             </Route>
           </Routes>

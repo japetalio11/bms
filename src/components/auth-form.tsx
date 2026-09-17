@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
-import { Eye, EyeOff, Building2, User, KeyRound } from "lucide-react"
+import { Eye, EyeOff, Building2, User } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,12 +23,14 @@ const loadGoogleScript = (): Promise<void> => {
       resolve()
       return
     }
+
     const existingScript = document.getElementById("google-gsi-script")
     if (existingScript) {
       existingScript.addEventListener("load", () => resolve())
       resolve()
       return
     }
+
     const script = document.createElement("script")
     script.id = "google-gsi-script"
     script.src = "https://accounts.google.com/gsi/client"
@@ -48,44 +51,34 @@ interface FacilityItem {
 export function AuthForm() {
   const navigate = useNavigate()
   const location = useLocation()
-  
+
   const isRegisterPath = location.pathname.includes("register") || location.pathname.includes("sign-up")
   const isForgotPath = location.pathname.includes("forgot-password")
-  
+
   const [isLogin, setIsLogin] = useState(!isRegisterPath && !isForgotPath)
   const [isForgotPassword, setIsForgotPassword] = useState(isForgotPath)
   const [regType] = useState<"user" | "facility">("facility")
 
-  // Modal States
   const [showTermsModal, setShowTermsModal] = useState(location.pathname.includes("terms"))
   const [showPrivacyModal, setShowPrivacyModal] = useState(location.pathname.includes("privacy"))
-
-  useEffect(() => {
-    setIsForgotPassword(location.pathname.includes("forgot-password"))
-    setIsLogin(!location.pathname.includes("register") && !location.pathname.includes("sign-up") && !location.pathname.includes("forgot-password"))
-    setShowTermsModal(location.pathname.includes("terms"))
-    setShowPrivacyModal(location.pathname.includes("privacy"))
-  }, [location.pathname])
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  
+
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [middleName] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [role] = useState("HealthWorker")
   const [facilityId, setFacilityId] = useState("")
-  
-  // Facility Sign Up Specific State
+
   const [facilityName, setFacilityName] = useState("")
   const [facilityType, setFacilityType] = useState("RHU / Health Center")
   const [facilityAddress, setFacilityAddress] = useState("")
   const [facilityContact, setFacilityContact] = useState("")
   const [facilityEmail, setFacilityEmail] = useState("")
 
-  // Forgot Password Specific State
   const [forgotIdentifier, setForgotIdentifier] = useState("")
   const [forgotOtp, setForgotOtp] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -98,13 +91,10 @@ export function AuthForm() {
   const [isOtpStep, setIsOtpStep] = useState(false)
   const [otpLoading, setOtpLoading] = useState(false)
   const [otpMessage, setOtpMessage] = useState<string | null>(null)
-  const [address, setAddress] = useState("")
   const [timer, setTimer] = useState(0)
 
-  // Single Auth Method Priority state: "email" | "firebase_sms" | null
   const [activeOtpMethod, setActiveOtpMethod] = useState<"email" | "firebase_sms" | null>(null)
 
-  // Firebase Phone Auth hook with visible reCAPTCHA ("I'm not a robot" checkbox)
   const {
     sendOtp: sendFirebaseOtp,
     verifyOtp: verifyFirebaseOtp,
@@ -126,6 +116,17 @@ export function AuthForm() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    setIsForgotPassword(location.pathname.includes("forgot-password"))
+    setIsLogin(
+      !location.pathname.includes("register") &&
+        !location.pathname.includes("sign-up") &&
+        !location.pathname.includes("forgot-password")
+    )
+    setShowTermsModal(location.pathname.includes("terms"))
+    setShowPrivacyModal(location.pathname.includes("privacy"))
+  }, [location.pathname])
+
+  useEffect(() => {
     setIsOtpStep(false)
     setIsForgotOtpStep(false)
     setError(null)
@@ -137,18 +138,20 @@ export function AuthForm() {
 
   useEffect(() => {
     if (timer <= 0) return
+
     const interval = setInterval(() => {
       setTimer((prev) => prev - 1)
     }, 1000)
+
     return () => clearInterval(interval)
   }, [timer])
 
-  // Fetch Public Facilities List
   useEffect(() => {
     const fetchFacilities = async () => {
       try {
         const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
         const response = await fetch(`${baseUrl}/api/v1/facility/public-list`)
+
         if (response.ok) {
           const data = await response.json()
           if (data.result && Array.isArray(data.result)) {
@@ -159,16 +162,13 @@ export function AuthForm() {
         console.warn("Failed to fetch public facilities list:", err)
       }
     }
+
     fetchFacilities()
   }, [])
 
-  // Priority-based Single Auth Method Handler:
-  // Priority 1: Email OTP (if email provided)
-  // Priority 2: Firebase SMS OTP with visible reCAPTCHA (if phone number only)
   const handleSendOtp = async (overrideIdentifier?: string, purpose = "registration") => {
     if (timer > 0 || firebaseCooldown > 0) return false
 
-    // Determine target identifier and priority method
     let targetIdentifier = overrideIdentifier?.trim() || ""
     let isEmailMethod = false
 
@@ -186,13 +186,12 @@ export function AuthForm() {
       setError("Please provide an email address or phone number to receive OTP")
       return false
     }
-    
+
     setOtpLoading(true)
     setError(null)
     setOtpMessage(null)
 
     if (isEmailMethod) {
-      // Priority 1: Email OTP via Backend
       setActiveOtpMethod("email")
       const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
@@ -209,6 +208,7 @@ export function AuthForm() {
         })
 
         const data = await response.json()
+
         if (!response.ok) {
           throw new Error(data.error || "Failed to send verification email.")
         }
@@ -223,10 +223,11 @@ export function AuthForm() {
         setOtpLoading(false)
       }
     } else {
-      // Priority 2: Firebase SMS OTP with Visible reCAPTCHA
       setActiveOtpMethod("firebase_sms")
+
       try {
         const sent = await sendFirebaseOtp(targetIdentifier)
+
         if (sent) {
           setTimer(60)
           setOtpMessage(`SMS OTP sent via Firebase to ${targetIdentifier}`)
@@ -246,6 +247,7 @@ export function AuthForm() {
 
   const handleSendForgotOtp = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (!forgotIdentifier) {
       setError("Please enter your registered email or phone number")
       return
@@ -259,6 +261,7 @@ export function AuthForm() {
 
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (!forgotOtp) {
       setError("Please enter the verification code")
       return
@@ -275,8 +278,8 @@ export function AuthForm() {
     setIsLoading(true)
     setError(null)
 
-    // If using Firebase SMS OTP, verify code client-side first
     let finalOtpCode = forgotOtp.trim()
+
     if (activeOtpMethod === "firebase_sms") {
       const verified = await verifyFirebaseOtp(forgotOtp)
       if (!verified) {
@@ -284,8 +287,10 @@ export function AuthForm() {
         setIsLoading(false)
         return
       }
+
       const token = await getFirebaseIdToken()
       finalOtpCode = token || ""
+
       if (!finalOtpCode) {
         setError("Failed to retrieve verified phone session. Please try again.")
         setIsLoading(false)
@@ -307,6 +312,7 @@ export function AuthForm() {
       })
 
       const data = await response.json()
+
       if (!response.ok) {
         throw new Error(data.error || "Failed to reset password")
       }
@@ -347,6 +353,7 @@ export function AuthForm() {
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     if (!otp) {
       setError("Please enter the verification code")
       return
@@ -355,8 +362,8 @@ export function AuthForm() {
     setIsLoading(true)
     setError(null)
 
-    // If using Firebase SMS OTP, verify code client-side first
     let finalOtpCode = otp.trim()
+
     if (activeOtpMethod === "firebase_sms") {
       const verified = await verifyFirebaseOtp(otp)
       if (!verified) {
@@ -364,8 +371,10 @@ export function AuthForm() {
         setIsLoading(false)
         return
       }
+
       const token = await getFirebaseIdToken()
       finalOtpCode = token || ""
+
       if (!finalOtpCode) {
         setError("Failed to retrieve verified phone session. Please try again.")
         setIsLoading(false)
@@ -399,6 +408,7 @@ export function AuthForm() {
       })
 
       const data = await response.json()
+
       if (!response.ok) {
         throw new Error(data.error || "Registration failed")
       }
@@ -424,10 +434,11 @@ export function AuthForm() {
     setIsLoading(true)
     setError(null)
 
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
     if (!googleClientId) {
-      console.warn("Warning: VITE_GOOGLE_CLIENT_ID environment variable is missing.");
+      console.warn("Warning: VITE_GOOGLE_CLIENT_ID environment variable is missing.")
     }
+
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
@@ -468,6 +479,7 @@ export function AuthForm() {
               })
 
               const data = await response.json()
+
               if (!response.ok) {
                 throw new Error(data.message || data.error || "Google authentication failed")
               }
@@ -475,6 +487,7 @@ export function AuthForm() {
               if (data.token) {
                 localStorage.setItem("token", data.token)
               }
+
               if (data.user) {
                 localStorage.setItem("user", JSON.stringify(data.user))
                 await db.userSession.put({
@@ -508,6 +521,7 @@ export function AuthForm() {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
     setIsLoading(true)
     setError(null)
 
@@ -523,6 +537,7 @@ export function AuthForm() {
           })
 
           const data = await response.json()
+
           if (!response.ok) {
             throw new Error(data.error || "Authentication failed")
           }
@@ -530,6 +545,7 @@ export function AuthForm() {
           if (data.token) {
             localStorage.setItem("token", data.token)
           }
+
           if (data.user) {
             localStorage.setItem("user", JSON.stringify(data.user))
             await db.userSession.put({
@@ -588,13 +604,11 @@ export function AuthForm() {
   return (
     <div className="flex min-h-svh w-full flex-col items-center justify-center bg-background p-6">
       <div className="flex w-full max-w-md flex-col items-center gap-6">
-        {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-2">
           <img src={headerIcon} alt="BMS Logo" className="h-10 w-auto dark:invert" />
           <span className="text-3xl font-extrabold tracking-wider text-foreground">BMS</span>
         </div>
 
-        {/* Form Card */}
         <div className="w-full rounded-xl border bg-card p-6 shadow-sm">
           <div className="flex flex-col space-y-2 text-center">
             <h1 className="text-xl font-semibold tracking-tight">
@@ -627,31 +641,38 @@ export function AuthForm() {
                 {error}
               </div>
             )}
+
             {otpMessage && (
               <div className="rounded border border-green-500/50 bg-green-500/10 p-2 text-center text-xs text-green-600 dark:text-green-400">
                 {otpMessage}
               </div>
             )}
+
             {firebaseStatusMsg && activeOtpMethod === "firebase_sms" && (
-              <div className={`rounded p-2 text-center text-xs border ${
-                firebaseStatusType === "success"
-                  ? "bg-green-500/10 border-green-500/50 text-green-600 dark:text-green-400"
-                  : firebaseStatusType === "error"
-                  ? "bg-destructive/10 border-destructive/50 text-destructive"
-                  : "bg-blue-500/10 border-blue-500/50 text-blue-600 dark:text-blue-400"
-              }`}>
+              <div
+                className={`rounded p-2 text-center text-xs border ${
+                  firebaseStatusType === "success"
+                    ? "bg-green-500/10 border-green-500/50 text-green-600 dark:text-green-400"
+                    : firebaseStatusType === "error"
+                    ? "bg-destructive/10 border-destructive/50 text-destructive"
+                    : "bg-blue-500/10 border-blue-500/50 text-blue-600 dark:text-blue-400"
+                }`}
+              >
                 {firebaseStatusMsg}
               </div>
             )}
+
             <div
               id="auth-recaptcha-container"
-              className={activeOtpMethod === "firebase_sms" ? "flex justify-center items-center my-2 min-h-[78px] w-full" : "hidden"}
+              className={
+                activeOtpMethod === "firebase_sms"
+                  ? "flex justify-center items-center my-2 min-h-[78px] w-full"
+                  : "hidden"
+              }
             />
 
-            {/* FORGOT PASSWORD WORKFLOW */}
             {isForgotPassword ? (
               isForgotOtpStep ? (
-                /* Forgot Password Step 2: OTP & New Password */
                 <form onSubmit={handleResetPasswordSubmit} className="grid gap-4">
                   <div className="grid gap-1.5">
                     <Label htmlFor="forgotOtp">Verification Code (OTP)</Label>
@@ -730,7 +751,6 @@ export function AuthForm() {
                   </div>
                 </form>
               ) : (
-                /* Forgot Password Step 1: Identifier Input */
                 <form onSubmit={handleSendForgotOtp} className="grid gap-4">
                   <div className="grid gap-1.5">
                     <Label htmlFor="forgotIdentifier">Email or Phone Number</Label>
@@ -767,7 +787,6 @@ export function AuthForm() {
                 </form>
               )
             ) : isOtpStep ? (
-              /* Step 2: Dedicated Registration OTP Verification Screen */
               <form onSubmit={handleRegisterSubmit} className="grid gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="otp">Verification Code (OTP)</Label>
@@ -811,7 +830,6 @@ export function AuthForm() {
                 </div>
               </form>
             ) : (
-              /* Step 1: Main Login / Facility Register Form */
               <>
                 {isLogin && (
                   <>
@@ -861,8 +879,6 @@ export function AuthForm() {
                 )}
 
                 <form onSubmit={isLogin ? handleLoginSubmit : handleProceedToOtp} className="grid gap-4">
-
-                  {/* FACILITY REGISTRATION FIELDS */}
                   {!isLogin && (
                     <>
                       <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-3">
@@ -870,7 +886,7 @@ export function AuthForm() {
                           <Building2 className="h-4 w-4" />
                           Facility Details
                         </div>
-                        
+
                         <div className="grid gap-1.5">
                           <Label htmlFor="facilityName">Facility Name *</Label>
                           <Input
@@ -901,6 +917,7 @@ export function AuthForm() {
                               <option value="Other">Other</option>
                             </select>
                           </div>
+
                           <div className="grid gap-1.5">
                             <Label htmlFor="facilityContact">Contact Number</Label>
                             <Input
@@ -959,6 +976,7 @@ export function AuthForm() {
                               className="h-8 text-sm"
                             />
                           </div>
+
                           <div className="grid gap-1.5">
                             <Label htmlFor="adminLastName">Last Name *</Label>
                             <Input
@@ -988,12 +1006,9 @@ export function AuthForm() {
                     </>
                   )}
 
-                  {/* COMMON EMAIL FIELD FOR LOGIN / REGISTER */}
                   <div className="grid gap-1.5">
                     <Label htmlFor="email">
-                      {isLogin
-                        ? "Email or Phone Number"
-                        : "Admin Account Email"}
+                      {isLogin ? "Email or Phone Number" : "Admin Account Email"}
                     </Label>
                     <Input
                       id="email"
@@ -1006,7 +1021,6 @@ export function AuthForm() {
                     />
                   </div>
 
-                  {/* COMMON PASSWORD FIELD */}
                   <div className="grid gap-1.5">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
@@ -1024,13 +1038,13 @@ export function AuthForm() {
                       )}
                     </div>
                     <div className="relative">
-                      <Input 
-                        id="password" 
-                        type={showPassword ? "text" : "password"} 
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        required 
-                        className="h-8 text-sm pr-8" 
+                        required
+                        className="h-8 text-sm pr-8"
                       />
                       <button
                         type="button"
@@ -1077,7 +1091,6 @@ export function AuthForm() {
           )}
         </div>
 
-        {/* Footer text with interactive legal links */}
         <div className="text-center text-xs text-muted-foreground">
           By clicking continue, you agree to <br className="hidden sm:block" />
           our{" "}
@@ -1100,7 +1113,6 @@ export function AuthForm() {
         </div>
       </div>
 
-      {/* Interactive Terms of Service & Privacy Policy Modals */}
       <TermsOfServiceModal open={showTermsModal} onClose={() => setShowTermsModal(false)} />
       <PrivacyPolicyModal open={showPrivacyModal} onClose={() => setShowPrivacyModal(false)} />
     </div>

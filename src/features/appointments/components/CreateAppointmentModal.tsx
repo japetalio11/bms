@@ -10,7 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon, Loader2 } from "lucide-react"
 import { format } from "date-fns"
@@ -18,12 +22,12 @@ import { cn } from "@/lib/utils"
 import { mothersApi } from "@/features/mothers/api"
 import { appointmentApi } from "../api"
 
-export function CreateAppointmentModal({ 
+export function CreateAppointmentModal({
   children,
   open: externalOpen,
   onOpenChange: externalOnOpenChange,
-  onSuccess
-}: { 
+  onSuccess,
+}: {
   children?: React.ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -45,7 +49,8 @@ export function CreateAppointmentModal({
   const [mothers, setMothers] = React.useState<any[]>([])
   const [loadingMothers, setLoadingMothers] = React.useState(false)
   const [selectedMotherId, setSelectedMotherId] = React.useState("")
-  const [appointmentType, setAppointmentType] = React.useState("Prenatal Checkup")
+  const [appointmentType, setAppointmentType] =
+    React.useState("Prenatal Checkup")
   const [startDate, setStartDate] = React.useState<Date | undefined>(new Date())
   const [startTime, setStartTime] = React.useState("08:00")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -91,13 +96,17 @@ export function CreateAppointmentModal({
 
     try {
       const dateStr = format(startDate, "yyyy-MM-dd")
-      const selectedMother = mothers.find((m) => (m.user_id || m.mother_id || m._id || m.id) === selectedMotherId)
+      const selectedMother = mothers.find(
+        (m) => (m.user_id || m.mother_id || m._id || m.id) === selectedMotherId
+      )
       const motherUser = selectedMother?.user || selectedMother
 
       await appointmentApi.createAppointment({
         user_id: selectedMotherId,
-        mother_id: selectedMother?.mother_id || selectedMother?._id || selectedMotherId,
-        facility_id: user?.facility_id || user?.facilityId || user?.facility?._id,
+        mother_id:
+          selectedMother?.mother_id || selectedMother?._id || selectedMotherId,
+        facility_id:
+          user?.facility_id || user?.facilityId || user?.facility?._id,
         appointment_date: dateStr,
         appointment_time: startTime,
         appointment_type: appointmentType,
@@ -109,7 +118,10 @@ export function CreateAppointmentModal({
         onSuccess()
       }
     } catch (err: any) {
-      const msg = err.response?.data?.error || err.message || "Failed to create appointment"
+      const msg =
+        err.response?.data?.error ||
+        err.message ||
+        "Failed to create appointment"
       setErrorMessage(msg)
     } finally {
       setIsSubmitting(false)
@@ -117,8 +129,8 @@ export function CreateAppointmentModal({
   }
 
   return (
-    <ResponsiveModal 
-      open={isOpen} 
+    <ResponsiveModal
+      open={isOpen}
       onOpenChange={handleOpenChange}
       title="Schedule an Appointment"
       description="Set up a clinical checkup for a registered mother."
@@ -126,29 +138,49 @@ export function CreateAppointmentModal({
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 py-2">
         {errorMessage && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-md p-2 text-xs">
+          <div className="rounded-md border border-red-500/20 bg-red-500/10 p-2 text-xs text-red-500">
             {errorMessage}
           </div>
         )}
 
-        {/* Mother Selection */}
         <div className="flex flex-col gap-2">
-          <Label htmlFor="mother-select" className="text-xs font-medium text-foreground">
+          <Label
+            htmlFor="mother-select"
+            className="text-xs font-medium text-foreground"
+          >
             Select Registered Mother
           </Label>
           <Select value={selectedMotherId} onValueChange={setSelectedMotherId}>
-            <SelectTrigger id="mother-select" className="!h-8 w-full bg-card border-border text-xs text-card-foreground">
-              <SelectValue placeholder={loadingMothers ? "Loading mothers..." : "Choose a mother"} />
+            <SelectTrigger
+              id="mother-select"
+              className="!h-8 w-full border-border bg-card text-xs text-card-foreground"
+            >
+              <SelectValue
+                placeholder={
+                  loadingMothers ? "Loading mothers..." : "Choose a mother"
+                }
+              />
             </SelectTrigger>
-            <SelectContent position="popper" side="bottom" className="bg-popover border-border text-popover-foreground max-h-56">
+            <SelectContent
+              position="popper"
+              side="bottom"
+              className="max-h-56 border-border bg-popover text-popover-foreground"
+            >
               {mothers.length === 0 ? (
-                <div className="p-2 text-xs text-muted-foreground text-center">
-                  {loadingMothers ? "Loading..." : "No registered mothers found"}
+                <div className="p-2 text-center text-xs text-muted-foreground">
+                  {loadingMothers
+                    ? "Loading..."
+                    : "No registered mothers found"}
                 </div>
               ) : (
                 mothers.map((m) => {
                   const id = m.user_id || m.mother_id
-                  const name = [m.user?.first_name, m.user?.middle_name, m.user?.last_name].filter(Boolean).join(" ") || m.name || "Unknown Mother"
+                  const name =
+                    [m.user?.first_name, m.user?.middle_name, m.user?.last_name]
+                      .filter(Boolean)
+                      .join(" ") ||
+                    m.name ||
+                    "Unknown Mother"
                   return (
                     <SelectItem key={id} value={id} className="text-xs">
                       {name} ({m.user?.phone_number || "No contact"})
@@ -160,41 +192,67 @@ export function CreateAppointmentModal({
           </Select>
         </div>
 
-        {/* Appointment Type */}
         <div className="flex flex-col gap-2">
-          <Label htmlFor="type" className="text-xs font-medium text-foreground">Appointment Type</Label>
+          <Label htmlFor="type" className="text-xs font-medium text-foreground">
+            Appointment Type
+          </Label>
           <Select value={appointmentType} onValueChange={setAppointmentType}>
-            <SelectTrigger id="type" className="!h-8 w-full bg-card border-border text-xs text-card-foreground">
+            <SelectTrigger
+              id="type"
+              className="!h-8 w-full border-border bg-card text-xs text-card-foreground"
+            >
               <SelectValue placeholder="Choose appointment type" />
             </SelectTrigger>
-            <SelectContent position="popper" side="bottom" className="bg-popover border-border text-popover-foreground">
-              <SelectItem value="Prenatal Checkup" className="text-xs">Prenatal Checkup</SelectItem>
-              <SelectItem value="Postpartum Follow-up" className="text-xs">Postpartum Follow-up</SelectItem>
-              <SelectItem value="High-Risk Consultation" className="text-xs">High-Risk Consultation</SelectItem>
-              <SelectItem value="General Visit" className="text-xs">General Visit</SelectItem>
+            <SelectContent
+              position="popper"
+              side="bottom"
+              className="border-border bg-popover text-popover-foreground"
+            >
+              <SelectItem value="Prenatal Checkup" className="text-xs">
+                Prenatal Checkup
+              </SelectItem>
+              <SelectItem value="Postpartum Follow-up" className="text-xs">
+                Postpartum Follow-up
+              </SelectItem>
+              <SelectItem value="High-Risk Consultation" className="text-xs">
+                High-Risk Consultation
+              </SelectItem>
+              <SelectItem value="General Visit" className="text-xs">
+                General Visit
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        {/* Schedule Date & Time */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="start-date" className="text-xs font-medium text-foreground">Schedule Date</Label>
+            <Label
+              htmlFor="start-date"
+              className="text-xs font-medium text-foreground"
+            >
+              Schedule Date
+            </Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   type="button"
                   variant="outline"
                   className={cn(
-                    "!h-8 w-full justify-start text-left font-normal bg-card border-border text-xs",
-                    !startDate ? "text-muted-foreground" : "text-card-foreground"
+                    "!h-8 w-full justify-start border-border bg-card text-left text-xs font-normal",
+                    !startDate
+                      ? "text-muted-foreground"
+                      : "text-card-foreground"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                  {startDate ? format(startDate, "PPP") : <span>Select date</span>}
+                  {startDate ? (
+                    format(startDate, "PPP")
+                  ) : (
+                    <span>Select date</span>
+                  )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 z-[100]" align="start">
+              <PopoverContent className="z-[100] w-auto p-0" align="start">
                 <Calendar
                   mode="single"
                   selected={startDate}
@@ -204,29 +262,44 @@ export function CreateAppointmentModal({
             </Popover>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="start-time" className="text-xs font-medium text-foreground">Schedule Time</Label>
-            <Input 
-              id="start-time" 
+            <Label
+              htmlFor="start-time"
+              className="text-xs font-medium text-foreground"
+            >
+              Schedule Time
+            </Label>
+            <Input
+              id="start-time"
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="!h-8 bg-card border-border text-xs text-card-foreground"
+              className="!h-8 border-border bg-card text-xs text-card-foreground"
             />
           </div>
         </div>
 
-        {/* System Logic Note */}
-        <div className="bg-muted/40 border border-border rounded-md p-3 mt-2">
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            <strong className="text-foreground">System Note:</strong> Submitting saves the appointment to the database and schedules automated check-in notifications for the mother.
+        <div className="mt-2 rounded-md border border-border bg-muted/40 p-3">
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            <strong className="text-foreground">System Note:</strong> Submitting
+            saves the appointment to the database and schedules automated
+            check-in notifications for the mother.
           </p>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t border-border mt-2">
-          <Button type="button" variant="ghost" className="h-8 text-xs text-foreground hover:bg-accent" onClick={() => handleOpenChange(false)}>
+        <div className="mt-2 flex justify-end gap-2 border-t border-border pt-4">
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-8 text-xs text-foreground hover:bg-accent"
+            onClick={() => handleOpenChange(false)}
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting} className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-medium">
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="h-8 gap-2 bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          >
             {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Submit Appointment
           </Button>
@@ -235,4 +308,3 @@ export function CreateAppointmentModal({
     </ResponsiveModal>
   )
 }
-
