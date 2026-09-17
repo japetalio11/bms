@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthForm } from "@/components/auth-form"
 import { DashboardLayout } from "@/features/dashboard/components/DashboardLayout"
 import { UnifiedPageLoader } from "@/components/ui/unified-page-loader"
+import { PinUnlockModal } from "@/features/auth/components/PinUnlockModal"
 
 // Lazy-loaded route components for optimal bundle code-splitting
 const DashboardPage = lazy(() => import("@/features/dashboard/components/DashboardPage").then(m => ({ default: m.DashboardPage })))
@@ -25,6 +26,7 @@ const PublicSharedJourneyPage = lazy(() => import("@/features/mothers/components
 export function App() {
   return (
     <ThemeProvider>
+      <PinUnlockModal />
       <BrowserRouter>
         <Suspense fallback={<UnifiedPageLoader />}>
           <Routes>

@@ -18,6 +18,7 @@ import { syncEngine } from "@/lib/sync/syncEngine"
 import { useSettings } from "@/features/settings/hooks/useSettings"
 import { apiClient } from "@/lib/apiClient"
 import { useNetworkStatus } from "@/hooks/useNetworkStatus"
+import { setupPin } from "@/lib/security/pinSessionStore"
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -54,12 +55,20 @@ export function SettingsPage() {
   const [contactNumber, setContactNumber] = useState("")
   const [officialEmail, setOfficialEmail] = useState("")
   const [completeAddress, setCompleteAddress] = useState("")
+  const [facilityId, setFacilityId] = useState("")
+  const [userRole, setUserRole] = useState("")
 
   const [storageUsedMB, setStorageUsedMB] = useState<number>(0)
   const [storageQuotaMB, setStorageQuotaMB] = useState<number>(500)
   const [storagePercent, setStoragePercent] = useState<number>(0)
   const [savingProfile, setSavingProfile] = useState(false)
   const [updatingSecurity, setUpdatingSecurity] = useState(false)
+  const [savingFacility, setSavingFacility] = useState(false)
+
+  const isAdminOrAbove = React.useMemo(() => {
+    const r = (userRole || "").toLowerCase()
+    return r.includes("admin") || r.includes("administrator") || r.includes("superadmin") || r === "admin"
+  }, [userRole])
 
   useEffect(() => {
     syncEngine.getPendingCount().then(setPendingQueueCount).catch(() => {})
@@ -89,6 +98,7 @@ export function SettingsPage() {
   useEffect(() => {
     db.userSession.get("current_user").then((userSession) => {
       if (userSession) {
+        setUserRole(userSession.role || userSession.cachedUser?.role || "")
         setFirstName(userSession.first_name || userSession.cachedUser?.first_name || "")
         setLastName(userSession.last_name || userSession.cachedUser?.last_name || "")
         setPhoneNumber(userSession.phone_number || userSession.cachedUser?.phone_number || "")
@@ -96,11 +106,21 @@ export function SettingsPage() {
 
         if (userSession.facility || userSession.cachedUser?.facility) {
            const fac = userSession.facility || userSession.cachedUser.facility
+           setFacilityId(fac.facility_id || userSession.facility_id || "")
            setFacilityName(fac.facility_name || "")
            setFacilityType(fac.type?.toLowerCase() || "rhu")
            setContactNumber(fac.contact_number || "")
            setOfficialEmail(fac.email || "")
            setCompleteAddress(fac.address || "")
+        }
+      } else if (typeof window !== "undefined") {
+        const storedUserStr = localStorage.getItem("user")
+        if (storedUserStr) {
+          try {
+            const parsed = JSON.parse(storedUserStr)
+            setUserRole(parsed.role || "")
+            setFacilityId(parsed.facility_id || "")
+          } catch (e) {}
         }
       }
     }).catch(console.error)
@@ -201,9 +221,16 @@ export function SettingsPage() {
         setConfirmPassword("")
       }
 
-      if (offlinePin !== settings.offlinePin) {
-        updateSettings({ offlinePin })
-        toast.success("Security PIN updated", { description: "Local device security settings saved." })
+      if (offlinePin && offlinePin.length >= 4) {
+        const ok = await setupPin(offlinePin)
+        if (ok) {
+          updateSettings({ offlinePin })
+          toast.success("Security PIN updated", { description: "24-hour offline device encryption key saved." })
+        } else {
+          toast.error("Failed to update PIN key derivation.")
+        }
+      } else if (offlinePin && offlinePin.length < 4) {
+        toast.error("PIN too short", { description: "Security PIN must be at least 4 digits." })
       } else if (!newPassword) {
         toast.info("No security changes detected")
       }
@@ -213,6 +240,48 @@ export function SettingsPage() {
       toast.error("Security Update Failed", { description: errorMsg })
     } finally {
       setUpdatingSecurity(false)
+    }
+  }
+
+  const handleSaveFacility = async () => {
+    if (!isAdminOrAbove) {
+      toast.error("Permission Denied", { description: "Only administrators can modify facility settings." })
+      return
+    }
+
+    setSavingFacility(true)
+    const facilityPayload = {
+      facility_id: facilityId,
+      facility_name: facilityName,
+      type: facilityType,
+      contact_number: contactNumber,
+      email: officialEmail,
+      address: completeAddress,
+    }
+
+    try {
+      if (syncEngine.isNetworkOnline()) {
+        await apiClient.put('/api/v1/facility/update', facilityPayload)
+        toast.success("Facility details updated", { description: "Clinic identification saved successfully." })
+      } else {
+        toast.info("Saved locally", { description: "Changes queued for sync when online." })
+      }
+
+      // Update Dexie cache
+      const userSession = await db.userSession.get("current_user")
+      if (userSession) {
+        userSession.facility = {
+          ...(userSession.facility || {}),
+          ...facilityPayload,
+        }
+        await db.userSession.put(userSession)
+      }
+    } catch (err: any) {
+      console.error("Failed to update facility:", err)
+      const msg = err?.response?.data?.error || err?.message || "Failed to update facility"
+      toast.error("Update Failed", { description: msg })
+    } finally {
+      setSavingFacility(false)
     }
   }
 
@@ -361,17 +430,31 @@ export function SettingsPage() {
             <div className="flex flex-col p-5 rounded-xl border border-border bg-card shadow-sm">
               <div className="flex flex-col gap-1 mb-5">
                 <h3 className="text-sm font-semibold text-card-foreground">Clinic Identification</h3>
-                <p className="text-xs text-muted-foreground">Read-only facility details configured by the System Administrator.</p>
+                <p className="text-xs text-muted-foreground">
+                  {isAdminOrAbove
+                    ? "Manage and update official clinic details and contact information."
+                    : "Read-only facility details. Admin privilege required to modify."}
+                </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-card-foreground">Facility Name</label>
-                  <Input value={facilityName || "Rural Health Unit 1"} disabled className="h-9 text-xs border-border shadow-none bg-muted/50 text-muted-foreground" />
+                  <Input
+                    value={facilityName}
+                    onChange={(e) => setFacilityName(e.target.value)}
+                    disabled={!isAdminOrAbove || savingFacility}
+                    placeholder="e.g. Rural Health Unit 1"
+                    className="h-9 text-xs border-border shadow-none bg-card text-card-foreground disabled:bg-muted/50 disabled:text-muted-foreground"
+                  />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-card-foreground">Facility Type</label>
-                  <Select value={facilityType || "rhu"} disabled>
-                    <SelectTrigger className="w-full h-9 text-xs border-border shadow-none bg-muted/50 text-muted-foreground">
+                  <Select
+                    value={facilityType}
+                    onValueChange={(val) => setFacilityType(val)}
+                    disabled={!isAdminOrAbove || savingFacility}
+                  >
+                    <SelectTrigger className="w-full h-9 text-xs border-border shadow-none bg-card text-card-foreground disabled:bg-muted/50 disabled:text-muted-foreground">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -383,17 +466,48 @@ export function SettingsPage() {
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-card-foreground">Contact Number</label>
-                  <Input value={contactNumber || "(054) 477 1234"} disabled className="h-9 text-xs border-border shadow-none bg-muted/50 text-muted-foreground" />
+                  <Input
+                    value={contactNumber}
+                    onChange={(e) => setContactNumber(e.target.value)}
+                    disabled={!isAdminOrAbove || savingFacility}
+                    placeholder="e.g. (054) 477 1234"
+                    className="h-9 text-xs border-border shadow-none bg-card text-card-foreground disabled:bg-muted/50 disabled:text-muted-foreground"
+                  />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-card-foreground">Official Email</label>
-                  <Input value={officialEmail || "rhu1@pili.gov.ph"} disabled className="h-9 text-xs border-border shadow-none bg-muted/50 text-muted-foreground" />
+                  <Input
+                    value={officialEmail}
+                    onChange={(e) => setOfficialEmail(e.target.value)}
+                    disabled={!isAdminOrAbove || savingFacility}
+                    placeholder="e.g. rhu1@pili.gov.ph"
+                    className="h-9 text-xs border-border shadow-none bg-card text-card-foreground disabled:bg-muted/50 disabled:text-muted-foreground"
+                  />
                 </div>
                 <div className="flex flex-col gap-2 md:col-span-2">
                   <label className="text-xs font-medium text-card-foreground">Complete Address</label>
-                  <Textarea value={completeAddress || "Municipal Compound, San Agustin, Pili, Camarines Sur"} disabled className="min-h-[60px] text-xs border-border shadow-none bg-muted/50 text-muted-foreground resize-none" />
+                  <Textarea
+                    value={completeAddress}
+                    onChange={(e) => setCompleteAddress(e.target.value)}
+                    disabled={!isAdminOrAbove || savingFacility}
+                    placeholder="Complete facility street address"
+                    className="min-h-[60px] text-xs border-border shadow-none bg-card text-card-foreground disabled:bg-muted/50 disabled:text-muted-foreground resize-none"
+                  />
                 </div>
               </div>
+
+              {isAdminOrAbove && (
+                <div className="flex justify-end mt-6 pt-5 border-t border-border/50">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveFacility}
+                    disabled={savingFacility}
+                    className="h-9 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    {savingFacility ? "Saving Details..." : "Save Clinic Identification"}
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Card B: Referral Network Routing */}

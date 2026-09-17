@@ -15,11 +15,12 @@ import {
 } from "@/components/ui/sidebar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { LayoutGrid, Users, Calendar, CalendarCheck, ArrowRightLeft, MessageSquare, SlidersHorizontal, ChevronsUpDown, LogOut, FileText } from "lucide-react"
+import { LayoutGrid, Users, Calendar, CalendarCheck, ArrowRightLeft, MessageSquare, SlidersHorizontal, ChevronsUpDown, LogOut, FileText, Lock } from "lucide-react"
 import headerIcon from "@/assets/icon.svg"
 import rhuLogo from "@/assets/pili-rhu-logo.jpg"
 import { apiClient } from "@/lib/apiClient"
 import { db } from "@/lib/db/bmsDatabase"
+import { lockPinSession, clearPinConfig } from "@/lib/security/pinSessionStore"
 
 export function AppSidebar() {
   const navigate = useNavigate()
@@ -76,6 +77,7 @@ export function AppSidebar() {
     } catch (err) {
       console.warn("Error cleaning up offline database on logout:", err)
     } finally {
+      clearPinConfig()
       localStorage.removeItem("user")
       localStorage.removeItem("token")
       localStorage.clear()
@@ -254,6 +256,14 @@ export function AppSidebar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" className="w-[--radix-dropdown-menu-trigger-width]">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => lockPinSession()}
+                  className="cursor-pointer gap-2"
+                >
+                  <Lock className="h-4 w-4 text-amber-500" />
+                  Lock Offline Shift
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10 gap-2">
                   <LogOut className="h-4 w-4" />
