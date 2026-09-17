@@ -65,12 +65,17 @@ export function NotificationPopover({ align = "end" }: { align?: "end" | "center
   useEffect(() => {
     fetchNotifications()
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
     const unsubscribe = syncEngine.subscribe((status: any) => {
       setIsOnline(status.isOnline)
-      fetchNotifications()
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        fetchNotifications()
+      }, 600)
     })
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
       unsubscribe()
     }
   }, [fetchNotifications])

@@ -177,27 +177,62 @@ export const motherRepository = {
   async getCompositeProfile(targetId: string): Promise<any> {
     let localMother: any = await db.mothers.get(targetId)
     if (!localMother) {
+      localMother = await db.mothers.where("mother_id").equals(targetId).first()
+    }
+    if (!localMother) {
+      localMother = await db.mothers.where("user_id").equals(targetId).first()
+    }
+    if (!localMother) {
       const allM = await db.mothers.toArray()
       localMother = allM.find((m: any) => m.id === targetId || m._id === targetId || m.mother_id === targetId || m.user_id === targetId) || null
     }
 
     const mid = localMother?.mother_id || localMother?.id || targetId
     const uid = localMother?.user_id || localMother?.user?.user_id || targetId
+    const searchKeys = Array.from(new Set([mid, uid, targetId].filter(Boolean))) as string[]
 
-    const [allPregs, allVisits, allLabs, allSupps, allAppts] = await Promise.all([
-      db.pregnancies.toArray().catch(() => []),
-      db.prenatalVisits.toArray().catch(() => []),
-      db.labRecords.toArray().catch(() => []),
-      db.supplements.toArray().catch(() => []),
-      db.appointments.toArray().catch(() => []),
+    const [allPregs, directVisits, directLabs, directSupps, apptsByMother, apptsByUser] = await Promise.all([
+      db.pregnancies.where("mother_id").anyOf(searchKeys).toArray().catch(() => []),
+      db.prenatalVisits.where("mother_id").anyOf(searchKeys).toArray().catch(() => []),
+      db.labRecords.where("mother_id").anyOf(searchKeys).toArray().catch(() => []),
+      db.supplements.where("mother_id").anyOf(searchKeys).toArray().catch(() => []),
+      db.appointments.where("mother_id").anyOf(searchKeys).toArray().catch(() => []),
+      uid ? db.appointments.where("user_id").equals(uid).toArray().catch(() => []) : Promise.resolve([]),
     ])
 
-    const localPregs = allPregs.filter((p: any) => p.mother_id === mid || p.mother_id === uid || p.id === mid)
-    const pregIds = new Set(localPregs.map((p: any) => p.pregnancy_id || p.id).filter(Boolean))
-    const localVisits = allVisits.filter((v: any) => v.mother_id === mid || (v.pregnancy_id && pregIds.has(v.pregnancy_id)))
-    const localLabs = allLabs.filter((l: any) => l.mother_id === mid || (l.pregnancy_id && pregIds.has(l.pregnancy_id)))
-    const localSupps = allSupps.filter((s: any) => s.mother_id === mid || (s.pregnancy_id && pregIds.has(s.pregnancy_id)))
-    const localAppts = allAppts.filter((a: any) => a.user_id === uid || a.mother_id === mid)
+    const localPregs = allPregs
+    const pregIds = Array.from(new Set(localPregs.map((p: any) => p.pregnancy_id || p.id).filter(Boolean))) as string[]
+
+    let additionalVisits: any[] = []
+    let additionalLabs: any[] = []
+    let additionalSupps: any[] = []
+
+    if (pregIds.length > 0) {
+      const [pVisits, pLabs, pSupps] = await Promise.all([
+        db.prenatalVisits.where("pregnancy_id").anyOf(pregIds).toArray().catch(() => []),
+        db.labRecords.where("pregnancy_id").anyOf(pregIds).toArray().catch(() => []),
+        db.supplements.where("pregnancy_id").anyOf(pregIds).toArray().catch(() => []),
+      ])
+      additionalVisits = pVisits
+      additionalLabs = pLabs
+      additionalSupps = pSupps
+    }
+
+    const visitMap = new Map<string, any>()
+    ;[...directVisits, ...additionalVisits].forEach(v => visitMap.set(v.id || v.visit_id, v))
+    const localVisits = Array.from(visitMap.values())
+
+    const labMap = new Map<string, any>()
+    ;[...directLabs, ...additionalLabs].forEach(l => labMap.set(l.id || l.screening_id, l))
+    const localLabs = Array.from(labMap.values())
+
+    const suppMap = new Map<string, any>()
+    ;[...directSupps, ...additionalSupps].forEach(s => suppMap.set(s.id || s.supplement_id, s))
+    const localSupps = Array.from(suppMap.values())
+
+    const apptMap = new Map<string, any>()
+    ;[...apptsByMother, ...apptsByUser].forEach(a => apptMap.set(a.id || a.appointment_id, a))
+    const localAppts = Array.from(apptMap.values())
 
     const localComposite = localMother ? {
       ...localMother,

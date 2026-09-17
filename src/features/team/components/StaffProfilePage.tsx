@@ -171,7 +171,21 @@ export function StaffProfilePage() {
   const fetchStaffDetails = async () => {
     if (!id) return
     try {
-      setLoading(true)
+      // 1. Instantly display from local cache if available (0 latency)
+      const cachedStaff = await userRepository.getLocalCachedStaff()
+      const localMatch = cachedStaff.find(u => u.id === id || u.user_id === id)
+      if (localMatch) {
+        setStaff(localMatch)
+        const staffRole = localMatch.role || localMatch.position || "HealthWorker"
+        setRole(staffRole)
+        setSelectedPermissions(ROLE_PERMISSIONS[staffRole] || ROLE_PERMISSIONS["HealthWorker"])
+        setAllFacilityStaff(cachedStaff)
+        setLoading(false)
+      } else {
+        setLoading(true)
+      }
+
+      // 2. Refresh fresh details in background
       const [data, facilityStaff] = await Promise.all([
         userRepository.getStaffProfile(id),
         userRepository.getFacilityStaff()

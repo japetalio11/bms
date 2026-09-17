@@ -26,8 +26,14 @@ export function useMotherProfile(targetId?: string): MotherProfileData {
   const liveData = useLiveQuery(async () => {
     if (!targetId) return null
 
-    // 1. Locate mother record
+    // 1. Locate mother record via index first, fallback to scan only if not found
     let mother: any = await db.mothers.get(targetId)
+    if (!mother) {
+      mother = await db.mothers.where("mother_id").equals(targetId).first()
+    }
+    if (!mother) {
+      mother = await db.mothers.where("user_id").equals(targetId).first()
+    }
     if (!mother) {
       const allM = await db.mothers.toArray()
       mother = allM.find(
@@ -44,36 +50,58 @@ export function useMotherProfile(targetId?: string): MotherProfileData {
 
     const mid = mother.mother_id || mother._id || mother.id || targetId
     const uid = mother.user_id || mother.user?.user_id
+    const searchKeys = Array.from(new Set([mid, uid, targetId].filter(Boolean))) as string[]
 
-    // 2. Fetch related child entities
-    const [allPregs, allVisits, allLabs, allSupps, allAppts] = await Promise.all([
-      db.pregnancies.toArray(),
-      db.prenatalVisits.toArray(),
-      db.labRecords.toArray(),
-      db.supplements.toArray(),
-      db.appointments.toArray(),
+    // 2. Fetch related child entities using indexed Dexie queries instead of full-table scans
+    const [allPregs, directVisits, directLabs, directSupps, apptsByMother, apptsByUser] = await Promise.all([
+      db.pregnancies.where("mother_id").anyOf(searchKeys).toArray(),
+      db.prenatalVisits.where("mother_id").anyOf(searchKeys).toArray(),
+      db.labRecords.where("mother_id").anyOf(searchKeys).toArray(),
+      db.supplements.where("mother_id").anyOf(searchKeys).toArray(),
+      db.appointments.where("mother_id").anyOf(searchKeys).toArray(),
+      uid ? db.appointments.where("user_id").equals(uid).toArray() : Promise.resolve([]),
     ])
 
     const pregnancies = allPregs
-      .filter((p: any) => p.mother_id === mid || (uid && p.mother_id === uid) || p.id === mid)
       .sort((a: any, b: any) => new Date(b.date_of_registration || b.created_at || 0).getTime() - new Date(a.date_of_registration || a.created_at || 0).getTime())
 
-    const pregIds = new Set(pregnancies.map((p: any) => p.pregnancy_id || p.id).filter(Boolean))
+    const pregIds = Array.from(new Set(pregnancies.map((p: any) => p.pregnancy_id || p.id).filter(Boolean))) as string[]
 
-    const prenatalVisits = allVisits
-      .filter((v: any) => v.mother_id === mid || (v.pregnancy_id && pregIds.has(v.pregnancy_id)))
+    // Also fetch any visits, labs, or supplements linked via pregnancy_id if not already matched
+    let additionalVisits: any[] = []
+    let additionalLabs: any[] = []
+    let additionalSupps: any[] = []
+
+    if (pregIds.length > 0) {
+      const [pVisits, pLabs, pSupps] = await Promise.all([
+        db.prenatalVisits.where("pregnancy_id").anyOf(pregIds).toArray(),
+        db.labRecords.where("pregnancy_id").anyOf(pregIds).toArray(),
+        db.supplements.where("pregnancy_id").anyOf(pregIds).toArray(),
+      ])
+      additionalVisits = pVisits
+      additionalLabs = pLabs
+      additionalSupps = pSupps
+    }
+
+    // Merge and deduplicate by primary id
+    const visitMap = new Map<string, any>()
+    ;[...directVisits, ...additionalVisits].forEach(v => visitMap.set(v.id || v.visit_id, v))
+    const prenatalVisits = Array.from(visitMap.values())
       .sort((a: any, b: any) => new Date(b.visit_date || b.created_at || 0).getTime() - new Date(a.visit_date || a.created_at || 0).getTime())
 
-    const labRecords = allLabs
-      .filter((l: any) => l.mother_id === mid || (l.pregnancy_id && pregIds.has(l.pregnancy_id)))
+    const labMap = new Map<string, any>()
+    ;[...directLabs, ...additionalLabs].forEach(l => labMap.set(l.id || l.screening_id, l))
+    const labRecords = Array.from(labMap.values())
       .sort((a: any, b: any) => new Date(b.date_of_screening || b.created_at || 0).getTime() - new Date(a.date_of_screening || a.created_at || 0).getTime())
 
-    const supplements = allSupps
-      .filter((s: any) => s.mother_id === mid || (s.pregnancy_id && pregIds.has(s.pregnancy_id)))
+    const suppMap = new Map<string, any>()
+    ;[...directSupps, ...additionalSupps].forEach(s => suppMap.set(s.id || s.supplement_id, s))
+    const supplements = Array.from(suppMap.values())
       .sort((a: any, b: any) => new Date(b.date_given || b.created_at || 0).getTime() - new Date(a.date_given || a.created_at || 0).getTime())
 
-    const appointments = allAppts
-      .filter((a: any) => (uid && a.user_id === uid) || a.mother_id === mid)
+    const apptMap = new Map<string, any>()
+    ;[...apptsByMother, ...apptsByUser].forEach(a => apptMap.set(a.id || a.appointment_id, a))
+    const appointments = Array.from(apptMap.values())
       .sort((a: any, b: any) => new Date(b.appointment_date || 0).getTime() - new Date(a.appointment_date || 0).getTime())
 
     return {

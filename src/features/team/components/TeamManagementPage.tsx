@@ -63,7 +63,16 @@ export function TeamManagementPage() {
   const isPrivilegedAdmin = currentUserRole === "Admin" || currentUserRole === "SystemAdmin"
 
   const fetchStaff = async () => {
-    setLoading(true)
+    // 1. Immediately display from local cache (< 5ms)
+    const cached = await userRepository.getLocalCachedStaff()
+    if (cached.length > 0) {
+      setStaffList(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
+
+    // 2. Revalidate in background
     try {
       const data = await userRepository.getFacilityStaff()
       setStaffList(data)

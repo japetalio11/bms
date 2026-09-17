@@ -58,24 +58,28 @@ export function DashboardPage() {
     []
   ) ?? 0
 
-  // 3. Appointments with Joined Mother Name
+  // 3. Appointments with Joined Mother Name (O(1) in-memory lookup map)
   const enrichedAppointments = useLiveQuery(async () => {
-    const apps = await db.appointments.toArray();
-    return Promise.all(apps.map(async (app) => {
-      let motherName = ""
-      const targetId = app.mother_id || app.user_id
-      if (targetId) {
-        let mother = await db.mothers.get(targetId)
-        if (!mother) {
-          mother = await db.mothers.where('user_id').equals(targetId).first()
-        }
-        if (!mother) {
-          mother = await db.mothers.where('mother_id').equals(targetId).first()
-        }
-        if (mother) {
-          motherName = `${mother.first_name || mother.user?.first_name || ""} ${mother.last_name || mother.user?.last_name || ""}`.trim()
-        }
+    const [apps, mothers] = await Promise.all([
+      db.appointments.toArray(),
+      db.mothers.toArray(),
+    ])
+
+    const motherNameMap = new Map<string, string>()
+    for (const m of mothers) {
+      const name = `${m.first_name || m.user?.first_name || ""} ${m.last_name || m.user?.last_name || ""}`.trim()
+      if (name) {
+        if (m.id) motherNameMap.set(m.id, name)
+        if (m.mother_id) motherNameMap.set(m.mother_id, name)
+        if (m.user_id) motherNameMap.set(m.user_id, name)
+        if (m._id) motherNameMap.set(m._id, name)
       }
+    }
+
+    return apps.map((app) => {
+      const targetId = app.mother_id || app.user_id
+      let motherName = (targetId && motherNameMap.get(targetId)) || ""
+
       if (!motherName && app.user) {
         motherName = `${app.user.first_name || ""} ${app.user.last_name || ""}`.trim()
       }
@@ -83,7 +87,7 @@ export function DashboardPage() {
         motherName = app.patient_name || app.motherName || "Patient"
       }
       return { ...app, motherName }
-    }))
+    })
   }, []) ?? []
 
   const todayAppointments = enrichedAppointments.filter(app => {

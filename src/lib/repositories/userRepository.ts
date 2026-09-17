@@ -43,72 +43,92 @@ export interface StaffActivitiesResponse {
   limit: number
 }
 
+let inFlightStaffPromise: Promise<LocalStaffUser[]> | null = null
+
 export const userRepository = {
   /**
-   * Retrieves all facility staff members.
-   * Reads local Dexie DB cache first, then syncs with backend if online.
+   * Reads staff directly from local Dexie storage without any network requests (< 1ms).
    */
-  async getFacilityStaff(): Promise<LocalStaffUser[]> {
-    let localStaff: LocalStaffUser[] = []
+  async getLocalCachedStaff(): Promise<LocalStaffUser[]> {
     try {
       const cached = await db.userSession.get("facility_staff_cache")
       if (cached && Array.isArray(cached.data)) {
-        localStaff = cached.data
+        return cached.data
       }
     } catch (err) {
       console.warn("[userRepository] Failed to query local staff cache:", err)
     }
+    return []
+  },
+
+  /**
+   * Retrieves all facility staff members.
+   * Deduplicates concurrent network requests and updates Dexie cache.
+   */
+  async getFacilityStaff(): Promise<LocalStaffUser[]> {
+    const localStaff = await this.getLocalCachedStaff()
 
     if (syncEngine.isNetworkOnline()) {
-      try {
-        const response = await apiClient.get("/api/v1/user/facility")
-        const remoteList = response.data?.result || response.data?.data || (Array.isArray(response.data) ? response.data : [])
-
-        if (Array.isArray(remoteList)) {
-          const remoteEmails = new Set(
-            remoteList.map((u: any) => (u.email || "").toLowerCase().trim()).filter(Boolean)
-          )
-          // Any pending local item that has now appeared in the remote list (matched by email) is reconciled!
-          const pendingItems = localStaff.filter(
-            (u) => u.sync_status !== "synced" && !remoteEmails.has((u.email || "").toLowerCase().trim())
-          )
-          const pendingIds = new Set(pendingItems.map((u) => u.id))
-
-          const formattedRemote: LocalStaffUser[] = remoteList
-            .filter((user: any) => user.role !== "Mother" && user.role !== "MOTHER" && !pendingIds.has(user.user_id || user._id || user.id))
-            .map((user: any) => {
-              const userId = user.user_id || user._id || user.id
-              const fullName = `${user.first_name || ""} ${user.middle_name ? user.middle_name + " " : ""}${user.last_name || ""}`.trim()
-              const statusVal = user.is_active ? "Active" : "Deactivated"
-
-              return {
-                ...user,
-                id: userId,
-                user_id: userId,
-                first_name: user.first_name || "",
-                last_name: user.last_name || "",
-                middle_name: user.middle_name || "",
-                name: fullName || "Staff Member",
-                avatar: user.profile_url || user.photo_url || "",
-                status: statusVal,
-                is_active: user.is_active ?? true,
-                position: user.role || "Staff",
-                sector: user.facility?.facility_name || user.sector || "N/A",
-                email: user.email || "",
-                phone_number: user.phone_number || "",
-                facility_id: user.facility_id || user.facility?.facility_id,
-                sync_status: "synced" as const,
-                updated_at: Date.now(),
-              }
-            })
-
-          const merged = [...pendingItems, ...formattedRemote]
-          await db.userSession.put({ id: "facility_staff_cache", data: merged, updated_at: Date.now() })
-          return merged
-        }
-      } catch (apiErr) {
-        console.warn("[userRepository] Backend fetch failed, returning cached staff list:", apiErr)
+      if (inFlightStaffPromise) {
+        return inFlightStaffPromise
       }
+
+      inFlightStaffPromise = (async () => {
+        try {
+          const response = await apiClient.get("/api/v1/user/facility")
+          const remoteList = response.data?.result || response.data?.data || (Array.isArray(response.data) ? response.data : [])
+
+          if (Array.isArray(remoteList)) {
+            const remoteEmails = new Set(
+              remoteList.map((u: any) => (u.email || "").toLowerCase().trim()).filter(Boolean)
+            )
+            const currentCache = await this.getLocalCachedStaff()
+            const pendingItems = currentCache.filter(
+              (u) => u.sync_status !== "synced" && !remoteEmails.has((u.email || "").toLowerCase().trim())
+            )
+            const pendingIds = new Set(pendingItems.map((u) => u.id))
+
+            const formattedRemote: LocalStaffUser[] = remoteList
+              .filter((user: any) => user.role !== "Mother" && user.role !== "MOTHER" && !pendingIds.has(user.user_id || user._id || user.id))
+              .map((user: any) => {
+                const userId = user.user_id || user._id || user.id
+                const fullName = `${user.first_name || ""} ${user.middle_name ? user.middle_name + " " : ""}${user.last_name || ""}`.trim()
+                const statusVal = user.is_active ? "Active" : "Deactivated"
+
+                return {
+                  ...user,
+                  id: userId,
+                  user_id: userId,
+                  first_name: user.first_name || "",
+                  last_name: user.last_name || "",
+                  middle_name: user.middle_name || "",
+                  name: fullName || "Staff Member",
+                  avatar: user.profile_url || user.photo_url || "",
+                  status: statusVal,
+                  is_active: user.is_active ?? true,
+                  position: user.role || "Staff",
+                  sector: user.facility?.facility_name || user.sector || "N/A",
+                  email: user.email || "",
+                  phone_number: user.phone_number || "",
+                  facility_id: user.facility_id || user.facility?.facility_id,
+                  sync_status: "synced" as const,
+                  updated_at: Date.now(),
+                }
+              })
+
+            const merged = [...pendingItems, ...formattedRemote]
+            await db.userSession.put({ id: "facility_staff_cache", data: merged, updated_at: Date.now() })
+            return merged
+          }
+        } catch (apiErr) {
+          console.warn("[userRepository] Backend fetch failed, returning cached staff list:", apiErr)
+        } finally {
+          inFlightStaffPromise = null
+        }
+        return localStaff
+      })()
+
+      return inFlightStaffPromise
     }
 
     return localStaff
@@ -116,10 +136,11 @@ export const userRepository = {
 
   /**
    * Retrieves a staff profile by ID.
+   * Checks Dexie cache first, fetches profile via single endpoint, and updates cache without re-fetching all staff.
    */
   async getStaffProfile(targetId: string): Promise<LocalStaffUser | null> {
-    const allStaff = await this.getFacilityStaff()
-    const found = allStaff.find((u) => u.id === targetId || u.user_id === targetId) || null
+    const cachedList = await this.getLocalCachedStaff()
+    const found = cachedList.find((u) => u.id === targetId || u.user_id === targetId) || null
 
     if (syncEngine.isNetworkOnline()) {
       try {
@@ -141,10 +162,10 @@ export const userRepository = {
             updated_at: Date.now(),
           }
 
-          // Update cache
-          const currentList = await this.getFacilityStaff()
-          const filtered = currentList.filter((u) => u.id !== userId)
-          await db.userSession.put({ id: "facility_staff_cache", data: [...filtered, updatedRecord], updated_at: Date.now() })
+          // Update cache in-place without triggering another full staff network request
+          const currentList = await this.getLocalCachedStaff()
+          const filtered = currentList.filter((u) => u.id !== userId && u.user_id !== userId)
+          await db.userSession.put({ id: "facility_staff_cache", data: [updatedRecord, ...filtered], updated_at: Date.now() })
           return updatedRecord
         }
       } catch (err) {
@@ -157,6 +178,7 @@ export const userRepository = {
 
   /**
    * Invites / creates a new staff account (offline-first).
+   * Eliminates duplicate network queries to getFacilityStaff.
    */
   async inviteStaff(payload: {
     first_name: string
@@ -190,8 +212,8 @@ export const userRepository = {
       updated_at: Date.now(),
     }
 
-    // Save locally to cache immediately
-    const currentList = await this.getFacilityStaff()
+    // Save locally to cache immediately without triggering network fetch
+    const currentList = await this.getLocalCachedStaff()
     await db.userSession.put({ id: "facility_staff_cache", data: [newStaff, ...currentList], updated_at: Date.now() })
 
     if (syncEngine.isNetworkOnline()) {
@@ -211,7 +233,12 @@ export const userRepository = {
           updated_at: Date.now(),
         }
 
-        const updatedList = (await this.getFacilityStaff()).map((u) => (u.id === tempId ? savedItem : u))
+        // Update cache directly with canonical user ID
+        const latestCache = await this.getLocalCachedStaff()
+        const updatedList = latestCache.map((u) => (u.id === tempId ? savedItem : u))
+        if (!updatedList.some((u) => u.id === canonicalId)) {
+          updatedList.unshift(savedItem)
+        }
         await db.userSession.put({ id: "facility_staff_cache", data: updatedList, updated_at: Date.now() })
         return savedItem
       } catch (err: any) {
@@ -240,7 +267,7 @@ export const userRepository = {
    * Updates staff active status (activate/deactivate) offline-first.
    */
   async updateStaffStatus(userId: string, is_active: boolean): Promise<boolean> {
-    const currentList = await this.getFacilityStaff()
+    const currentList = await this.getLocalCachedStaff()
     const updatedList = currentList.map((u) => {
       if (u.id === userId || u.user_id === userId) {
         return {
@@ -258,7 +285,7 @@ export const userRepository = {
     if (syncEngine.isNetworkOnline()) {
       try {
         await apiClient.put(`/api/v1/user/${userId}/deactivate`, { is_active })
-        const syncedList = (await this.getFacilityStaff()).map((u) => {
+        const syncedList = (await this.getLocalCachedStaff()).map((u) => {
           if (u.id === userId || u.user_id === userId) {
             return { ...u, sync_status: "synced" as const }
           }
@@ -291,7 +318,7 @@ export const userRepository = {
    * Updates staff role / permissions offline-first.
    */
   async updateStaffRole(userId: string, role: string): Promise<boolean> {
-    const currentList = await this.getFacilityStaff()
+    const currentList = await this.getLocalCachedStaff()
     const updatedList = currentList.map((u) => {
       if (u.id === userId || u.user_id === userId) {
         return {
@@ -309,7 +336,7 @@ export const userRepository = {
     if (syncEngine.isNetworkOnline()) {
       try {
         await apiClient.put(`/api/v1/user/${userId}/role`, { role })
-        const syncedList = (await this.getFacilityStaff()).map((u) => {
+        const syncedList = (await this.getLocalCachedStaff()).map((u) => {
           if (u.id === userId || u.user_id === userId) {
             return { ...u, sync_status: "synced" as const }
           }

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { UploadCloud, CheckCircle2 } from "lucide-react"
 import { mothersApi } from "@/features/mothers/api"
+import { syncEngine } from "@/lib/sync/syncEngine"
 
 interface UploadDocumentModalProps {
   children?: React.ReactNode
@@ -37,6 +38,7 @@ export function UploadDocumentModal({
   const [fileUrl, setFileUrl] = React.useState<string | undefined>(undefined)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [isSuccess, setIsSuccess] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
   const [mothers, setMothers] = React.useState<any[]>([])
 
   React.useEffect(() => {
@@ -121,19 +123,33 @@ export function UploadDocumentModal({
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const finalTitle = title.trim() || (file ? file.name.substring(0, file.name.lastIndexOf('.')) || file.name : "Facility Document")
     if (!finalTitle) {
-      alert("Please select a file or enter a document title.")
+      setError("Please select a file or enter a document title.")
       return
     }
 
     setIsSubmitting(true)
+    setError(null)
 
-    setTimeout(() => {
+    try {
+      let finalFileUrl = fileUrl
+
+      if (file && syncEngine.isNetworkOnline()) {
+        try {
+          const res = await mothersApi.uploadLabFile(file)
+          if (res?.file_url || res?.fileUrl || res?.url) {
+            finalFileUrl = res.file_url || res.fileUrl || res.url
+          }
+        } catch (uploadErr: any) {
+          console.warn("[UploadDocumentModal] Supabase online upload failed, using local document data:", uploadErr)
+        }
+      }
+
       const newDoc = {
-        id: `EHR-${Date.now().toString().slice(-4)}`,
+        id: `EHR-${Date.now().toString().slice(-6)}`,
         title: finalTitle,
         category,
         patientName: patientName || "Facility General",
@@ -142,23 +158,29 @@ export function UploadDocumentModal({
         size: file ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : "1.2 MB",
         dateUploaded: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
         uploadedBy: "Current Healthcare Staff",
-        fileUrl: fileUrl
+        fileUrl: finalFileUrl
       }
 
-      setIsSubmitting(false)
-      setIsSuccess(true)
+      if (onSuccess) {
+        await onSuccess(newDoc)
+      }
 
+      setIsSuccess(true)
       setTimeout(() => {
         setIsSuccess(false)
-        if (onSuccess) onSuccess(newDoc)
         handleOpenChange(false)
         setTitle("")
         setCategory("Clinical Protocols")
         setPatientName("Facility General")
         setFile(null)
         setFileUrl(undefined)
-      }, 1000)
-    }, 600)
+      }, 800)
+    } catch (err: any) {
+      console.error("Failed to upload document:", err)
+      setError(err?.response?.data?.error || err?.message || "Failed to upload document")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -170,6 +192,11 @@ export function UploadDocumentModal({
       description="Store clinical documents, patient archives, and health unit protocols."
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 py-1 text-foreground max-h-[75vh] overflow-y-auto pr-1.5">
+        {error && (
+          <div className="rounded border border-destructive/50 bg-destructive/10 p-2.5 text-center text-xs font-medium text-destructive">
+            {error}
+          </div>
+        )}
         {isSuccess ? (
           <div className="flex flex-col items-center justify-center py-8 gap-3 text-emerald-500">
             <CheckCircle2 className="h-12 w-12 animate-bounce" />

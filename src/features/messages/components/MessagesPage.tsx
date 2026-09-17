@@ -44,18 +44,19 @@ export function MessagesPage() {
   useEffect(() => {
     loadAndSyncData()
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
     const unsubscribe = syncEngine.subscribe(() => {
-      loadAndSyncData()
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        loadAndSyncData()
+      }, 600)
     })
 
-    return () => unsubscribe()
-  }, [])
-
-  useEffect(() => {
-    if (isOnline) {
-      loadAndSyncData()
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
+      unsubscribe()
     }
-  }, [isOnline])
+  }, [])
 
   return (
     <div className="flex w-full h-[calc(100vh-64px)] overflow-hidden bg-background">

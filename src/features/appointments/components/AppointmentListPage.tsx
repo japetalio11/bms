@@ -51,7 +51,7 @@ import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
 import { toast } from "sonner"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { appointmentApi } from "../api"
-import { mothersApi } from "@/features/mothers/api"
+import { db } from "@/lib/db/bmsDatabase"
 import { extractRiskLevel } from "@/lib/riskUtils"
 
 export function AppointmentListPage() {
@@ -77,20 +77,20 @@ export function AppointmentListPage() {
     const user = userStr ? JSON.parse(userStr) : null
 
     try {
-      const [appointments, mothers] = await Promise.all([
-        appointmentApi.getAllFacilityAppointment(user?.facility_id),
-        mothersApi.getActiveMothers(user?.facility_id).catch(() => []),
-      ])
-
-      const map = new Map<string, any>()
-      if (Array.isArray(mothers)) {
-        mothers.forEach((m: any) => {
-          const keys = [m.id, m._id, m.mother_id, m.user_id, m.user?.user_id].filter(Boolean)
-          keys.forEach((k) => map.set(k, m))
-        })
-      }
-      setMothersMap(map)
+      const appointments = await appointmentApi.getAllFacilityAppointment(user?.facility_id)
       setAppointmentList(appointments || [])
+
+      // Resolve additional mother metadata from fast local Dexie cache (0 network latency)
+      db.mothers.toArray().then((cachedMothers) => {
+        const map = new Map<string, any>()
+        if (Array.isArray(cachedMothers)) {
+          cachedMothers.forEach((m: any) => {
+            const keys = [m.id, m._id, m.mother_id, m.user_id, m.user?.user_id].filter(Boolean)
+            keys.forEach((k) => map.set(k, m))
+          })
+        }
+        setMothersMap(map)
+      }).catch(() => {})
     } catch (error) {
       console.error("Failed to fetch appointments:", error)
       setAppointmentList([])
