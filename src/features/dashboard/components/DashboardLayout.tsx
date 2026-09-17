@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react"
 import { Outlet } from "react-router-dom"
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "./AppSidebar"
@@ -12,10 +13,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { PinSetupModal } from "@/features/auth/components/PinSetupModal"
+import { hasPinConfigured } from "@/lib/security/pinSessionStore"
 
 export function DashboardLayout() {
+  const [showPinSetup, setShowPinSetup] = useState<boolean>(false)
+
+  useEffect(() => {
+    // Check if user has PIN set up on this device
+    if (!hasPinConfigured()) {
+      setShowPinSetup(true)
+    }
+  }, [])
+
   return (
     <SidebarProvider>
+      <PinSetupModal isOpen={showPinSetup} onClose={() => setShowPinSetup(false)} />
       <AppSidebar />
       <SidebarInset className="bg-background text-foreground flex flex-col h-screen overflow-hidden">
         <AppHeader />
