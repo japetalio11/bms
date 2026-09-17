@@ -33,6 +33,8 @@ export interface UsePhoneAuthReturn {
   statusType: "info" | "success" | "error" | "";
   formattedPhone: string;
   user: User | null;
+  idToken: string | null;
+  getIdToken: () => Promise<string | null>;
   resetRecaptchaState: () => void;
   lastError: { code?: string; message?: string; details?: any } | null;
 }
@@ -65,6 +67,7 @@ export function usePhoneAuth(options: UsePhoneAuthOptions = {}): UsePhoneAuthRet
   const [statusType, setStatusType] = useState<"info" | "success" | "error" | "">("");
   const [formattedPhone, setFormattedPhone] = useState<string>("");
   const [user, setUser] = useState<User | null>(null);
+  const [idToken, setIdToken] = useState<string | null>(null);
   const [lastError, setLastError] = useState<{ code?: string; message?: string; details?: any } | null>(null);
 
   useEffect(() => {
@@ -290,6 +293,8 @@ export function usePhoneAuth(options: UsePhoneAuthOptions = {}): UsePhoneAuthRet
 
       try {
         const result: UserCredential = await confirmationResultRef.current.confirm(cleanCode);
+        const token = await result.user.getIdToken();
+        setIdToken(token);
         setUser(result.user);
         setIsVerified(true);
         setStatusType("success");
@@ -307,6 +312,13 @@ export function usePhoneAuth(options: UsePhoneAuthOptions = {}): UsePhoneAuthRet
     []
   );
 
+  const getIdToken = useCallback(async (): Promise<string | null> => {
+    if (user) {
+      return await user.getIdToken();
+    }
+    return idToken;
+  }, [user, idToken]);
+
   const resetAuth = useCallback(() => {
     confirmationResultRef.current = null;
     setIsOtpSent(false);
@@ -314,6 +326,7 @@ export function usePhoneAuth(options: UsePhoneAuthOptions = {}): UsePhoneAuthRet
     setStatusMessage("");
     setStatusType("");
     setUser(null);
+    setIdToken(null);
     cleanupRecaptcha();
   }, [cleanupRecaptcha]);
 
@@ -329,6 +342,8 @@ export function usePhoneAuth(options: UsePhoneAuthOptions = {}): UsePhoneAuthRet
     statusType,
     formattedPhone,
     user,
+    idToken,
+    getIdToken,
     resetRecaptchaState,
     lastError
   };

@@ -19,6 +19,7 @@ import { LayoutGrid, Users, Calendar, CalendarCheck, ArrowRightLeft, MessageSqua
 import headerIcon from "@/assets/icon.svg"
 import rhuLogo from "@/assets/pili-rhu-logo.jpg"
 import { apiClient } from "@/lib/apiClient"
+import { db } from "@/lib/db/bmsDatabase"
 
 export function AppSidebar() {
   const navigate = useNavigate()
@@ -62,13 +63,26 @@ export function AppSidebar() {
     }, 350)
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("user")
-    localStorage.removeItem("token")
-    localStorage.clear()
-    sessionStorage.clear()
-    setOpenMobile(false)
-    navigate("/")
+  const handleLogout = async () => {
+    try {
+      const pendingCount = await db.offlineQueue.count()
+      if (pendingCount > 0) {
+        const confirmLogout = window.confirm(
+          `You have ${pendingCount} unsynced offline change(s) in your queue. Logging out now will clear the local patient cache on this device. Do you wish to proceed?`
+        )
+        if (!confirmLogout) return
+      }
+      await db.clearClinicalCache(false)
+    } catch (err) {
+      console.warn("Error cleaning up offline database on logout:", err)
+    } finally {
+      localStorage.removeItem("user")
+      localStorage.removeItem("token")
+      localStorage.clear()
+      sessionStorage.clear()
+      setOpenMobile(false)
+      navigate("/")
+    }
   }
 
   const userName = [user?.first_name, user?.middle_name, user?.last_name]

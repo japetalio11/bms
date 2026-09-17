@@ -251,6 +251,28 @@ export class BMSDatabase extends Dexie {
       userSession: "id",
     })
   }
+
+  /**
+   * Securely purges all cached medical records upon logout to prevent
+   * patient health information exposure on shared clinical workstations.
+   */
+  public async clearClinicalCache(preserveUnsyncedQueue: boolean = false): Promise<void> {
+    await Promise.all([
+      this.mothers.clear(),
+      this.pregnancies.clear(),
+      this.prenatalVisits.clear(),
+      this.appointments.clear(),
+      this.labRecords.clear(),
+      this.supplements.clear(),
+      this.ehrDocuments.clear(),
+      this.messages.clear(),
+      this.referrals.clear(),
+      this.notifications.clear(),
+      this.blobs.clear(),
+      this.userSession.clear(),
+      ...(preserveUnsyncedQueue ? [] : [this.offlineQueue.clear()]),
+    ])
+  }
 }
 
 export const db = new BMSDatabase()

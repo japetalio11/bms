@@ -109,6 +109,7 @@ export function AuthForm() {
     sendOtp: sendFirebaseOtp,
     verifyOtp: verifyFirebaseOtp,
     resetAuth: resetFirebaseAuth,
+    getIdToken: getFirebaseIdToken,
     cooldown: firebaseCooldown,
     isSubmitting: firebaseSubmitting,
     isOtpSent: firebaseOtpSent,
@@ -283,7 +284,13 @@ export function AuthForm() {
         setIsLoading(false)
         return
       }
-      finalOtpCode = "FIREBASE_VERIFIED"
+      const token = await getFirebaseIdToken()
+      finalOtpCode = token || ""
+      if (!finalOtpCode) {
+        setError("Failed to retrieve verified phone session. Please try again.")
+        setIsLoading(false)
+        return
+      }
     }
 
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
@@ -357,7 +364,13 @@ export function AuthForm() {
         setIsLoading(false)
         return
       }
-      finalOtpCode = "FIREBASE_VERIFIED"
+      const token = await getFirebaseIdToken()
+      finalOtpCode = token || ""
+      if (!finalOtpCode) {
+        setError("Failed to retrieve verified phone session. Please try again.")
+        setIsLoading(false)
+        return
+      }
     }
 
     const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
@@ -446,6 +459,7 @@ export function AuthForm() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
+                  accessToken: tokenRes.access_token,
                   email: googleUser.email,
                   first_name: googleUser.given_name || googleUser.name || "Google",
                   last_name: googleUser.family_name || "User",
@@ -482,22 +496,8 @@ export function AuthForm() {
         })
 
         client.requestAccessToken()
-      } else if (email.trim()) {
-        const response = await fetch(`${baseUrl}/api/v1/auth/google`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email.trim() })
-        })
-        const data = await response.json()
-        if (!response.ok) throw new Error(data.message || data.error || "Google authentication failed")
-        if (data.token) localStorage.setItem("token", data.token)
-        if (data.user) {
-          localStorage.setItem("user", JSON.stringify(data.user))
-          await db.userSession.put({ id: "current_user", ...data.user, token: data.token })
-        }
-        navigate("/dashboard")
       } else {
-        setError("Please enter your email above or allow the Google popup to sign in.")
+        setError("Google Sign-In is not currently available in this browser. Please use email and password to log in.")
         setIsLoading(false)
       }
     } catch (err: any) {
