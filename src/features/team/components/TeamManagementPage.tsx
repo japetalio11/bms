@@ -16,7 +16,9 @@ import {
   ChevronRight,
   ChevronsRight,
   PlusCircle,
-  UserPlus
+  UserPlus,
+  WifiOff,
+  CloudOff
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -39,6 +41,12 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { InviteTeamMemberModal } from "./InviteTeamMemberModal"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { userRepository } from "@/lib/repositories/userRepository"
+import { useNetworkStatus } from "@/hooks/useNetworkStatus"
+import { syncEngine } from "@/lib/sync/syncEngine"
+import { useLiveQuery } from "dexie-react-hooks"
+import { db } from "@/lib/db/bmsDatabase"
 
 export function TeamManagementPage() {
   const [activeTab, setActiveTab] = useState("all")
@@ -46,49 +54,99 @@ export function TeamManagementPage() {
   const [staffList, setStaffList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
+  const { isOnline } = useNetworkStatus()
+
+  const currentUser = useLiveQuery(() => db.userSession.get("current_user"))
+  const currentUserId = currentUser?.user_id || currentUser?._id || currentUser?.id
+  const currentUserRole = currentUser?.role || ""
+  const isPrivilegedAdmin = currentUserRole === "Admin" || currentUserRole === "SystemAdmin"
 
   const fetchStaff = async () => {
-    setLoading(true)
+    // 1. Immediately display from local cache (< 5ms)
+    const cached = await userRepository.getLocalCachedStaff()
+    if (cached.length > 0) {
+      setStaffList(cached)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
+
+    // 2. Revalidate in background
     try {
-      const response = await apiClient.get('/api/v1/user/facility')
-      const data = response.data
-      if (data && data.result) {
-        const mapped = data.result.map((user: any) => ({
-          id: user.user_id,
-          name: `${user.first_name} ${user.middle_name ? user.middle_name + " " : ""}${user.last_name}`,
-          avatar: user.profile_url || "",
-          status: user.is_active ? "Active" : "Deactivated",
-          position: user.role,
-          sector: user.facility?.facility_name || "N/A",
-          email: user.email,
-          phone_number: user.phone_number
-        }))
-        setStaffList(mapped)
-      }
+      const data = await userRepository.getFacilityStaff()
+      setStaffList(data)
     } catch (e) {
-      console.error("Failed to fetch staff:", e)
-      toast.error("Failed to load team members")
+      console.error("[TeamManagementPage] Failed to fetch staff:", e)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleDeactivate = async (id: string, currentStatus: string, e: React.MouseEvent) => {
+  const handleDeactivate = async (targetStaff: any, e: React.MouseEvent) => {
     e.stopPropagation()
-    const is_active = currentStatus !== "Active" // Toggle status
+    const targetId = targetStaff.user_id || targetStaff.id
+    const isSelf = currentUserId && targetId === currentUserId
+    const is_active = targetStaff.status !== "Active"
+
+    // Only self or Admin/SystemAdmin can modify/deactivate an account
+    if (!isSelf && !isPrivilegedAdmin) {
+      toast.error("You do not have permission to modify someone else's account.")
+      return
+    }
+
+    // If deactivating an admin, check that at least one other active admin remains in the facility
+    if (!is_active && (targetStaff.role === "Admin" || targetStaff.position === "Administrator" || targetStaff.position === "Admin")) {
+      const otherActiveAdmins = staffList.filter((s) => {
+        const sId = s.user_id || s.id
+        const sRole = s.role || s.position
+        const isAdminRole = sRole === "Admin" || sRole === "Administrator"
+        return sId !== targetId && isAdminRole && s.status === "Active"
+      })
+
+      if (otherActiveAdmins.length === 0) {
+        toast.error("Cannot deactivate account. There must be at least 1 active administrator per facility.")
+        return
+      }
+    }
+
     try {
-      await apiClient.put(`/api/v1/user/${id}/deactivate`, { is_active })
+      await userRepository.updateStaffStatus(targetId, is_active)
       toast.success(`Staff account ${is_active ? 'activated' : 'deactivated'} successfully`)
       fetchStaff()
-    } catch (e) {
+
+      // If user just self-deactivated, log them out
+      if (isSelf && !is_active) {
+        toast.info("You have deactivated your own account. Logging out...")
+        setTimeout(async () => {
+          localStorage.removeItem("token")
+          localStorage.removeItem("user")
+          await db.userSession.delete("current_user")
+          navigate("/login")
+        }, 1200)
+      }
+    } catch (e: any) {
       console.error("Failed to update status:", e)
-      toast.error("Failed to update account status")
+      const errorMsg = e.response?.data?.error || e.message || "Failed to update account status"
+      toast.error(errorMsg)
     }
   }
 
   useEffect(() => {
     fetchStaff()
+
+    const unsubscribe = syncEngine.subscribe(() => {
+      fetchStaff()
+    })
+
+    return () => unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (isOnline) {
+      fetchStaff()
+    }
+  }, [isOnline])
 
   // Filter staffList based on activeTab and searchQuery
   const filteredStaff = staffList.filter((staff) => {
@@ -156,27 +214,34 @@ export function TeamManagementPage() {
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEndHandler}
       >
-        <div className="sticky top-0 z-10 flex flex-col gap-4 bg-background dark:bg-black p-4 pl-3 pr-4 pb-4 border-b md:border-none border-sidebar-border">
+        <div className="sticky top-0 z-10 flex flex-col gap-4 bg-background p-4 pl-3 pr-4 pb-4 border-b md:border-none border-border">
           {/* Tabs */}
           <div className="w-full overflow-x-auto shrink-0 pb-2 -mb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-max">
-              <TabsList className="bg-muted dark:bg-[#1e1e1e] border-none h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
-                <TabsTrigger value="all" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">All Team Members</TabsTrigger>
-                <TabsTrigger value="active" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">Active</TabsTrigger>
-                <TabsTrigger value="pending" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">Pending Invites</TabsTrigger>
-                <TabsTrigger value="deactivated" className="text-xs font-medium data-[state=active]:!bg-background data-[state=active]:border-border data-[state=active]:text-foreground dark:data-[state=active]:!bg-black dark:data-[state=active]:border-[#333] dark:data-[state=active]:text-foreground dark:text-white border border-transparent text-muted-foreground hover:text-muted-foreground dark:text-white/70 dark:hover:text-foreground dark:text-white rounded-sm px-2 py-1 h-full transition-all">Deactivated</TabsTrigger>
+              <TabsList className="bg-muted border border-border h-9 w-full md:w-max justify-start rounded-md p-1 gap-1 *:flex-1 md:*:flex-initial">
+                <TabsTrigger value="all" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">All Team Members</TabsTrigger>
+                <TabsTrigger value="active" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">Active</TabsTrigger>
+                <TabsTrigger value="pending" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">Pending Invites</TabsTrigger>
+                <TabsTrigger value="deactivated" className="text-xs font-medium border border-transparent rounded-sm px-2 py-1 h-full transition-all">Deactivated</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
 
           {/* Toolbar */}
+          {!isOnline && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs border border-amber-500/20 font-medium">
+              <WifiOff className="h-4 w-4 shrink-0" />
+              <span>Working Offline — Team member accounts created or updated locally will automatically sync once internet connection is restored.</span>
+            </div>
+          )}
+
           <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
             <div className="flex w-full xl:w-auto flex-wrap items-center gap-2">
               <Input 
                 placeholder="Filter staff..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 px-2 w-full sm:w-[250px] text-xs font-normal bg-background dark:bg-black border-sidebar-border" 
+                className="h-8 px-2 w-full sm:w-[250px] text-xs font-normal bg-card border-border text-card-foreground" 
               />
               {Object.entries({
                 "Role": ["Administrator", "Manager", "Coordinator", "Staff"],
@@ -184,7 +249,7 @@ export function TeamManagementPage() {
               }).map(([filterName, options]) => (
                 <Popover key={filterName}>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border border-dashed !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-foreground dark:text-white dark:hover:text-foreground dark:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
+                    <Button variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border border-dashed bg-card text-card-foreground hover:bg-accent">
                       <PlusCircle className="h-3.5 w-3.5" />
                       {filterName}
                     </Button>
@@ -193,14 +258,14 @@ export function TeamManagementPage() {
                     <div className="flex flex-col gap-2.5">
                       {options.map((option) => (
                           <div key={option} className="flex items-center space-x-2">
-                            <Checkbox id={`filter-${filterName}-${option}`} className="border-sidebar-border data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:data-[state=checked]:border-white dark:data-[state=checked]:bg-white dark:data-[state=checked]:text-black h-3.5 w-3.5 rounded-[4px]" />
-                            <label htmlFor={`filter-${filterName}-${option}`} className="text-xs font-normal text-foreground dark:text-white leading-none cursor-pointer">
+                            <Checkbox id={`filter-${filterName}-${option}`} className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground h-3.5 w-3.5 rounded-[4px]" />
+                            <label htmlFor={`filter-${filterName}-${option}`} className="text-xs font-normal text-foreground leading-none cursor-pointer">
                               {option}
                             </label>
                           </div>
                         ))}
                     </div>
-                    <Button className="h-7 text-xs w-full bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+                    <Button className="h-7 text-xs w-full bg-primary text-primary-foreground hover:bg-primary/90">
                       Clear Filter
                     </Button>
                   </PopoverContent>
@@ -208,12 +273,12 @@ export function TeamManagementPage() {
               ))}
             </div>
             <div className="flex w-full xl:w-auto items-center gap-2">
-              <Button onClick={fetchStaff} variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-sidebar-border !bg-background text-foreground hover:text-foreground hover:bg-accent dark:!bg-black dark:text-white dark:hover:text-foreground dark:text-white dark:hover:bg-accent dark:hover:bg-white/5">
+              <Button onClick={fetchStaff} variant="outline" className="hidden md:flex h-8 px-2 text-xs font-medium gap-2 border-border bg-card text-card-foreground hover:bg-accent">
                 <RefreshCw className="h-3.5 w-3.5" />
                 Refresh
               </Button>
               <InviteTeamMemberModal onInviteSuccess={fetchStaff}>
-                <Button className="h-8 text-xs font-medium gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-[#e5e5e5] dark:text-black dark:hover:bg-[#d5d5d5]">
+                <Button className="h-8 text-xs font-medium gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90">
                   <UserPlus className="h-3.5 w-3.5" />
                   Invite Team Member
                 </Button>
@@ -222,13 +287,13 @@ export function TeamManagementPage() {
           </div>
 
           {/* Mobile Pagination (Sticky) */}
-          <div className="md:hidden flex items-center justify-between pt-2 border-t border-sidebar-border mt-2">
+          <div className="md:hidden flex items-center justify-between pt-2 border-t border-border mt-2">
             <span className="text-xs text-muted-foreground font-medium">Page 1 of 1</span>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon" className="h-7 w-7 border-sidebar-border bg-transparent opacity-50 cursor-not-allowed">
+              <Button variant="outline" size="icon" className="h-7 w-7 border-border bg-transparent opacity-50 cursor-not-allowed">
                 <ChevronLeft className="h-3 w-3" />
               </Button>
-              <Button variant="outline" size="icon" className="h-7 w-7 border-sidebar-border bg-transparent opacity-50 cursor-not-allowed">
+              <Button variant="outline" size="icon" className="h-7 w-7 border-border bg-transparent opacity-50 cursor-not-allowed">
                 <ChevronRight className="h-3 w-3" />
               </Button>
             </div>
@@ -237,19 +302,19 @@ export function TeamManagementPage() {
 
         <div className="flex flex-col gap-4 p-4 md:pt-0 pl-3 pr-4 pb-24 md:pb-4">
           {/* Desktop Data Table */}
-          <div className="hidden md:block rounded-md border border-sidebar-border overflow-x-auto bg-background dark:bg-black">
+          <div className="hidden md:block rounded-md border border-border overflow-x-auto bg-card">
             <div className="min-w-[900px]">
               <Table>
-                <TableHeader className="bg-card dark:bg-[#111]">
-                  <TableRow className="border-sidebar-border hover:bg-transparent">
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="border-border hover:bg-transparent">
                     <TableHead className="w-12 text-center pl-4">
-                      <Checkbox className="border-sidebar-border" />
+                      <Checkbox className="border-border" />
                     </TableHead>
-                    <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Name</TableHead>
-                    <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Status</TableHead>
-                    <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Position</TableHead>
-                    <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Sector</TableHead>
-                    <TableHead className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">Email</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Name</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Status</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Position</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Sector</TableHead>
+                    <TableHead className="text-xs font-medium text-muted-foreground whitespace-nowrap">Email</TableHead>
                     <TableHead className="w-12"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -269,19 +334,19 @@ export function TeamManagementPage() {
                   ) : filteredStaff.map((staff) => (
                     <TableRow 
                       key={staff.id} 
-                      className={`border-sidebar-border cursor-pointer transition-colors group hover:bg-accent dark:hover:bg-white/5`}
+                      className={`border-border cursor-pointer transition-colors group hover:bg-accent/50`}
                       onClick={() => navigate(`/dashboard/team/${staff.id}`)}
                     >
                       <TableCell className="pl-4">
-                        <Checkbox className="border-sidebar-border data-[state=checked]:bg-primary dark:data-[state=checked]:bg-white data-[state=checked]:text-primary-foreground dark:data-[state=checked]:text-black" />
+                        <Checkbox className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" />
                       </TableCell>
-                      <TableCell className="text-xs font-medium text-foreground dark:text-white whitespace-nowrap">
+                      <TableCell className="text-xs font-medium text-card-foreground whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="h-6 w-6 rounded-full overflow-hidden bg-accent dark:bg-white/10 shrink-0">
+                          <div className="h-6 w-6 rounded-full overflow-hidden bg-muted shrink-0">
                             {staff.avatar ? (
                               <img src={staff.avatar} alt={staff.name} className="h-full w-full object-cover" />
                             ) : (
-                              <div className="h-full w-full flex items-center justify-center text-[10px] font-semibold text-foreground dark:text-white">
+                              <div className="h-full w-full flex items-center justify-center text-[10px] font-semibold text-card-foreground">
                                 {staff.name.charAt(0)}
                               </div>
                             )}
@@ -290,45 +355,78 @@ export function TeamManagementPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
-                          staff.status === 'Active' ? 'bg-green-500/10 text-green-500' : 
-                          staff.status === 'Pending' ? 'bg-amber-500/10 text-amber-500' : 
-                          'bg-zinc-500/10 text-zinc-500'
-                        }`}>
-                          {staff.status === 'Active' ? <CheckCircle2 className="h-3 w-3" /> : 
-                           staff.status === 'Pending' ? <Clock className="h-3 w-3" /> : 
-                           <Activity className="h-3 w-3" />}
-                          {staff.status}
-                        </Badge>
+                        <div className="flex flex-col gap-1 items-start">
+                          <Badge className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium border-none shadow-none ${
+                            staff.status === 'Active' ? 'bg-green-500/10 text-green-500' : 
+                            staff.status === 'Pending' ? 'bg-amber-500/10 text-amber-500' : 
+                            'bg-zinc-500/10 text-zinc-500'
+                          }`}>
+                            {staff.status === 'Active' ? <CheckCircle2 className="h-3 w-3" /> : 
+                             staff.status === 'Pending' ? <Clock className="h-3 w-3" /> : 
+                             <Activity className="h-3 w-3" />}
+                            {staff.status}
+                          </Badge>
+                          {staff.sync_status && staff.sync_status !== "synced" && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                              <CloudOff className="h-2.5 w-2.5" /> Pending Sync
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
-                      <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
-                        <div className="w-fit bg-muted dark:bg-[#222] px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap">
+                      <TableCell className="text-xs text-card-foreground whitespace-nowrap">
+                        <div className="w-fit bg-muted px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap">
                           {staff.position}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
+                      <TableCell className="text-xs text-card-foreground whitespace-nowrap">
                         {staff.sector}
                       </TableCell>
-                      <TableCell className="text-xs text-foreground dark:text-white whitespace-nowrap">
+                      <TableCell className="text-xs text-card-foreground whitespace-nowrap">
                         {staff.email}
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white group-hover:text-foreground dark:text-white" onClick={(e) => e.stopPropagation()}>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
-                            <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/team/${staff.id}`); }}>Edit Profile</DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className={`text-xs cursor-pointer rounded-md ${staff.status === 'Active' ? 'text-red-500 hover:!text-red-500 hover:!bg-red-500/10' : 'text-green-500 hover:!text-green-500 hover:!bg-green-500/10'}`}
-                              onClick={(e) => handleDeactivate(staff.id, staff.status, e)}
-                            >
-                              {staff.status === 'Active' ? 'Deactivate' : 'Activate'}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {(() => {
+                          const targetId = staff.user_id || staff.id
+                          const isSelf = currentUserId && targetId === currentUserId
+                          const canManage = isSelf || isPrivilegedAdmin
+                          if (!canManage) return null
+
+                          const isTargetAdmin = staff.role === "Admin" || staff.position === "Administrator" || staff.position === "Admin"
+                          const otherActiveAdminsCount = isTargetAdmin
+                            ? staffList.filter((s) => {
+                                const sId = s.user_id || s.id
+                                const sRole = s.role || s.position
+                                const isAdminRole = sRole === "Admin" || sRole === "Administrator"
+                                return sId !== targetId && isAdminRole && s.status === "Active"
+                              }).length
+                            : 999
+
+                          // If target is active Admin and there are NO other active admins, they cannot deactivate
+                          const cannotDeactivateDueToAdminRule = staff.status === "Active" && isTargetAdmin && otherActiveAdminsCount === 0
+
+                          return (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground hover:bg-accent" onClick={(e) => e.stopPropagation()}>
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                                {isPrivilegedAdmin && (
+                                  <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/team/${staff.id}`); }}>Edit Profile</DropdownMenuItem>
+                                )}
+                                {!cannotDeactivateDueToAdminRule && (
+                                  <DropdownMenuItem 
+                                    className={`text-xs cursor-pointer rounded-md ${staff.status === 'Active' ? 'text-red-500 hover:!text-red-500 hover:!bg-red-500/10' : 'text-green-500 hover:!text-green-500 hover:!bg-green-500/10'}`}
+                                    onClick={(e) => handleDeactivate(staff, e)}
+                                  >
+                                    {staff.status === 'Active' ? (isSelf ? 'Self-Deactivate' : 'Deactivate') : 'Activate'}
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )
+                        })()}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -344,7 +442,7 @@ export function TeamManagementPage() {
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
                 <span>Rows per page</span>
-                <div className="flex items-center justify-between border border-sidebar-border bg-card dark:bg-[#111] hover:bg-accent dark:hover:bg-[#222] cursor-pointer rounded-md px-2 py-1 gap-2 transition-colors">
+                <div className="flex items-center justify-between border border-border bg-card hover:bg-accent cursor-pointer rounded-md px-2 py-1 gap-2 transition-colors">
                   <span>10</span>
                   <ChevronDown className="h-3 w-3" />
                 </div>
@@ -352,16 +450,16 @@ export function TeamManagementPage() {
               <div className="flex items-center gap-4">
                 <span>Page 1 of 1</span>
                 <div className="flex items-center gap-1">
-                  <Button variant="outline" size="icon" className="h-7 w-7 border-sidebar-border bg-transparent opacity-50 cursor-not-allowed">
+                  <Button variant="outline" size="icon" className="h-7 w-7 border-border bg-transparent opacity-50 cursor-not-allowed">
                     <ChevronsLeft className="h-3 w-3" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-7 w-7 border-sidebar-border bg-transparent opacity-50 cursor-not-allowed">
+                  <Button variant="outline" size="icon" className="h-7 w-7 border-border bg-transparent opacity-50 cursor-not-allowed">
                     <ChevronLeft className="h-3 w-3" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-7 w-7 border-sidebar-border bg-transparent opacity-50 cursor-not-allowed">
+                  <Button variant="outline" size="icon" className="h-7 w-7 border-border bg-transparent opacity-50 cursor-not-allowed">
                     <ChevronRight className="h-3 w-3" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-7 w-7 border-sidebar-border bg-transparent opacity-50 cursor-not-allowed">
+                  <Button variant="outline" size="icon" className="h-7 w-7 border-border bg-transparent opacity-50 cursor-not-allowed">
                     <ChevronsRight className="h-3 w-3" />
                   </Button>
                 </div>
@@ -374,66 +472,98 @@ export function TeamManagementPage() {
             {filteredStaff.map((staff) => (
               <div 
                 key={staff.id} 
-                className={`flex flex-col p-4 rounded-xl border border-sidebar-border bg-card dark:bg-[#111] gap-4 cursor-pointer transition-colors hover:bg-accent dark:hover:bg-white/5`}
+                className={`flex flex-col p-4 rounded-xl border border-border bg-card gap-4 cursor-pointer transition-colors hover:bg-accent/50`}
                 onClick={() => navigate(`/dashboard/team/${staff.id}`)}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full overflow-hidden bg-accent dark:bg-white/10 shrink-0">
+                    <div className="h-8 w-8 rounded-full overflow-hidden bg-muted shrink-0">
                       {staff.avatar ? (
                         <img src={staff.avatar} alt={staff.name} className="h-full w-full object-cover" />
                       ) : (
-                        <div className="h-full w-full flex items-center justify-center text-xs font-semibold text-foreground dark:text-white">
+                        <div className="h-full w-full flex items-center justify-center text-xs font-semibold text-card-foreground">
                           {staff.name.charAt(0)}
                         </div>
                       )}
                     </div>
-                    <h3 className="text-sm font-semibold text-foreground dark:text-white">{staff.name}</h3>
+                    <h3 className="text-sm font-semibold text-card-foreground">{staff.name}</h3>
                   </div>
-                  <div className={`inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium text-white whitespace-nowrap border ${
-                    staff.status === 'Active' ? 'bg-[#22C55E] border-[#22C55E]/20' : 
-                    staff.status === 'Pending' ? 'bg-amber-500 border-amber-500/20' : 
-                    'bg-zinc-500 border-zinc-500/20'
-                  }`}>
-                    {staff.status}
+                  <div className="flex flex-col items-end gap-1">
+                    <div className={`inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-medium text-white whitespace-nowrap border ${
+                      staff.status === 'Active' ? 'bg-[#22C55E] border-[#22C55E]/20' : 
+                      staff.status === 'Pending' ? 'bg-amber-500 border-amber-500/20' : 
+                      'bg-zinc-500 border-zinc-500/20'
+                    }`}>
+                      {staff.status}
+                    </div>
+                    {staff.sync_status && staff.sync_status !== "synced" && (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        <CloudOff className="h-2.5 w-2.5" /> Pending Sync
+                      </span>
+                    )}
                   </div>
                 </div>
                 
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Position</span>
-                    <div className="w-fit bg-muted dark:bg-[#222] px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap">
+                    <div className="w-fit bg-muted px-1.5 py-0.5 rounded text-[10px] whitespace-nowrap">
                       {staff.position}
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Sector</span>
-                    <span className="text-xs text-foreground dark:text-white text-right">{staff.sector}</span>
+                    <span className="text-xs text-card-foreground text-right">{staff.sector}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Email</span>
-                    <span className="text-xs text-foreground dark:text-white text-right">{staff.email}</span>
+                    <span className="text-xs text-card-foreground text-right">{staff.email}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end pt-3 border-t border-sidebar-border">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground dark:text-white" onClick={(e) => e.stopPropagation()}>
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
-                      <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/team/${staff.id}`); }}>Edit Profile</DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className={`text-xs cursor-pointer rounded-md ${staff.status === 'Active' ? 'text-red-500 hover:!text-red-500 hover:!bg-red-500/10' : 'text-green-500 hover:!text-green-500 hover:!bg-green-500/10'}`}
-                        onClick={(e) => handleDeactivate(staff.id, staff.status, e as any)}
-                      >
-                        {staff.status === 'Active' ? 'Deactivate' : 'Activate'}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                {(() => {
+                  const targetId = staff.user_id || staff.id
+                  const isSelf = currentUserId && targetId === currentUserId
+                  const canManage = isSelf || isPrivilegedAdmin
+                  if (!canManage) return null
+
+                  const isTargetAdmin = staff.role === "Admin" || staff.position === "Administrator" || staff.position === "Admin"
+                  const otherActiveAdminsCount = isTargetAdmin
+                    ? staffList.filter((s) => {
+                        const sId = s.user_id || s.id
+                        const sRole = s.role || s.position
+                        const isAdminRole = sRole === "Admin" || sRole === "Administrator"
+                        return sId !== targetId && isAdminRole && s.status === "Active"
+                      }).length
+                    : 999
+
+                  const cannotDeactivateDueToAdminRule = staff.status === "Active" && isTargetAdmin && otherActiveAdminsCount === 0
+
+                  return (
+                    <div className="flex items-center justify-end pt-3 border-t border-border">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground" onClick={(e) => e.stopPropagation()}>
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                          {isPrivilegedAdmin && (
+                            <DropdownMenuItem className="text-xs cursor-pointer rounded-md" onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/team/${staff.id}`); }}>Edit Profile</DropdownMenuItem>
+                          )}
+                          {!cannotDeactivateDueToAdminRule && (
+                            <DropdownMenuItem 
+                              className={`text-xs cursor-pointer rounded-md ${staff.status === 'Active' ? 'text-red-500 hover:!text-red-500 hover:!bg-red-500/10' : 'text-green-500 hover:!text-green-500 hover:!bg-green-500/10'}`}
+                              onClick={(e) => handleDeactivate(staff, e as any)}
+                            >
+                              {staff.status === 'Active' ? (isSelf ? 'Self-Deactivate' : 'Deactivate') : 'Activate'}
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )
+                })()}
               </div>
             ))}
           </div>

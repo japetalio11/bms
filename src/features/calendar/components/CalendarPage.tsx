@@ -12,6 +12,8 @@ import { CustomEvent } from "./CustomEvent"
 import { WeeklyScheduleView } from "./WeeklyScheduleView"
 import { CreateAppointmentModal } from "@/features/appointments/components/CreateAppointmentModal"
 import { AppointmentSidepeek } from "@/features/dashboard/components/AppointmentSidepeek"
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
+import { toast } from "sonner"
 import { appointmentApi } from "@/features/appointments/api"
 import { mothersApi } from "@/features/mothers/api"
 import { extractRiskLevel } from "@/lib/riskUtils"
@@ -91,17 +93,34 @@ export function CalendarPage() {
     fetchAppointments()
   }, [])
 
-  const handleCancelAppointment = async (appointmentId: string) => {
-    if (!confirm("Are you sure you want to cancel this appointment?")) return
+  const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(null)
+  const [isCancelling, setIsCancelling] = useState(false)
+
+  const handleCancelAppointment = (appointmentId: string) => {
+    const appt = rawAppointments.find((a: any) => (a.id === appointmentId || a.appointment_id === appointmentId))
+    if (appt && (appt.status?.toLowerCase() === "completed")) {
+      toast.error("Completed appointments cannot be cancelled.")
+      return
+    }
+    setAppointmentToCancel(appointmentId)
+  }
+
+  const executeCancelAppointment = async () => {
+    if (!appointmentToCancel) return
+    setIsCancelling(true)
     try {
-      await appointmentApi.cancelAppointment(appointmentId)
-      if (selectedAppointment?.id === appointmentId) {
+      await appointmentApi.cancelAppointment(appointmentToCancel)
+      if (selectedAppointment?.id === appointmentToCancel) {
         setSelectedAppointment(null)
       }
+      toast.success("Appointment cancelled successfully")
+      setAppointmentToCancel(null)
       fetchAppointments()
     } catch (err) {
       console.error("Failed to cancel appointment:", err)
-      alert("Could not cancel appointment. Please try again.")
+      toast.error("Could not cancel appointment. Please try again.")
+    } finally {
+      setIsCancelling(false)
     }
   }
 
@@ -193,6 +212,11 @@ export function CalendarPage() {
 
       return {
         id: item.appointment_id || item.id,
+        raw: item,
+        mother_id: item.mother_id || matchedMother?.mother_id || matchedMother?.id || item.user_id,
+        user_id: item.user_id || matchedMother?.user_id,
+        pregnancy_id: item.pregnancy_id || (matchedMother?.pregnancies?.[0]?.pregnancy_id || matchedMother?.pregnancies?.[0]?.id),
+        mother: matchedMother,
         title: `${item.appointment_type || 'Prenatal Checkup'} - ${name}`,
         start: startDate,
         end: endDate,
@@ -294,7 +318,7 @@ export function CalendarPage() {
 
   return (
     <div 
-      className="flex flex-col h-full bg-background dark:bg-black p-4 text-foreground relative min-h-0 w-full overflow-hidden"
+      className="flex flex-col h-full bg-background p-4 text-foreground relative min-h-0 w-full overflow-hidden"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEndHandler}
@@ -408,6 +432,24 @@ export function CalendarPage() {
               appointment={selectedAppointment}
               onClose={() => setSelectedAppointment(null)}
               onCancelAppointment={handleCancelAppointment}
+              onStatusChange={(id, newStatus, newRisk) => {
+                setRawAppointments(prev => prev.map(a => {
+                  const targetId = a.appointment_id || a.id
+                  if (targetId === id) {
+                    return { 
+                      ...a, 
+                      status: newStatus,
+                      ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                    }
+                  }
+                  return a
+                }))
+                setSelectedAppointment((prev: any) => prev ? { 
+                  ...prev, 
+                  status: newStatus,
+                  ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                } : null)
+              }}
             />
           </div>
         </>
@@ -416,7 +458,7 @@ export function CalendarPage() {
       {/* Mobile Sidepeek Drawer */}
       {isMobile && (
         <Drawer open={!!selectedAppointment} onOpenChange={(open) => !open && setSelectedAppointment(null)}>
-          <DrawerContent className="p-0 bg-background dark:bg-[#0a0a0a] border-t border-sidebar-border border-x-0 border-b-0 before:hidden rounded-t-xl overflow-hidden !h-[80dvh] flex flex-col focus-visible:outline-none">
+          <DrawerContent className="p-0 bg-card text-card-foreground border-t border-border border-x-0 border-b-0 before:hidden rounded-t-xl overflow-hidden !h-[80dvh] flex flex-col focus-visible:outline-none">
             <div className="sr-only">
               <DrawerTitle>Appointment Details</DrawerTitle>
             </div>
@@ -424,10 +466,38 @@ export function CalendarPage() {
               appointment={selectedAppointment}
               onClose={() => setSelectedAppointment(null)}
               onCancelAppointment={handleCancelAppointment}
+              onStatusChange={(id, newStatus, newRisk) => {
+                setRawAppointments(prev => prev.map(a => {
+                  const targetId = a.appointment_id || a.id
+                  if (targetId === id) {
+                    return { 
+                      ...a, 
+                      status: newStatus,
+                      ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                    }
+                  }
+                  return a
+                }))
+                setSelectedAppointment((prev: any) => prev ? { 
+                  ...prev, 
+                  status: newStatus,
+                  ...(newRisk ? { risk: newRisk, risk_level: newRisk, risk_flag: newRisk } : {})
+                } : null)
+              }}
             />
           </DrawerContent>
         </Drawer>
       )}
+
+      <ConfirmDeleteModal
+        open={!!appointmentToCancel}
+        onOpenChange={(open) => !open && setAppointmentToCancel(null)}
+        title="Cancel Appointment"
+        description="Are you sure you want to cancel this appointment? This record will be marked as cancelled in the facility queue."
+        confirmText="Cancel Appointment"
+        isDeleting={isCancelling}
+        onConfirm={executeCancelAppointment}
+      />
     </div>
   )
 }

@@ -1,138 +1,219 @@
 import * as React from "react"
-import { Paperclip, Image as ImageIcon, Send, FileText, User as UserIcon, AlertCircle, CheckCircle2, Clock } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Paperclip, Image as ImageIcon, Send, FileText, User as UserIcon, AlertCircle, CheckCircle2, Clock, Download, ExternalLink, ArrowLeft, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { clsx } from "clsx"
 import { useLiveQuery } from "dexie-react-hooks"
 import { db } from "@/lib/db/bmsDatabase"
 import { format, parseISO } from "date-fns"
+import { messageRepository } from "@/lib/repositories/messageRepository"
+import { useNetworkStatus } from "@/hooks/useNetworkStatus"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { resolveFileUrl } from "@/lib/apiClient"
 
 interface ChatAreaProps {
   activeChatId: string | null
+  onBack?: () => void
 }
 
-export function ChatArea({ activeChatId }: ChatAreaProps) {
+export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
+  const navigate = useNavigate()
   const [message, setMessage] = React.useState("")
-  const [isOffline, setIsOffline] = React.useState(!navigator.onLine)
-  const currentUser = useLiveQuery(() => db.userSession.get("current_user"))
+  const [isSending, setIsSending] = React.useState(false)
+  const [previewImage, setPreviewImage] = React.useState<string | null>(null)
+  const { isOnline } = useNetworkStatus()
+  const isOffline = !isOnline
   
-  React.useEffect(() => {
-    const handleOnline = () => setIsOffline(false)
-    const handleOffline = () => setIsOffline(true)
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
-
-  const chatMessages = useLiveQuery(() => {
-    if (!currentUser || !activeChatId) return []
-    return db.messages
-      .filter(msg => 
-        (msg.sender_id === currentUser.user_id && msg.receiver_id === activeChatId) ||
-        (msg.receiver_id === currentUser.user_id && msg.sender_id === activeChatId)
-      )
-      .sortBy('message_date')
-  }, [currentUser, activeChatId]) ?? []
-
-  const activeContact = useLiveQuery(async () => {
-    if (!activeChatId) return null
-    const mother = await db.mothers.get(activeChatId)
-    if (mother) {
-      return {
-        name: `${mother.first_name || ''} ${mother.last_name || ''}`.trim(),
-        role: "Mother",
-        avatar: mother.photo_url
+  const sessionUser = useLiveQuery(() => db.userSession.get("current_user"))
+  const currentUser = React.useMemo(() => {
+    if (sessionUser) return sessionUser
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("user")
+      if (stored) {
+        try {
+          return JSON.parse(stored)
+        } catch {}
       }
     }
+    return null
+  }, [sessionUser])
+  
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const imageInputRef = React.useRef<HTMLInputElement>(null)
+
+  const currentUserId = currentUser?.user_id || currentUser?.id
+  const isStaff = currentUser?.role && currentUser.role !== 'Mother'
+
+  // Resolve target contact information
+  const targetContactInfo = useLiveQuery(async () => {
+    if (!activeChatId) return null
+    let mother = await db.mothers.where('user_id').equals(activeChatId).first()
+    if (!mother) mother = await db.mothers.get(activeChatId)
+    if (!mother) mother = await db.mothers.where('mother_id').equals(activeChatId).first()
+    if (!mother) {
+      const all = await db.mothers.toArray()
+      mother = all.find((m: any) => m.id === activeChatId || m.user_id === activeChatId || m.mother_id === activeChatId || m.user?.user_id === activeChatId)
+    }
+
+    if (mother) {
+      const uId = mother.user_id || mother.user?.user_id || activeChatId
+      const mId = mother.mother_id || mother.id || activeChatId
+      const firstName = mother.first_name || mother.user?.first_name || ''
+      const lastName = mother.last_name || mother.user?.last_name || ''
+      const photoUrl = mother.photo_url || mother.user?.profile_url || ''
+      return {
+        isMother: true,
+        userId: uId,
+        motherId: mId,
+        name: `${firstName} ${lastName}`.trim() || "Mother",
+        role: "Mother",
+        avatar: photoUrl
+      }
+    }
+
     const msg = await db.messages.filter(m => m.sender_id === activeChatId || m.receiver_id === activeChatId).first()
     if (msg) {
       return {
+        isMother: false,
+        userId: activeChatId,
+        motherId: null,
         name: msg.contact_name || "Contact",
-        role: "Staff",
-        avatar: msg.contact_avatar
+        role: "Healthcare Staff",
+        avatar: msg.contact_avatar || ""
       }
     }
-    return { name: "Unknown User", role: "Unknown", avatar: "" }
+
+    return {
+      isMother: false,
+      userId: activeChatId,
+      motherId: null,
+      name: "Contact",
+      role: "Contact",
+      avatar: ""
+    }
   }, [activeChatId])
 
-  const handleSendMessage = async () => {
-    if (!message.trim() || !currentUser || !activeChatId) return
-    
-    const tempId = crypto.randomUUID()
-    const now = new Date()
-    
-    const localMsg = {
-      id: tempId,
-      sender_id: currentUser.user_id,
-      receiver_id: activeChatId,
-      message_content: message.trim(),
-      message_type: "text",
-      message_date: now.toISOString(),
-      is_read: true, // We sent it, so it's read by us
-      contact_name: activeContact?.name,
-      contact_avatar: activeContact?.avatar,
-      sync_status: "pending_create" as const,
-      updated_at: now.getTime()
+  const activeContact = React.useMemo(() => {
+    if (!targetContactInfo) return null
+    return {
+      name: targetContactInfo.name,
+      role: targetContactInfo.role,
+      avatar: targetContactInfo.avatar,
+      motherId: targetContactInfo.motherId
     }
-    
-    try {
-      await db.transaction('rw', db.messages, db.offlineQueue, async () => {
-        await db.messages.add(localMsg)
-        await db.offlineQueue.add({
-          client_mutation_id: tempId,
-          entity_type: "message",
-          action: "CREATE",
-          endpoint: "/api/v1/message/create",
-          method: "POST",
-          payload: {
-            receiver_id: activeChatId,
-            message_content: localMsg.message_content,
-            message_type: "text",
-            message_date: localMsg.message_date
-          },
-          retry_count: 0,
-          created_at: now.getTime()
-        })
+  }, [targetContactInfo])
+
+  const chatMessages = useLiveQuery(() => {
+    if (!activeChatId) return []
+    const targetUserId = targetContactInfo?.userId || activeChatId
+    const targetMotherId = targetContactInfo?.motherId
+
+    return db.messages
+      .filter(msg => {
+        // Strictly 1-to-1 conversation between logged-in user and target contact
+        return (msg.sender_id === currentUserId && (msg.receiver_id === targetUserId || msg.receiver_id === targetMotherId)) ||
+               (msg.receiver_id === currentUserId && (msg.sender_id === targetUserId || msg.sender_id === targetMotherId))
       })
-      setMessage("")
-      
-      // Attempt background sync if online (simple immediate sync for messages)
-      if (!isOffline) {
-        const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
-        const token = localStorage.getItem("token")
-        fetch(`${baseUrl}/api/v1/message/create`, {
-          method: 'POST',
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(localMsg)
-        }).then(res => res.json()).then(async (data) => {
-          if (data && data.data) {
-             // Mark synced and delete from offlineQueue
-             await db.transaction('rw', db.messages, db.offlineQueue, async () => {
-                await db.messages.update(tempId, { sync_status: "synced", id: data.data.message_id })
-                const queueItem = await db.offlineQueue.where('client_mutation_id').equals(tempId).first()
-                if (queueItem && queueItem.id) {
-                  await db.offlineQueue.delete(queueItem.id)
-                }
-             })
-          }
-        }).catch(err => console.error("Sync failed, leaving in offline queue", err))
+      .sortBy('message_date')
+  }, [currentUserId, activeChatId, targetContactInfo]) ?? []
+
+  // Mark unread messages as read upon viewing
+  React.useEffect(() => {
+    if (activeChatId) {
+      const targetUserId = targetContactInfo?.userId || activeChatId
+      messageRepository.markAsRead(targetUserId).catch(() => {})
+      if (targetContactInfo?.motherId && targetContactInfo.motherId !== targetUserId) {
+        messageRepository.markAsRead(targetContactInfo.motherId).catch(() => {})
       }
-    } catch (e) {
-      console.error("Failed to send message", e)
+    }
+  }, [activeChatId, targetContactInfo])
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isImageOnly = false) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentUser || !activeChatId || isSending) return
+
+    const targetReceiverId = targetContactInfo?.userId || activeChatId
+    const msgType = isImageOnly || file.type.startsWith('image/') ? 'image' : 'file'
+
+    setIsSending(true)
+    try {
+      if (isOnline) {
+        // 1. Upload via multipart FormData to backend storage
+        const uploadRes = await messageRepository.uploadAttachment(file)
+        const serverUrl = uploadRes.fileUrl || uploadRes.fileName
+
+        await messageRepository.sendMessage({
+          receiver_id: targetReceiverId,
+          message_content: serverUrl,
+          message_type: msgType,
+          file_name: uploadRes.fileName || file.name,
+          file_size: uploadRes.fileSize || `${(file.size / 1024).toFixed(1)} KB`,
+          contact_name: activeContact?.name,
+          contact_avatar: activeContact?.avatar,
+        })
+      } else {
+        // Offline fallback: encode as DataURL for offline Dexie queuing
+        const reader = new FileReader()
+        reader.onload = async () => {
+          const dataUrl = reader.result as string
+          try {
+            await messageRepository.sendMessage({
+              receiver_id: targetReceiverId,
+              message_content: dataUrl,
+              message_type: msgType,
+              file_name: file.name,
+              file_size: `${(file.size / 1024).toFixed(1)} KB`,
+              contact_name: activeContact?.name,
+              contact_avatar: activeContact?.avatar,
+            })
+          } catch (err) {
+            console.error("Failed to send offline attachment", err)
+          } finally {
+            setIsSending(false)
+            if (e.target) e.target.value = ""
+          }
+        }
+        reader.onerror = () => {
+          setIsSending(false)
+        }
+        reader.readAsDataURL(file)
+        return
+      }
+    } catch (err) {
+      console.error("Failed to send attachment", err)
+    } finally {
+      setIsSending(false)
+      if (e.target) e.target.value = ""
     }
   }
 
-  // Scroll to bottom helper
+  const handleSendMessage = async () => {
+    if (!message.trim() || !currentUser || !activeChatId || isSending) return
+    const content = message.trim()
+    const targetReceiverId = targetContactInfo?.userId || activeChatId
+    setMessage("")
+    setIsSending(true)
+
+    try {
+      await messageRepository.sendMessage({
+        receiver_id: targetReceiverId,
+        message_content: content,
+        message_type: "text",
+        contact_name: activeContact?.name,
+        contact_avatar: activeContact?.avatar,
+      })
+    } catch (e) {
+      console.error("Failed to send message", e)
+    } finally {
+      setIsSending(false)
+    }
+  }
+
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [chatMessages])
+  }, [chatMessages, isSending])
 
   const formatTime = (dateStr: string) => {
     try {
@@ -144,75 +225,160 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
 
   if (!activeChatId) {
     return (
-      <div className="flex flex-col flex-1 h-full bg-background dark:bg-black items-center justify-center border-r border-sidebar-border text-muted-foreground">
+      <div className="flex flex-col flex-1 h-full bg-background items-center justify-center border-r border-border text-muted-foreground">
         Select a conversation from the sidebar to view messages.
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col flex-1 h-full bg-background dark:bg-black min-w-0 border-r border-sidebar-border">
+    <div className="flex flex-col flex-1 h-full bg-background min-w-0 border-r border-border">
+      {/* Hidden inputs for attachments */}
+      <input type="file" ref={fileInputRef} className="hidden" accept="*/*" onChange={(e) => handleFileUpload(e, false)} />
+      <input type="file" ref={imageInputRef} className="hidden" accept="image/*,video/*" onChange={(e) => handleFileUpload(e, true)} />
+
       {/* Chat Header */}
-      <div className="h-[72px] px-6 py-4 border-b border-sidebar-border shrink-0 bg-background dark:bg-black flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 border border-sidebar-border">
+      <div className="h-[72px] px-4 sm:px-6 py-4 border-b border-border shrink-0 bg-card flex items-center justify-between">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {onBack && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onBack}
+              className="lg:hidden h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+              title="Back to conversations"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <Avatar className="h-10 w-10 border border-border shrink-0">
             <AvatarImage src={activeContact?.avatar || ""} />
             <AvatarFallback className="bg-primary/10 text-primary text-xs">{(activeContact?.name || "U").charAt(0)}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col">
-            <h2 className="text-sm font-semibold text-foreground dark:text-white">{activeContact?.name || "Loading..."}</h2>
+          <div className="flex flex-col min-w-0">
+            <h2 className="text-sm font-semibold text-card-foreground truncate">{activeContact?.name || "Loading..."}</h2>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[10px] text-muted-foreground font-medium">{activeContact?.role}</span>
             </div>
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 text-xs font-medium gap-1.5 border-sidebar-border">
-            <UserIcon className="h-3.5 w-3.5" />
-            View Profile
-          </Button>
-          <Button size="sm" className="h-8 text-xs font-medium gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90">
-            <FileText className="h-3.5 w-3.5" />
-            Log Vitals
-          </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {activeContact?.role === "Mother" && activeContact.motherId && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => navigate(`/dashboard/mothers/${activeContact.motherId}`)}
+              className="h-8 text-xs font-medium gap-1.5 border-border bg-card text-card-foreground hover:bg-accent"
+            >
+              <UserIcon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">View Profile</span>
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Message History */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
         {chatMessages.map((msg) => {
-          const isMe = msg.sender_id === currentUser?.user_id
+          const isSentByMe = msg.sender_id === currentUserId
+          const isOutgoing = isSentByMe
+          const isImage = msg.message_type === 'image' || (typeof msg.message_content === 'string' && (msg.message_content.startsWith('data:image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(msg.message_content)))
+          const isFile = msg.message_type === 'file' || (typeof msg.message_content === 'string' && (msg.message_content.startsWith('data:application/') || /\.(pdf|docx?|xlsx?|txt|csv|zip)$/i.test(msg.message_content)))
+
           return (
-            <div key={msg.id} className={clsx("flex flex-col gap-1 w-full max-w-[80%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
+            <div key={msg.id} className={clsx("flex flex-col gap-1 w-full max-w-[80%]", isOutgoing ? "ml-auto items-end" : "mr-auto items-start")}>
               <div className={clsx(
                 "p-3 rounded-2xl text-sm leading-relaxed",
-                isMe 
+                isOutgoing 
                   ? "bg-primary text-primary-foreground rounded-tr-sm" 
-                  : "bg-muted dark:bg-[#1a1a1a] border border-sidebar-border text-foreground dark:text-white rounded-tl-sm"
+                  : "bg-card border border-border text-card-foreground rounded-tl-sm shadow-xs"
               )}>
-                {msg.message_content}
+                {isImage ? (
+                  <button 
+                    type="button" 
+                    onClick={() => setPreviewImage(resolveFileUrl(msg.message_content))}
+                    className="block cursor-pointer overflow-hidden rounded-lg group p-0 text-left border-0 bg-transparent"
+                  >
+                    <img 
+                      src={resolveFileUrl(msg.message_content)} 
+                      alt="Shared Attachment" 
+                      className="max-w-[260px] max-h-[260px] rounded-lg object-cover group-hover:opacity-90 transition-opacity" 
+                    />
+                  </button>
+                ) : isFile ? (
+                  <div className="flex items-center gap-3 p-1">
+                    <div className="h-8 w-8 rounded bg-muted/60 flex items-center justify-center shrink-0">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-semibold truncate max-w-[180px]">{msg.file_name || "Document.pdf"}</span>
+                      <span className="text-[10px] opacity-75">{msg.file_size || "File Attachment"}</span>
+                    </div>
+                    <a 
+                      href={resolveFileUrl(msg.message_content)} 
+                      download={msg.file_name || "file"} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="ml-2 p-1.5 rounded hover:bg-muted/80 shrink-0"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap break-words">{msg.message_content}</div>
+                )}
               </div>
               <div className="flex items-center gap-1 px-1">
                 <span className="text-[10px] text-muted-foreground">{formatTime(msg.message_date)}</span>
-                {isMe && msg.sync_status === "pending_create" && (
-                  <Clock className="h-2.5 w-2.5 text-muted-foreground" />
+                {isSentByMe && msg.sync_status === "pending_create" && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-500 font-medium">
+                    <Clock className="h-2.5 w-2.5 animate-pulse" /> Pending Sync
+                  </span>
                 )}
               </div>
             </div>
           )
         })}
+
+        {/* Sending feedback indicator bubble */}
+        {isSending && (
+          <div className="flex flex-col gap-1 w-full max-w-[80%] ml-auto items-end">
+            <div className="p-3 rounded-2xl text-sm bg-primary/70 text-primary-foreground rounded-tr-sm shadow-xs flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+              <span className="text-xs">Sending...</span>
+            </div>
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}
-      <div className="px-6 pb-6 pt-4 bg-background dark:bg-black shrink-0 border-t border-transparent flex flex-col gap-2">
-        <div className="flex items-end gap-2 bg-muted/50 dark:bg-[#111] border border-sidebar-border p-2 rounded-xl focus-within:ring-1 focus-within:ring-ring transition-shadow w-full">
+      <div className="px-6 pb-6 pt-4 bg-background shrink-0 border-t border-transparent flex flex-col gap-2">
+        <div className={clsx(
+          "flex items-end gap-2 bg-card border border-border p-2 rounded-xl focus-within:ring-1 focus-within:ring-ring transition-shadow w-full shadow-xs",
+          isSending && "opacity-75"
+        )}>
           <div className="flex items-center gap-1 mb-1 shrink-0">
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <Button 
+              onClick={() => fileInputRef.current?.click()}
+              variant="ghost" 
+              size="icon" 
+              disabled={isSending}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground disabled:opacity-50"
+              title="Attach File"
+            >
               <Paperclip className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+            <Button 
+              onClick={() => imageInputRef.current?.click()}
+              variant="ghost" 
+              size="icon" 
+              disabled={isSending}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground disabled:opacity-50"
+              title="Attach Photo or Video"
+            >
               <ImageIcon className="h-4 w-4" />
             </Button>
           </div>
@@ -220,14 +386,15 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            disabled={isSending}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
                 handleSendMessage()
               }
             }}
-            placeholder="Type your message..."
-            className="flex-1 max-h-32 min-h-[40px] resize-none bg-transparent border-none focus:outline-none focus:ring-0 text-sm py-2.5 px-2 text-foreground dark:text-white placeholder:text-muted-foreground"
+            placeholder={isSending ? "Sending message..." : "Type your message..."}
+            className="flex-1 max-h-32 min-h-[40px] resize-none bg-transparent border-none focus:outline-none focus:ring-0 text-sm py-2.5 px-2 text-card-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed"
             rows={1}
           />
           
@@ -235,9 +402,13 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
             onClick={handleSendMessage}
             size="icon" 
             className="h-10 w-10 shrink-0 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground transition-colors mb-0.5"
-            disabled={!message.trim()}
+            disabled={!message.trim() || isSending}
           >
-            <Send className="h-4 w-4 ml-1" />
+            {isSending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4 ml-1" />
+            )}
           </Button>
         </div>
         {isOffline && (
@@ -247,6 +418,22 @@ export function ChatArea({ activeChatId }: ChatAreaProps) {
           </div>
         )}
       </div>
+
+      {/* Image Preview Lightbox Modal */}
+      <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+        <DialogContent className="max-w-3xl p-2 bg-black/90 border-border overflow-hidden">
+          <DialogTitle className="sr-only">Image Preview</DialogTitle>
+          {previewImage && (
+            <div className="flex flex-col items-center justify-center p-2">
+              <img
+                src={resolveFileUrl(previewImage)}
+                alt="Enlarged preview"
+                className="max-h-[80vh] w-auto max-w-full rounded-md object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

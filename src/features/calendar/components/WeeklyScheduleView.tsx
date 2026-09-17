@@ -29,13 +29,13 @@ export function WeeklyScheduleView({ viewDate, selectedDate, events, isMobile, o
   const days = Array.from({ length: 7 }).map((_, i) => addDays(startDate, i))
 
   return (
-    <div className="flex-1 w-full flex bg-background dark:bg-[#000000] border-t border-l border-sidebar-border overflow-hidden">
+    <div className="flex-1 w-full flex bg-background border-t border-l border-border overflow-hidden">
       <div ref={scrollRef} className="flex w-full h-full overflow-y-auto overflow-x-auto relative">
         <div className="flex min-w-max h-max w-full">
 
           {/* Sticky Time Gutter */}
-          <div className="w-12 md:w-16 shrink-0 border-r border-sidebar-border bg-background dark:bg-black sticky left-0 z-30 flex flex-col">
-            <div className="h-20 shrink-0 border-b border-sidebar-border bg-background dark:bg-black sticky top-0 z-40"></div>
+          <div className="w-12 md:w-16 shrink-0 border-r border-border bg-background sticky left-0 z-30 flex flex-col">
+            <div className="h-24 shrink-0 border-b border-border bg-background sticky top-0 z-40"></div>
             <div className="relative h-[1440px] shrink-0">
               {Array.from({ length: 24 }).map((_, i) => {
                 const hour = i;
@@ -72,40 +72,53 @@ export function WeeklyScheduleView({ viewDate, selectedDate, events, isMobile, o
               return (
                 <div
                   key={idx}
-                  className={`flex-1 flex flex-col border-r border-sidebar-border relative min-w-0 transition-colors ${isActiveDay ? 'bg-white/5 dark:bg-white/10' : 'hover:bg-white/5'}`}
+                  className={`flex-1 flex flex-col border-r border-border relative min-w-0 transition-colors ${isActiveDay ? 'bg-primary/5' : 'hover:bg-accent/40'}`}
                 >
                   {/* Header (Sticky) */}
                   <div
                     onClick={() => onSelectDate(day)}
-                    className="flex flex-col items-center py-4 shrink-0 h-20 border-b border-sidebar-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 dark:bg-black/95 sticky top-0 z-20 cursor-pointer relative"
+                    className="flex flex-col items-center justify-between py-2.5 px-1 shrink-0 h-24 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 sticky top-0 z-20 cursor-pointer relative"
                   >
-                    <span className={`text-xs font-medium ${isWeekend ? 'text-muted-foreground' : 'text-foreground dark:text-white/70'}`}>
-                      {format(day, 'E')}
-                    </span>
-                    <div className={`mt-1 flex items-center justify-center w-9 h-9 shrink-0 rounded-full text-lg font-semibold ${isActiveDay ? 'bg-black text-white dark:bg-white dark:text-black' : isWeekend ? 'text-muted-foreground' : 'text-foreground dark:text-white'}`}>
-                      {format(day, 'd')}
+                    <div className="flex flex-col items-center">
+                      <span className={`text-xs font-medium leading-none ${isWeekend ? 'text-muted-foreground' : 'text-foreground'}`}>
+                        {format(day, 'E')}
+                      </span>
+                      <div className={`mt-1 flex items-center justify-center w-7 h-7 shrink-0 rounded-full text-sm font-semibold ${isActiveDay ? 'bg-primary text-primary-foreground' : isWeekend ? 'text-muted-foreground' : 'text-foreground'}`}>
+                        {format(day, 'd')}
+                      </div>
                     </div>
+
+                    {/* Dedicated Availability Spot in Header (cleanly separated from time grid & appointment cards) */}
+                    {showBadge ? (
+                      <div className="w-full flex justify-center mt-1">
+                        {isMobile ? (
+                          <div 
+                            title={badgeText}
+                            className={`flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-semibold text-white shadow-xs ${isFullyBooked ? 'bg-[#ff7373]' : 'bg-[#22C55E]'}`}
+                          >
+                            {isFullyBooked ? <CalendarOff className="h-2.5 w-2.5" /> : remainingSlots}
+                          </div>
+                        ) : (
+                          <div 
+                            title={badgeText}
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium text-white whitespace-nowrap shadow-xs transition-transform hover:scale-105 ${
+                              isFullyBooked 
+                                ? 'bg-[#ff7373] text-white border border-[#ff7373]/30' 
+                                : 'bg-[#22C55E] text-white border border-[#22C55E]/30'
+                            }`}
+                          >
+                            <BadgeIcon className="h-2.5 w-2.5 shrink-0" />
+                            <span>{isFullyBooked ? "Full" : `${remainingSlots} Slots`}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="h-4" />
+                    )}
                   </div>
 
                   {/* Grid Area */}
                   <div className="relative h-[1440px] shrink-0 cursor-pointer" onClick={() => onSelectDate(day)}>
-
-                    {/* Availability Badge (Sticky on Time Grid) */}
-                    {showBadge && (
-                      <div className="sticky top-[80px] left-0 w-full flex justify-end pr-2 z-30 pointer-events-none pt-2">
-                        {isMobile ? (
-                          <div className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold text-white shadow-md ${isFullyBooked ? 'bg-[#ff7373]' : 'bg-[#22C55E]'}`}>
-                            {isFullyBooked ? <CalendarOff className="h-3 w-3" /> : remainingSlots}
-                          </div>
-                        ) : (
-                          <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-medium text-white whitespace-nowrap border shadow-sm ${isFullyBooked ? 'bg-[#ff7373] border-[#ff7373]/20' : 'bg-[#22C55E] border-[#22C55E]/20'}`}>
-                            <BadgeIcon className="h-3 w-3" />
-                            {badgeText}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     {/* Horizontal Grid Lines */}
                     {Array.from({ length: 25 }).map((_, i) => (
                       <div key={i} className="absolute w-full border-t border-sidebar-border/30 pointer-events-none" style={{ top: `${i * 60}px` }}></div>

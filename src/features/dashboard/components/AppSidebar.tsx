@@ -17,8 +17,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { LayoutGrid, Users, Calendar, CalendarCheck, ArrowRightLeft, MessageSquare, SlidersHorizontal, ChevronsUpDown, LogOut, FileText } from "lucide-react"
 import headerIcon from "@/assets/icon.svg"
-import rhuLogo from "@/assets/Pili Rural Health Unit Logo.jpg"
+import rhuLogo from "@/assets/pili-rhu-logo.jpg"
 import { apiClient } from "@/lib/apiClient"
+import { db } from "@/lib/db/bmsDatabase"
 
 export function AppSidebar() {
   const navigate = useNavigate()
@@ -62,13 +63,26 @@ export function AppSidebar() {
     }, 350)
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("user")
-    localStorage.removeItem("token")
-    localStorage.clear()
-    sessionStorage.clear()
-    setOpenMobile(false)
-    navigate("/")
+  const handleLogout = async () => {
+    try {
+      const pendingCount = await db.offlineQueue.count()
+      if (pendingCount > 0) {
+        const confirmLogout = window.confirm(
+          `You have ${pendingCount} unsynced offline change(s) in your queue. Logging out now will clear the local patient cache on this device. Do you wish to proceed?`
+        )
+        if (!confirmLogout) return
+      }
+      await db.clearClinicalCache(false)
+    } catch (err) {
+      console.warn("Error cleaning up offline database on logout:", err)
+    } finally {
+      localStorage.removeItem("user")
+      localStorage.removeItem("token")
+      localStorage.clear()
+      sessionStorage.clear()
+      setOpenMobile(false)
+      navigate("/")
+    }
   }
 
   const userName = [user?.first_name, user?.middle_name, user?.last_name]
@@ -84,11 +98,11 @@ export function AppSidebar() {
       <SidebarHeader className="flex flex-col p-0">
         <div className="flex h-14 items-center px-4 gap-2 border-b border-sidebar-border transition-all duration-200 ease-linear group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:gap-0">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-transparent overflow-hidden transition-all duration-200 ease-linear">
-            <img src={headerIcon} alt="Unite Logo" className="h-full w-full object-contain" />
+            <img src={headerIcon} alt="BMS Logo" className="h-full w-full object-contain dark:invert" />
           </div>
           <div className="flex flex-col overflow-hidden transition-all duration-200 ease-linear max-w-[250px] group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0">
-            <span className="text-xl font-semibold text-[#FF3B30] tracking-tight whitespace-nowrap" style={{ fontFamily: "'Poppins', sans-serif" }}>
-              unite
+            <span className="text-xl font-bold text-foreground tracking-wider uppercase whitespace-nowrap">
+              BMS
             </span>
           </div>
         </div>

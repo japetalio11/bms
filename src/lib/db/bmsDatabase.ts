@@ -104,10 +104,47 @@ export interface LocalMessage {
   [key: string]: any
 }
 
+export interface LocalReferral {
+  id: string // referral_id or temp uuid
+  referral_id?: string
+  pregnancy_id?: string
+  from_facility_id?: string
+  to_facility_id?: string
+  external_facility_name?: string
+  reason?: string
+  date_referred?: string
+  secure_link?: string
+  shared_pin?: string
+  is_completed?: boolean
+  status?: string
+  response_notes?: string
+  outcome?: string
+  date_responded?: string
+  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  updated_at: number
+  pregnancy?: any
+  fromFacility?: any
+  toFacility?: any
+  [key: string]: any
+}
+
+export interface LocalNotification {
+  id: string // notification_id or temp uuid
+  notification_id?: string
+  user_id: string
+  notification_type: string
+  notification_message: string
+  notification_date: string
+  is_read: boolean
+  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  updated_at: number
+  [key: string]: any
+}
+
 export interface OfflineQueueItem {
   id?: number // Auto-increment ID
   client_mutation_id: string
-  entity_type: "mother" | "pregnancy" | "prenatal_visit" | "appointment" | "lab_record" | "supplement" | "ehr_doc" | "message" | "custom_request"
+  entity_type: "mother" | "pregnancy" | "prenatal_visit" | "appointment" | "lab_record" | "supplement" | "ehr_doc" | "message" | "referral" | "notification" | "custom_request" | "user"
   action: "CREATE" | "UPDATE" | "DELETE"
   endpoint: string
   method: "POST" | "PUT" | "DELETE"
@@ -135,6 +172,8 @@ export class BMSDatabase extends Dexie {
   supplements!: Table<LocalSupplement, string>
   ehrDocuments!: Table<LocalEhrDocument, string>
   messages!: Table<LocalMessage, string>
+  referrals!: Table<LocalReferral, string>
+  notifications!: Table<LocalNotification, string>
   offlineQueue!: Table<OfflineQueueItem, number>
   blobs!: Table<LocalBlob, string>
   userSession!: Table<any, string>
@@ -180,6 +219,59 @@ export class BMSDatabase extends Dexie {
       blobs: "id",
       userSession: "id",
     })
+
+    this.version(4).stores({
+      mothers: "id, mother_id, user_id, facility_id, phone_number, sync_status, updated_at",
+      pregnancies: "id, pregnancy_id, mother_id, sync_status, updated_at",
+      prenatalVisits: "id, visit_id, pregnancy_id, mother_id, visit_date, sync_status, updated_at",
+      appointments: "id, appointment_id, mother_id, user_id, facility_id, appointment_date, status, sync_status, updated_at",
+      labRecords: "id, screening_id, pregnancy_id, mother_id, sync_status, updated_at",
+      supplements: "id, supplement_id, pregnancy_id, mother_id, sync_status, updated_at",
+      ehrDocuments: "id, mother_id, sync_status, updated_at",
+      messages: "id, sender_id, receiver_id, message_date, is_read, sync_status, updated_at",
+      referrals: "id, referral_id, pregnancy_id, from_facility_id, to_facility_id, status, sync_status, updated_at",
+      offlineQueue: "++id, client_mutation_id, entity_type, created_at, retry_count",
+      blobs: "id",
+      userSession: "id",
+    })
+
+    this.version(5).stores({
+      mothers: "id, mother_id, user_id, facility_id, phone_number, sync_status, updated_at",
+      pregnancies: "id, pregnancy_id, mother_id, sync_status, updated_at",
+      prenatalVisits: "id, visit_id, pregnancy_id, mother_id, visit_date, sync_status, updated_at",
+      appointments: "id, appointment_id, mother_id, user_id, facility_id, appointment_date, status, sync_status, updated_at",
+      labRecords: "id, screening_id, pregnancy_id, mother_id, sync_status, updated_at",
+      supplements: "id, supplement_id, pregnancy_id, mother_id, sync_status, updated_at",
+      ehrDocuments: "id, mother_id, sync_status, updated_at",
+      messages: "id, sender_id, receiver_id, message_date, is_read, sync_status, updated_at",
+      referrals: "id, referral_id, pregnancy_id, from_facility_id, to_facility_id, status, sync_status, updated_at",
+      notifications: "id, notification_id, user_id, notification_type, is_read, sync_status, updated_at",
+      offlineQueue: "++id, client_mutation_id, entity_type, created_at, retry_count",
+      blobs: "id",
+      userSession: "id",
+    })
+  }
+
+  /**
+   * Securely purges all cached medical records upon logout to prevent
+   * patient health information exposure on shared clinical workstations.
+   */
+  public async clearClinicalCache(preserveUnsyncedQueue: boolean = false): Promise<void> {
+    await Promise.all([
+      this.mothers.clear(),
+      this.pregnancies.clear(),
+      this.prenatalVisits.clear(),
+      this.appointments.clear(),
+      this.labRecords.clear(),
+      this.supplements.clear(),
+      this.ehrDocuments.clear(),
+      this.messages.clear(),
+      this.referrals.clear(),
+      this.notifications.clear(),
+      this.blobs.clear(),
+      this.userSession.clear(),
+      ...(preserveUnsyncedQueue ? [] : [this.offlineQueue.clear()]),
+    ])
   }
 }
 

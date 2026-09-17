@@ -28,8 +28,13 @@ import {
   Edit,
   ExternalLink,
 } from "lucide-react"
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
+import { toast } from "sonner"
 import { EditRecordModal } from "./EditRecordModal"
 import { mothersApi } from "../api"
+import { db } from "@/lib/db/bmsDatabase"
+import { motherRepository } from "@/lib/repositories/motherRepository"
+import { appointmentRepository } from "@/lib/repositories/appointmentRepository"
 
 export interface DetailSideSheetProps {
   open: boolean
@@ -50,36 +55,75 @@ export function DetailSideSheet({
 }: DetailSideSheetProps) {
   const [deleting, setDeleting] = React.useState(false)
   const [editModalOpen, setEditModalOpen] = React.useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = React.useState(false)
+
+  const handleViewAttachment = (fileUrl: string) => {
+    if (!fileUrl) return
+    if (fileUrl.startsWith("data:")) {
+      try {
+        const parts = fileUrl.split(",")
+        const mime = parts[0].match(/:(.*?);/)?.[1] || "application/pdf"
+        const bstr = atob(parts[1])
+        let n = bstr.length
+        const u8arr = new Uint8Array(n)
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n)
+        }
+        const blob = new Blob([u8arr], { type: mime })
+        const blobUrl = URL.createObjectURL(blob)
+        window.open(blobUrl, "_blank")
+        return
+      } catch (e) {
+        console.error("Failed to convert base64 data to blob URL:", e)
+      }
+    }
+    window.open(fileUrl, "_blank")
+  }
 
   if (!data) return null
 
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this record? This action cannot be undone.")) {
+  const executeDelete = async () => {
+    setDeleting(true)
+    let recordId: string | undefined
+    if (type === "visitation") {
+      recordId = data.visit_id || data.id || data._id
+    } else if (type === "pregnancy") {
+      recordId = data.pregnancy_id || data.id || data._id
+    } else if (type === "appointment") {
+      recordId = data.appointment_id || data.id || data._id
+    } else if (type === "laboratory") {
+      recordId = data.screening_id || data.id || data._id
+    } else if (type === "prescription") {
+      recordId = data.supplement_id || data.id || data._id
+    } else {
+      recordId = data.visit_id || data.pregnancy_id || data.appointment_id || data.screening_id || data.supplement_id || data._id || data.id
+    }
+
+    if (!recordId) {
+      toast.error("Invalid record identifier")
+      setDeleting(false)
       return
     }
 
-    setDeleting(true)
-    let endpoint = ""
-    if (type === "pregnancy") {
-      endpoint = `/api/v1/pregnancy/delete/${data.pregnancy_id}`
-    } else if (type === "visitation") {
-      endpoint = `/api/v1/prenatal-visit/delete/${data.visit_id}`
-    } else if (type === "appointment") {
-      endpoint = `/api/v1/appointment/delete/${data.appointment_id || data._id}`
-    } else if (type === "laboratory") {
-      endpoint = `/api/v1/lab-screening/delete/${data.screening_id}`
-    } else if (type === "prescription") {
-      endpoint = `/api/v1/supplement/delete/${data.supplement_id}`
-    }
-
     try {
-      if (endpoint) {
-        await mothersApi.deleteRecord(endpoint)
+      if (type === "pregnancy") {
+        await motherRepository.deletePregnancy(recordId)
+      } else if (type === "visitation") {
+        await motherRepository.deletePrenatalVisit(recordId)
+      } else if (type === "appointment") {
+        await appointmentRepository.deleteAppointment(recordId)
+      } else if (type === "laboratory") {
+        await motherRepository.deleteLabRecord(recordId)
+      } else if (type === "prescription") {
+        await motherRepository.deleteSupplement(recordId)
       }
+
+      toast.success("Record deleted successfully")
       onSuccess?.()
+      setConfirmDeleteOpen(false)
       onOpenChange(false)
     } catch (err: any) {
-      alert(err.response?.data?.error || err.message || "Failed to delete record")
+      toast.error(err.response?.data?.error || err.message || "Failed to delete record")
     } finally {
       setDeleting(false)
     }
@@ -104,11 +148,11 @@ export function DetailSideSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" showCloseButton={false} className="w-full sm:max-w-[450px] bg-background dark:bg-[#0a0a0a] border-l border-sidebar-border p-0 flex flex-col">
+      <SheetContent side="right" showCloseButton={false} className="w-full sm:max-w-[450px] bg-card text-card-foreground border-l border-border p-0 flex flex-col">
         {/* Header */}
-        <div className="shrink-0 p-4 border-b border-sidebar-border flex items-start justify-between">
+        <div className="shrink-0 p-4 border-b border-border flex items-start justify-between">
           <div className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium text-foreground dark:text-white">
+            <h2 className="text-sm font-semibold text-foreground">
               {getHeaderTitle()}
             </h2>
             <div className="flex items-center gap-2">
@@ -148,7 +192,7 @@ export function DetailSideSheet({
               </Badge>
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground dark:text-white" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => onOpenChange(false)}>
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -159,56 +203,56 @@ export function DetailSideSheet({
           {/* PREGNANCY VIEW */}
           {type === "pregnancy" && (
             <>
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Obstetric Summary</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Obstetric Summary</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Baby className="h-3.5 w-3.5" />
                       <span className="text-xs">Gravida / Parity</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">G{data.gravida ?? 0} P{data.parity ?? 0}</span>
+                    <span className="text-xs text-foreground flex-1">G{data.gravida ?? 0} P{data.parity ?? 0}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Calendar className="h-3.5 w-3.5" />
                       <span className="text-xs">LMP Date</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{formatDate(data.lmp_date || data.lmp)}</span>
+                    <span className="text-xs text-foreground flex-1">{formatDate(data.lmp_date || data.lmp)}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Clock className="h-3.5 w-3.5" />
                       <span className="text-xs">Registration Date</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{formatDate(data.date_of_registration)}</span>
+                    <span className="text-xs text-foreground flex-1">{formatDate(data.date_of_registration)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Clinical Assessment</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Clinical Assessment</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <ActivitySquare className="h-3.5 w-3.5" />
                       <span className="text-xs">1st Trimester BMI</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.bmi_1st_trimester ?? "N/A"} ({data.bmi_category || "Normal"})</span>
+                    <span className="text-xs text-foreground flex-1">{data.bmi_1st_trimester ?? "N/A"} ({data.bmi_category || "Normal"})</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <ShieldAlert className="h-3.5 w-3.5" />
                       <span className="text-xs">Co-morbidities</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.co_morbidities || "None recorded"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.co_morbidities || "None recorded"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <History className="h-3.5 w-3.5" />
                       <span className="text-xs">Previous Deliveries</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.previous_delivery_history || "None recorded"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.previous_delivery_history || "None recorded"}</span>
                   </div>
                 </div>
               </div>
@@ -218,35 +262,35 @@ export function DetailSideSheet({
           {/* VISITATION VIEW */}
           {type === "visitation" && (
             <>
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Visit Details</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Visit Details</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Calendar className="h-3.5 w-3.5" />
                       <span className="text-xs">Visit Date</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{formatDate(data.visit_date)}</span>
+                    <span className="text-xs text-foreground flex-1">{formatDate(data.visit_date)}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Stethoscope className="h-3.5 w-3.5" />
                       <span className="text-xs">Visit Number</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">Visit #{data.visit_number || 1}</span>
+                    <span className="text-xs text-foreground flex-1">Visit #{data.visit_number || 1}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Maternal Vitals</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Maternal Vitals</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <HeartPulse className="h-3.5 w-3.5" />
                       <span className="text-xs">Blood Pressure</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">
+                    <span className="text-xs text-foreground flex-1">
                       {data.bp_systolic && data.bp_diastolic ? `${data.bp_systolic}/${data.bp_diastolic} mmHg` : "N/A"}
                     </span>
                   </div>
@@ -255,48 +299,48 @@ export function DetailSideSheet({
                       <ActivitySquare className="h-3.5 w-3.5" />
                       <span className="text-xs">Pulse Rate</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.pulse_rate_bpm ? `${data.pulse_rate_bpm} bpm` : "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.pulse_rate_bpm ? `${data.pulse_rate_bpm} bpm` : "N/A"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Thermometer className="h-3.5 w-3.5" />
                       <span className="text-xs">Body Temp</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.temperature_celsius ? `${data.temperature_celsius} °C` : "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.temperature_celsius ? `${data.temperature_celsius} °C` : "N/A"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Weight className="h-3.5 w-3.5" />
                       <span className="text-xs">Weight</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.weight_kg ? `${data.weight_kg} kg` : "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.weight_kg ? `${data.weight_kg} kg` : "N/A"}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Fetal & Visit Metrics</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Fetal & Visit Metrics</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Baby className="h-3.5 w-3.5" />
                       <span className="text-xs">Gestational Age</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.age_of_gestation_weeks ? `${data.age_of_gestation_weeks} Weeks` : "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.age_of_gestation_weeks ? `${data.age_of_gestation_weeks} Weeks` : "N/A"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <HeartPulse className="h-3.5 w-3.5" />
                       <span className="text-xs">Fetal Heart Tone</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.fetal_heart_tone_bpm ? `${data.fetal_heart_tone_bpm} bpm` : "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.fetal_heart_tone_bpm ? `${data.fetal_heart_tone_bpm} bpm` : "N/A"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Ruler className="h-3.5 w-3.5" />
                       <span className="text-xs">Fundic Height</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.fundic_height_cm ? `${data.fundic_height_cm} cm` : "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.fundic_height_cm ? `${data.fundic_height_cm} cm` : "N/A"}</span>
                   </div>
                 </div>
               </div>
@@ -306,15 +350,15 @@ export function DetailSideSheet({
           {/* APPOINTMENT VIEW */}
           {type === "appointment" && (
             <>
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Visit Details</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Visit Details</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Calendar className="h-3.5 w-3.5" />
                       <span className="text-xs">Date & Time</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">
+                    <span className="text-xs text-foreground flex-1">
                       {formatDate(data.appointment_date)} {data.appointment_time || ""}
                     </span>
                   </div>
@@ -323,14 +367,14 @@ export function DetailSideSheet({
                       <Stethoscope className="h-3.5 w-3.5" />
                       <span className="text-xs">Purpose</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.appointment_type || data.type || "Prenatal Checkup"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.appointment_type || data.type || "Prenatal Checkup"}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Notes & Reason</h3>
-                <p className="text-xs text-foreground dark:text-white leading-relaxed">
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Notes & Reason</h3>
+                <p className="text-xs text-foreground leading-relaxed">
                   {data.reason || "No additional notes provided for this appointment."}
                 </p>
               </div>
@@ -340,53 +384,64 @@ export function DetailSideSheet({
           {/* LABORATORY VIEW */}
           {type === "laboratory" && (
             <>
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Screening Summary</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Screening Summary</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <FlaskConical className="h-3.5 w-3.5" />
                       <span className="text-xs">Screening Type</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.screening_type || "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.screening_type || "N/A"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Calendar className="h-3.5 w-3.5" />
                       <span className="text-xs">Date of Screening</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{formatDate(data.date_of_screening)}</span>
+                    <span className="text-xs text-foreground flex-1">{formatDate(data.date_of_screening)}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <FileText className="h-3.5 w-3.5" />
                       <span className="text-xs">Result</span>
                     </div>
-                    <span className="text-xs font-medium text-foreground dark:text-white flex-1">{data.result || "N/A"}</span>
+                    <span className="text-xs font-medium text-foreground flex-1">{data.result || "N/A"}</span>
                   </div>
                   {data.file_url && (
-                    <div className="flex items-center">
-                      <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        <span className="text-xs">Attachment</span>
+                    <div className="flex flex-col gap-2 pt-1">
+                      <div className="flex items-center">
+                        <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          <span className="text-xs">Attachment</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleViewAttachment(data.file_url)}
+                          className="text-xs text-blue-500 hover:underline flex items-center gap-1 font-medium flex-1 truncate text-left cursor-pointer"
+                        >
+                          View Attachment Document
+                          <ExternalLink className="h-3 w-3 inline" />
+                        </button>
                       </div>
-                      <a
-                        href={data.file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs text-blue-500 hover:underline flex items-center gap-1 font-medium flex-1 truncate"
-                      >
-                        View Attachment Document
-                        <ExternalLink className="h-3 w-3 inline" />
-                      </a>
+                      {(data.file_url.startsWith("data:image/") ||
+                        data.file_url.match(/\.(png|jpg|jpeg|webp|gif)($|\?)/i)) && (
+                        <div className="mt-1 rounded-lg border border-border overflow-hidden max-w-sm bg-muted/20 p-1">
+                          <img
+                            src={data.file_url}
+                            alt="Laboratory Attachment"
+                            className="max-h-56 w-full object-contain rounded-md"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Remarks</h3>
-                <p className="text-xs text-foreground dark:text-white leading-relaxed">
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Remarks</h3>
+                <p className="text-xs text-foreground leading-relaxed">
                   {data.remarks || "No clinical remarks logged for this screening."}
                 </p>
               </div>
@@ -396,29 +451,29 @@ export function DetailSideSheet({
           {/* PRESCRIPTION VIEW */}
           {type === "prescription" && (
             <>
-              <div className="flex flex-col gap-4 p-4 border-b border-sidebar-border">
-                <h3 className="text-xs font-semibold text-foreground dark:text-white">Medication Summary</h3>
+              <div className="flex flex-col gap-4 p-4 border-b border-border">
+                <h3 className="text-xs font-semibold text-foreground">Medication Summary</h3>
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Pill className="h-3.5 w-3.5" />
                       <span className="text-xs">Supplement Type</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.supplement_type || "N/A"}</span>
+                    <span className="text-xs text-foreground flex-1">{data.supplement_type || "N/A"}</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <ActivitySquare className="h-3.5 w-3.5" />
                       <span className="text-xs">Tablets Given</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{data.tablets_given_count ?? "N/A"} tablets</span>
+                    <span className="text-xs text-foreground flex-1">{data.tablets_given_count ?? "N/A"} tablets</span>
                   </div>
                   <div className="flex items-center">
                     <div className="flex items-center gap-2 text-muted-foreground w-[160px] shrink-0">
                       <Calendar className="h-3.5 w-3.5" />
                       <span className="text-xs">Date Given</span>
                     </div>
-                    <span className="text-xs text-foreground dark:text-white flex-1">{formatDate(data.date_given)}</span>
+                    <span className="text-xs text-foreground flex-1">{formatDate(data.date_given)}</span>
                   </div>
                 </div>
               </div>
@@ -428,17 +483,17 @@ export function DetailSideSheet({
           {/* Activity Log */}
           <div className="flex flex-col gap-4 p-4 pb-6">
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-semibold text-foreground dark:text-white">Activity Log</h3>
+              <h3 className="text-xs font-semibold text-foreground">Activity Log</h3>
               <History className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
             <p className="text-xs text-muted-foreground">Recent actions performed for this record.</p>
             
             <div className="flex gap-3 mt-1">
               <div className="flex flex-col items-center mt-1.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-foreground dark:bg-white shrink-0" />
+                <div className="h-1.5 w-1.5 rounded-full bg-foreground shrink-0" />
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-foreground dark:text-white">Record registered in system</span>
+                <span className="text-xs font-medium text-foreground">Record registered in system</span>
                 <span className="text-[10px] text-muted-foreground">{formatDate(data.updated_at || data.created_at || new Date())}</span>
               </div>
             </div>
@@ -446,10 +501,10 @@ export function DetailSideSheet({
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 p-4 pb-8 md:pb-4 border-t border-sidebar-border flex flex-col gap-2">
+        <div className="shrink-0 p-4 pb-8 md:pb-4 border-t border-border flex flex-col gap-2">
           <Button
             onClick={() => setEditModalOpen(true)}
-            className="w-full h-8 text-xs font-medium bg-[#111] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+            className="w-full h-8 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Edit className="mr-1.5 h-3.5 w-3.5" />
             Edit Record
@@ -457,8 +512,8 @@ export function DetailSideSheet({
           <Button
             variant="outline"
             disabled={deleting}
-            onClick={handleDelete}
-            className="w-full h-8 text-xs font-medium border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-600 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/20"
+            onClick={() => setConfirmDeleteOpen(true)}
+            className="w-full h-8 text-xs font-medium border-red-500/20 text-red-500 hover:bg-red-500/10 hover:text-red-600 cursor-pointer"
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" />
             {deleting ? "Deleting..." : "Delete Record"}
@@ -475,6 +530,15 @@ export function DetailSideSheet({
           onSuccess?.()
           onOpenChange(false)
         }}
+      />
+
+      <ConfirmDeleteModal
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title={`Delete ${type ? type.charAt(0).toUpperCase() + type.slice(1) : "Record"}`}
+        description="Are you sure you want to delete this record from the database? This action cannot be undone."
+        isDeleting={deleting}
+        onConfirm={executeDelete}
       />
     </Sheet>
   )

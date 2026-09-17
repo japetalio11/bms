@@ -70,18 +70,18 @@ export function ExportAppointmentsDataModal({
       <div className="flex flex-col gap-6 py-2">
         {/* File Format */}
         <div className="flex flex-col gap-3">
-          <h4 className="text-xs font-medium text-foreground dark:text-white">File Format</h4>
+          <h4 className="text-xs font-medium text-foreground">File Format</h4>
           <RadioGroup value={fileFormat} onValueChange={setFileFormat} className="gap-3">
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="csv" id="af2" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white" />
+              <RadioGroupItem value="csv" id="af2" className="border-border data-[state=checked]:border-primary" />
               <Label htmlFor="af2" className="text-xs font-normal">
-                <span className="text-foreground dark:text-white">CSV</span> <span className="text-muted-foreground">- Standard spreadsheet format</span>
+                <span className="text-foreground">CSV</span> <span className="text-muted-foreground">- Standard spreadsheet format</span>
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="excel" id="af1" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white" />
+              <RadioGroupItem value="excel" id="af1" className="border-border data-[state=checked]:border-primary" />
               <Label htmlFor="af1" className="text-xs font-normal">
-                <span className="text-foreground dark:text-white">Excel (.xlsx)</span> <span className="text-muted-foreground">- Sheet document</span>
+                <span className="text-foreground">Excel (.xlsx)</span> <span className="text-muted-foreground">- Sheet document</span>
               </Label>
             </div>
           </RadioGroup>
@@ -89,23 +89,23 @@ export function ExportAppointmentsDataModal({
 
         {/* Data Scope */}
         <div className="flex flex-col gap-3">
-          <h4 className="text-xs font-medium text-foreground dark:text-white">Data Scope</h4>
+          <h4 className="text-xs font-medium text-foreground">Data Scope</h4>
           <RadioGroup defaultValue="filtered" className="gap-3">
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="filtered" id="as1" className="border-sidebar-border data-[state=checked]:border-white data-[state=checked]:text-foreground dark:text-white" />
+              <RadioGroupItem value="filtered" id="as1" className="border-border data-[state=checked]:border-primary" />
               <Label htmlFor="as1" className="text-xs font-normal">
-                <span className="text-foreground dark:text-white">Current Filtered View</span> <span className="text-muted-foreground">({appointments.length} items)</span>
+                <span className="text-foreground">Current Filtered View</span> <span className="text-muted-foreground">({appointments.length} items)</span>
               </Label>
             </div>
           </RadioGroup>
         </div>
       </div>
       
-      <div className="flex justify-end gap-2 pt-4 border-t border-sidebar-border mt-2">
-        <Button variant="ghost" className="h-8 text-xs text-foreground dark:text-white hover:bg-accent dark:hover:bg-white/5" onClick={() => handleOpenChange(false)}>
+      <div className="flex justify-end gap-2 pt-4 border-t border-border mt-2">
+        <Button variant="ghost" className="h-8 text-xs text-foreground hover:bg-accent" onClick={() => handleOpenChange(false)}>
           Cancel
         </Button>
-        <Button onClick={handleExport} className="h-8 text-xs bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200">
+        <Button onClick={handleExport} className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium">
           Export Appointments
         </Button>
       </div>

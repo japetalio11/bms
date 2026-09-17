@@ -12,17 +12,21 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
+import { Eye, EyeOff } from "lucide-react"
+
+import { userRepository } from "@/lib/repositories/userRepository"
 
 export function InviteTeamMemberModal({ children, onInviteSuccess }: { children: React.ReactNode, onInviteSuccess?: () => void }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
     email: "",
     phone_number: "",
     role: "",
-    sector: ""
+    password: ""
   })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,32 +47,26 @@ export function InviteTeamMemberModal({ children, onInviteSuccess }: { children:
       return
     }
 
+    const assignedPassword = formData.password.trim() || generatePassword()
+    if (assignedPassword.length < 6) {
+      toast.error("Password must be at least 6 characters long.")
+      return
+    }
+
     setLoading(true)
     try {
-      const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
-      const token = localStorage.getItem("token")
-      
       const payload = {
-        ...formData,
-        password: generatePassword(), // Auto-generated password
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        phone_number: formData.phone_number,
+        role: formData.role,
+        password: assignedPassword,
       }
 
-      const response = await fetch(`${baseUrl}/api/v1/auth/create-staff`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      })
+      await userRepository.inviteStaff(payload)
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to invite team member.")
-      }
-
-      toast.success("Team member invited successfully!")
+      toast.success("Team member created successfully!")
       setOpen(false)
       setFormData({
         first_name: "",
@@ -76,10 +74,9 @@ export function InviteTeamMemberModal({ children, onInviteSuccess }: { children:
         email: "",
         phone_number: "",
         role: "",
-        sector: ""
+        password: ""
       })
       if (onInviteSuccess) onInviteSuccess()
-
     } catch (error: any) {
       toast.error(error.message || "An unexpected error occurred.")
     } finally {
@@ -92,87 +89,94 @@ export function InviteTeamMemberModal({ children, onInviteSuccess }: { children:
       open={open}
       onOpenChange={setOpen}
       trigger={children}
-      title="Invite Team Member"
-      description="Send an invitation to join the platform. A temporary password will be automatically assigned."
+      title="Create Staff Member"
+      description="Enter the staff member's details and set up their account credentials."
     >
         <div className="flex flex-col gap-4 py-2">
           <div className="flex gap-4">
             <div className="flex flex-col gap-2 flex-1">
-              <Label htmlFor="first_name" className="text-xs font-medium text-foreground dark:text-white">First Name *</Label>
+              <Label htmlFor="first_name" className="text-xs font-medium text-foreground">First Name *</Label>
               <Input 
                 id="first_name" 
                 placeholder="Juan" 
                 value={formData.first_name}
                 onChange={handleInputChange}
-                className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white placeholder:text-muted-foreground"
+                className="!h-8 bg-card border-border text-xs text-card-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div className="flex flex-col gap-2 flex-1">
-              <Label htmlFor="last_name" className="text-xs font-medium text-foreground dark:text-white">Last Name *</Label>
+              <Label htmlFor="last_name" className="text-xs font-medium text-foreground">Last Name *</Label>
               <Input 
                 id="last_name" 
                 placeholder="Dela Cruz" 
                 value={formData.last_name}
                 onChange={handleInputChange}
-                className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white placeholder:text-muted-foreground"
+                className="!h-8 bg-card border-border text-xs text-card-foreground placeholder:text-muted-foreground"
               />
             </div>
           </div>
 
           <div className="flex gap-4">
             <div className="flex flex-col gap-2 flex-1">
-              <Label htmlFor="email" className="text-xs font-medium text-foreground dark:text-white">Email Address *</Label>
+              <Label htmlFor="email" className="text-xs font-medium text-foreground">Email Address *</Label>
               <Input 
                 id="email" 
                 placeholder="name@example.com" 
                 type="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white placeholder:text-muted-foreground"
+                className="!h-8 bg-card border-border text-xs text-card-foreground placeholder:text-muted-foreground"
               />
             </div>
             <div className="flex flex-col gap-2 flex-1">
-              <Label htmlFor="phone_number" className="text-xs font-medium text-foreground dark:text-white">Phone Number</Label>
+              <Label htmlFor="phone_number" className="text-xs font-medium text-foreground">Phone Number</Label>
               <Input 
                 id="phone_number" 
                 placeholder="09123456789" 
                 value={formData.phone_number}
                 onChange={handleInputChange}
-                className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white placeholder:text-muted-foreground"
+                className="!h-8 bg-card border-border text-xs text-card-foreground placeholder:text-muted-foreground"
               />
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex flex-col gap-2 flex-1">
-              <Label htmlFor="role" className="text-xs font-medium text-foreground dark:text-white">Role *</Label>
+              <Label htmlFor="role" className="text-xs font-medium text-foreground">Role *</Label>
               <Select value={formData.role} onValueChange={(val) => handleSelectChange('role', val)}>
-                <SelectTrigger id="role" className="!h-8 w-full bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-muted-foreground">
+                <SelectTrigger id="role" className="!h-8 w-full bg-card border-border text-xs text-card-foreground">
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
-                <SelectContent position="popper" side="bottom" className="bg-background dark:bg-[#0a0a0a] border-sidebar-border text-foreground dark:text-white">
-                  <SelectItem value="Admin" className="text-xs">Administrator</SelectItem>
-                  <SelectItem value="Manager" className="text-xs">Manager</SelectItem>
+                <SelectContent position="popper" side="bottom" className="bg-popover border-border text-popover-foreground">
                   <SelectItem value="Doctor" className="text-xs">Doctor</SelectItem>
                   <SelectItem value="Nurse" className="text-xs">Nurse</SelectItem>
                   <SelectItem value="Midwife" className="text-xs">Midwife</SelectItem>
-                  <SelectItem value="Staff" className="text-xs">Staff</SelectItem>
+                  <SelectItem value="HealthWorker" className="text-xs">Health Worker</SelectItem>
+                  <SelectItem value="Admin" className="text-xs">Administrator</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="flex flex-col gap-2 flex-1">
-              <Label htmlFor="sector" className="text-xs font-medium text-foreground dark:text-white">Sector</Label>
-              <Select value={formData.sector} onValueChange={(val) => handleSelectChange('sector', val)}>
-                <SelectTrigger id="sector" className="!h-8 w-full bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-muted-foreground">
-                  <SelectValue placeholder="Select sector" />
-                </SelectTrigger>
-                <SelectContent position="popper" side="bottom" className="bg-background dark:bg-[#0a0a0a] border-sidebar-border text-foreground dark:text-white">
-                  <SelectItem value="Local Government Unit" className="text-xs">Local Government Unit</SelectItem>
-                  <SelectItem value="NGO" className="text-xs">NGO</SelectItem>
-                  <SelectItem value="Private Sector" className="text-xs">Private Sector</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="password" className="text-xs font-medium text-foreground">Password</Label>
+              <div className="relative">
+                <Input 
+                  id="password" 
+                  placeholder="Leave empty to auto-generate" 
+                  type={showPassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="!h-8 pr-8 bg-card border-border text-xs text-card-foreground placeholder:text-muted-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -182,16 +186,16 @@ export function InviteTeamMemberModal({ children, onInviteSuccess }: { children:
             variant="outline" 
             onClick={() => setOpen(false)}
             disabled={loading}
-            className="flex-1 text-xs font-medium border-sidebar-border text-foreground hover:bg-accent dark:bg-[#1e1e1e] dark:hover:bg-[#1e1e1e]/80 dark:text-white dark:border-sidebar-border"
+            className="flex-1 text-xs font-medium border-border text-foreground hover:bg-accent"
           >
             Cancel
           </Button>
           <Button 
             onClick={handleInvite}
             disabled={loading}
-            className="flex-1 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+            className="flex-1 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
           >
-            {loading ? "Sending..." : "Send Invite"}
+            {loading ? "Creating..." : "Create Staff"}
           </Button>
         </div>
     </ResponsiveModal>

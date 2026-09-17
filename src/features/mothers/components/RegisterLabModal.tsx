@@ -76,20 +76,33 @@ export function RegisterLabModal({
   }
 
   const pregnancies = motherData?.pregnancies || []
-  const visits = visitationList.length > 0 ? visitationList : (motherData?.prenatalVisits || [])
+  const allVisits = visitationList.length > 0 ? visitationList : (motherData?.prenatalVisits || [])
+
+  // Filter visits by selected pregnancy, or show all visits if no pregnancy selected or none matched
+  const availableVisits = React.useMemo(() => {
+    if (!pregnancyId) return allVisits
+    const matched = allVisits.filter((v: any) => v.pregnancy_id === pregnancyId)
+    return matched.length > 0 ? matched : allVisits
+  }, [allVisits, pregnancyId])
 
   React.useEffect(() => {
-    if (pregnancies.length > 0) {
+    if (pregnancies.length > 0 && !pregnancyId) {
       const activePreg = pregnancies.find((p: any) => p.pregnancy_status?.toLowerCase() === "active") || pregnancies[0]
-      setPregnancyId(activePreg.pregnancy_id || activePreg._id || activePreg.id || "")
+      const chosenPId = activePreg.pregnancy_id || activePreg._id || activePreg.id || ""
+      setPregnancyId(chosenPId)
     }
-  }, [motherData, open])
+  }, [motherData, open, pregnancies, pregnancyId])
 
   React.useEffect(() => {
-    if (visits.length > 0) {
-      setVisitId(visits[0].visit_id || visits[0]._id || visits[0].id || "")
+    if (availableVisits.length > 0) {
+      const currentExists = availableVisits.some((v: any) => (v.visit_id || v._id || v.id) === visitId)
+      if (!currentExists || !visitId) {
+        setVisitId(availableVisits[0].visit_id || availableVisits[0]._id || availableVisits[0].id || "")
+      }
+    } else {
+      setVisitId("")
     }
-  }, [visits, open])
+  }, [availableVisits, open])
 
   const handleSubmit = async () => {
     setError(null)
@@ -153,9 +166,15 @@ export function RegisterLabModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Target Pregnancy *</Label>
-            <Select value={pregnancyId} onValueChange={setPregnancyId}>
-              <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+            <Label className="text-xs font-medium text-foreground">Target Pregnancy *</Label>
+            <Select value={pregnancyId} onValueChange={(val) => {
+              setPregnancyId(val)
+              const matching = allVisits.filter((v: any) => v.pregnancy_id === val)
+              if (matching.length > 0) {
+                setVisitId(matching[0].visit_id || matching[0]._id || matching[0].id || "")
+              }
+            }}>
+              <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Select Pregnancy" />
               </SelectTrigger>
               <SelectContent>
@@ -172,16 +191,16 @@ export function RegisterLabModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Associated Visit *</Label>
+            <Label className="text-xs font-medium text-foreground">Associated Visit *</Label>
             <Select value={visitId} onValueChange={setVisitId}>
-              <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+              <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Select Visit" />
               </SelectTrigger>
               <SelectContent>
-                {visits.length === 0 ? (
+                {availableVisits.length === 0 ? (
                   <SelectItem value="none" disabled>No visits recorded yet</SelectItem>
                 ) : (
-                  visits.map((v: any, idx: number) => {
+                  availableVisits.map((v: any, idx: number) => {
                     const vId = v.visit_id || v._id || v.id || String(idx)
                     return (
                       <SelectItem key={vId} value={vId}>
@@ -197,32 +216,36 @@ export function RegisterLabModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Screening Type *</Label>
-            <Select value={screeningType} onValueChange={setScreeningType}>
-              <SelectTrigger className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
-                <SelectValue placeholder="Select Screening" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="CBC (Complete Blood Count)">CBC (Complete Blood Count)</SelectItem>
-                <SelectItem value="Blood Typing (ABO/Rh)">Blood Typing (ABO/Rh)</SelectItem>
-                <SelectItem value="Urinalysis">Urinalysis</SelectItem>
-                <SelectItem value="HBsAg (Hepatitis B)">HBsAg (Hepatitis B)</SelectItem>
-                <SelectItem value="HIV Screening">HIV Screening</SelectItem>
-                <SelectItem value="Syphilis (VDRL/RPR)">Syphilis (VDRL/RPR)</SelectItem>
-                <SelectItem value="OGTT (Glucose Tolerance)">OGTT (Glucose Tolerance)</SelectItem>
-                <SelectItem value="Ultrasound">Ultrasound</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="screeningType" className="text-xs font-medium text-foreground">Screening Type *</Label>
+            <Input
+              id="screeningType"
+              list="common-screening-types"
+              placeholder="e.g. CBC, Urinalysis, Blood Typing"
+              value={screeningType}
+              onChange={(e) => setScreeningType(e.target.value)}
+              className="!h-9 bg-card border-border text-xs text-card-foreground"
+            />
+            <datalist id="common-screening-types">
+              <option value="CBC (Complete Blood Count)" />
+              <option value="Blood Typing (ABO/Rh)" />
+              <option value="Urinalysis" />
+              <option value="HBsAg (Hepatitis B)" />
+              <option value="HIV Screening" />
+              <option value="Syphilis (VDRL/RPR)" />
+              <option value="OGTT (Glucose Tolerance)" />
+              <option value="Ultrasound" />
+              <option value="Pap Smear" />
+            </datalist>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground dark:text-white">Date of Screening *</Label>
+            <Label className="text-xs font-medium text-foreground">Date of Screening *</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full !h-9 justify-start text-left font-normal bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs",
+                    "w-full !h-9 justify-start text-left font-normal bg-card border-border text-xs",
                     !screeningDate && "text-muted-foreground"
                   )}
                 >
@@ -242,19 +265,19 @@ export function RegisterLabModal({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="labResult" className="text-xs font-medium text-foreground dark:text-white">Screening Result *</Label>
+          <Label htmlFor="labResult" className="text-xs font-medium text-foreground">Screening Result *</Label>
           <Input
             id="labResult"
             placeholder="e.g. Normal, Non-reactive, Hemoglobin: 12.5 g/dL"
             value={result}
             onChange={(e) => setResult(e.target.value)}
-            className="!h-9 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+            className="!h-9 bg-card border-border text-xs text-card-foreground"
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label className="text-xs font-medium text-foreground dark:text-white">Document / Lab Attachment (Optional)</Label>
-          <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-sidebar-border bg-muted/30 dark:bg-[#0a0a0a]">
+          <Label className="text-xs font-medium text-foreground">Document / Lab Attachment (Optional)</Label>
+          <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-border bg-muted/40">
             <label className="cursor-pointer flex-1">
               <input
                 type="file"
@@ -267,7 +290,7 @@ export function RegisterLabModal({
                 type="button"
                 variant="outline"
                 disabled={uploading}
-                className="w-full h-9 px-3 text-xs font-medium border-sidebar-border gap-2 pointer-events-none bg-background dark:bg-black"
+                className="w-full h-9 px-3 text-xs font-medium border-border gap-2 pointer-events-none bg-card text-card-foreground"
               >
                 {uploading ? (
                   <>
@@ -289,31 +312,31 @@ export function RegisterLabModal({
             </label>
           </div>
           {fileUrl && (
-            <span className="text-[10px] text-green-600 dark:text-green-400 font-medium truncate">
+            <span className="text-[10px] text-emerald-600 font-medium truncate">
               Attached: {fileUrl.split('/').pop()}
             </span>
           )}
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="labRemarks" className="text-xs font-medium text-foreground dark:text-white">Remarks / Findings</Label>
+          <Label htmlFor="labRemarks" className="text-xs font-medium text-foreground">Remarks / Findings</Label>
           <Textarea
             id="labRemarks"
             placeholder="Enter clinical observations or follow-up notes..."
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
-            className="resize-none h-[65px] bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+            className="resize-none h-[65px] bg-card border-border text-xs text-card-foreground"
           />
         </div>
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-sidebar-border mt-1">
+        <div className="flex justify-end gap-2 pt-3 border-t border-border mt-1">
           <Button variant="ghost" onClick={() => onOpenChange(false)} className="h-8 text-xs">
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="h-8 text-xs bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-zinc-200 font-medium"
+            className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
           >
             {loading ? "Saving..." : "Save Lab Record"}
           </Button>

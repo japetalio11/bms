@@ -133,14 +133,14 @@ export function CreateAppointmentModal({
 
         {/* Mother Selection */}
         <div className="flex flex-col gap-2">
-          <Label htmlFor="mother-select" className="text-xs font-medium text-foreground dark:text-white">
+          <Label htmlFor="mother-select" className="text-xs font-medium text-foreground">
             Select Registered Mother
           </Label>
           <Select value={selectedMotherId} onValueChange={setSelectedMotherId}>
-            <SelectTrigger id="mother-select" className="!h-8 w-full bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+            <SelectTrigger id="mother-select" className="!h-8 w-full bg-card border-border text-xs text-card-foreground">
               <SelectValue placeholder={loadingMothers ? "Loading mothers..." : "Choose a mother"} />
             </SelectTrigger>
-            <SelectContent position="popper" side="bottom" className="bg-background dark:bg-[#0a0a0a] border-sidebar-border text-foreground dark:text-white max-h-56">
+            <SelectContent position="popper" side="bottom" className="bg-popover border-border text-popover-foreground max-h-56">
               {mothers.length === 0 ? (
                 <div className="p-2 text-xs text-muted-foreground text-center">
                   {loadingMothers ? "Loading..." : "No registered mothers found"}
@@ -162,12 +162,12 @@ export function CreateAppointmentModal({
 
         {/* Appointment Type */}
         <div className="flex flex-col gap-2">
-          <Label htmlFor="type" className="text-xs font-medium text-foreground dark:text-white">Appointment Type</Label>
+          <Label htmlFor="type" className="text-xs font-medium text-foreground">Appointment Type</Label>
           <Select value={appointmentType} onValueChange={setAppointmentType}>
-            <SelectTrigger id="type" className="!h-8 w-full bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+            <SelectTrigger id="type" className="!h-8 w-full bg-card border-border text-xs text-card-foreground">
               <SelectValue placeholder="Choose appointment type" />
             </SelectTrigger>
-            <SelectContent position="popper" side="bottom" className="bg-background dark:bg-[#0a0a0a] border-sidebar-border text-foreground dark:text-white">
+            <SelectContent position="popper" side="bottom" className="bg-popover border-border text-popover-foreground">
               <SelectItem value="Prenatal Checkup" className="text-xs">Prenatal Checkup</SelectItem>
               <SelectItem value="Postpartum Follow-up" className="text-xs">Postpartum Follow-up</SelectItem>
               <SelectItem value="High-Risk Consultation" className="text-xs">High-Risk Consultation</SelectItem>
@@ -179,15 +179,15 @@ export function CreateAppointmentModal({
         {/* Schedule Date & Time */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="start-date" className="text-xs font-medium text-foreground dark:text-white">Schedule Date</Label>
+            <Label htmlFor="start-date" className="text-xs font-medium text-foreground">Schedule Date</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   type="button"
                   variant="outline"
                   className={cn(
-                    "!h-8 w-full justify-start text-left font-normal bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs",
-                    !startDate ? "text-muted-foreground" : "text-foreground dark:text-white"
+                    "!h-8 w-full justify-start text-left font-normal bg-card border-border text-xs",
+                    !startDate ? "text-muted-foreground" : "text-card-foreground"
                   )}
                 >
                   <CalendarIcon className="mr-2 h-3.5 w-3.5" />
@@ -204,29 +204,29 @@ export function CreateAppointmentModal({
             </Popover>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="start-time" className="text-xs font-medium text-foreground dark:text-white">Schedule Time</Label>
+            <Label htmlFor="start-time" className="text-xs font-medium text-foreground">Schedule Time</Label>
             <Input 
               id="start-time" 
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+              className="!h-8 bg-card border-border text-xs text-card-foreground"
             />
           </div>
         </div>
 
         {/* System Logic Note */}
-        <div className="bg-muted dark:bg-[#1a1a1a] border border-sidebar-border rounded-md p-3 mt-2">
+        <div className="bg-muted/40 border border-border rounded-md p-3 mt-2">
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            <strong className="text-foreground dark:text-white">System Note:</strong> Submitting saves the appointment to the database and schedules automated check-in notifications for the mother.
+            <strong className="text-foreground">System Note:</strong> Submitting saves the appointment to the database and schedules automated check-in notifications for the mother.
           </p>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t border-sidebar-border mt-2">
-          <Button type="button" variant="ghost" className="h-8 text-xs text-foreground dark:text-white hover:bg-accent dark:hover:bg-white/5" onClick={() => handleOpenChange(false)}>
+        <div className="flex justify-end gap-2 pt-4 border-t border-border mt-2">
+          <Button type="button" variant="ghost" className="h-8 text-xs text-foreground hover:bg-accent" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting} className="h-8 text-xs bg-primary text-primary-foreground dark:bg-white dark:text-black hover:bg-zinc-200 gap-2">
+          <Button type="submit" disabled={isSubmitting} className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 gap-2 font-medium">
             {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             Submit Appointment
           </Button>

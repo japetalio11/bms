@@ -124,6 +124,27 @@ class SyncEngine {
     }
   }
 
+  public async getQueue(): Promise<OfflineQueueItem[]> {
+    return await db.offlineQueue.orderBy("created_at").toArray()
+  }
+
+  public async cancelPendingMutation(entityId: string): Promise<boolean> {
+    const pendingItems = await db.offlineQueue.toArray()
+    let cancelled = false
+    for (const item of pendingItems) {
+      if (item.temp_id === entityId || (item.endpoint && item.endpoint.includes(entityId))) {
+        if (item.id) {
+          await db.offlineQueue.delete(item.id)
+          cancelled = true
+        }
+      }
+    }
+    if (cancelled) {
+      this.notify()
+    }
+    return cancelled
+  }
+
   /**
    * Processes all pending offline mutations in FIFO order.
    */
@@ -184,8 +205,21 @@ class SyncEngine {
           if (item.id) {
             await db.offlineQueue.delete(item.id)
           }
-          if (item.temp_id && item.entity_type === "mother") {
-            await db.mothers.update(item.temp_id, { sync_status: "synced" })
+          if (item.temp_id) {
+            const tableMap: Record<string, any> = {
+              mother: db.mothers,
+              pregnancy: db.pregnancies,
+              prenatal_visit: db.prenatalVisits,
+              appointment: db.appointments,
+              lab_record: db.labRecords,
+              supplement: db.supplements,
+              referral: db.referrals,
+              message: db.messages,
+            }
+            const table = tableMap[item.entity_type]
+            if (table) {
+              await table.update(item.temp_id, { sync_status: "error", last_error: errMsg }).catch(() => {})
+            }
           }
         } else if (item.id) {
           await db.offlineQueue.update(item.id, {
@@ -214,13 +248,18 @@ class SyncEngine {
     if (responseData.mother?.mother_id) return responseData.mother.mother_id
 
     if (responseData.pregnancy?.pregnancy_id) return responseData.pregnancy.pregnancy_id
+    if (responseData.message?.message_id) return responseData.message.message_id
+    if (responseData.data?.message_id) return responseData.data.message_id
+    if (responseData.referral?.referral_id) return responseData.referral.referral_id
+    if (responseData.data?.referral_id) return responseData.data.referral_id
     if (responseData.prenatalVisit?.visit_id) return responseData.prenatalVisit.visit_id
     if (responseData.appointment?.appointment_id) return responseData.appointment.appointment_id
     if (responseData.screening?.screening_id) return responseData.screening.screening_id
     if (responseData.lab?.screening_id) return responseData.lab.screening_id
     if (responseData.supplement?.supplement_id) return responseData.supplement.supplement_id
+    if (responseData.supplement_record?.supplement_id) return responseData.supplement_record.supplement_id
 
-    const targetObj = responseData.result || responseData.data || responseData
+    const targetObj = responseData.result || responseData.data || responseData.supplement_record || responseData
     if (targetObj && typeof targetObj === "object") {
       return (
         targetObj._id ||
@@ -232,6 +271,8 @@ class SyncEngine {
         targetObj.appointment_id ||
         targetObj.screening_id ||
         targetObj.supplement_id ||
+        targetObj.referral_id ||
+        targetObj.message_id ||
         null
       )
     }
@@ -335,7 +376,7 @@ class SyncEngine {
   private async reconcileTempId(entityType: string, tempId: string, canonicalId: string, responseData: any) {
     console.log(`[SyncEngine] Reconciling temp ID ${tempId} -> canonical ID ${canonicalId}`)
 
-    await db.transaction("rw", [db.mothers, db.pregnancies, db.prenatalVisits, db.appointments, db.labRecords, db.supplements, db.ehrDocuments, db.offlineQueue], async () => {
+    await db.transaction("rw", [db.mothers, db.pregnancies, db.prenatalVisits, db.appointments, db.labRecords, db.supplements, db.ehrDocuments, db.messages, db.referrals, db.offlineQueue], async () => {
       let primaryCanonicalId = canonicalId
 
       if (entityType === "mother") {
@@ -370,6 +411,8 @@ class SyncEngine {
         await db.labRecords.where("mother_id").equals(tempId).modify({ mother_id: canonicalMotherId })
         await db.supplements.where("mother_id").equals(tempId).modify({ mother_id: canonicalMotherId })
         await db.ehrDocuments.where("mother_id").equals(tempId).modify({ mother_id: canonicalMotherId })
+        await db.messages.where("receiver_id").equals(tempId).modify({ receiver_id: canonicalUserId })
+        await db.messages.where("sender_id").equals(tempId).modify({ sender_id: canonicalUserId })
       } else if (entityType === "pregnancy") {
         const existingLocal = await db.pregnancies.get(tempId)
         if (existingLocal) {
@@ -411,6 +454,7 @@ class SyncEngine {
             ...existingLocal,
             ...(responseData?.appointment || responseData),
             id: canonicalId,
+            appointment_id: canonicalId,
             sync_status: "synced",
             updated_at: Date.now(),
           })
@@ -427,6 +471,94 @@ class SyncEngine {
             updated_at: Date.now(),
           })
         }
+      } else if (entityType === "lab_record") {
+        const existingLocal = await db.labRecords.get(tempId)
+        if (existingLocal) {
+          await db.labRecords.delete(tempId)
+          const respObj = responseData?.data || responseData?.result || responseData?.screening || responseData
+          await db.labRecords.put({
+            ...existingLocal,
+            ...(typeof respObj === "object" ? respObj : {}),
+            id: canonicalId,
+            screening_id: canonicalId,
+            sync_status: "synced",
+            updated_at: Date.now(),
+          })
+        }
+      } else if (entityType === "supplement") {
+        const existingLocal = await db.supplements.get(tempId)
+        if (existingLocal) {
+          await db.supplements.delete(tempId)
+          const respObj = responseData?.supplement_record || responseData?.data || responseData?.result || responseData?.supplement || responseData
+          await db.supplements.put({
+            ...existingLocal,
+            ...(typeof respObj === "object" ? respObj : {}),
+            id: canonicalId,
+            supplement_id: canonicalId,
+            sync_status: "synced",
+            updated_at: Date.now(),
+          })
+        }
+      } else if (entityType === "referral") {
+        const existingLocal = await db.referrals.get(tempId)
+        if (existingLocal) {
+          await db.referrals.delete(tempId)
+          const respObj = responseData?.data || responseData?.result || responseData
+          await db.referrals.put({
+            ...existingLocal,
+            ...(typeof respObj === "object" ? respObj : {}),
+            id: canonicalId,
+            referral_id: canonicalId,
+            sync_status: "synced",
+            updated_at: Date.now(),
+          })
+        }
+      } else if (entityType === "message") {
+        const existingLocal = await db.messages.get(tempId)
+        if (existingLocal) {
+          await db.messages.delete(tempId)
+          const respObj = responseData?.data || responseData?.result || responseData
+          await db.messages.put({
+            ...existingLocal,
+            ...(typeof respObj === "object" ? respObj : {}),
+            id: canonicalId,
+            sync_status: "synced",
+            updated_at: Date.now(),
+          })
+        }
+      } else if (entityType === "user" || entityType === "custom_request") {
+        try {
+          const cached = await db.userSession.get("facility_staff_cache")
+          if (cached && Array.isArray(cached.data)) {
+            const userObj = responseData?.user || responseData?.result || responseData?.data || responseData
+            const userEmail = userObj?.email
+            const updated = cached.data
+              .filter((u: any) => {
+                if (userEmail && u.email === userEmail && u.id !== tempId && u.id !== canonicalId) {
+                  return false
+                }
+                return true
+              })
+              .map((u: any) => {
+                if (u.id === tempId || u.user_id === tempId || (userEmail && u.email === userEmail)) {
+                  return {
+                    ...u,
+                    ...(typeof userObj === "object" ? userObj : {}),
+                    id: canonicalId,
+                    user_id: canonicalId,
+                    status: "Active",
+                    is_active: true,
+                    sync_status: "synced",
+                    updated_at: Date.now(),
+                  }
+                }
+                return u
+              })
+            await db.userSession.put({ id: "facility_staff_cache", data: updated, updated_at: Date.now() })
+          }
+        } catch (err) {
+          console.warn("[SyncEngine] Failed to reconcile user tempId in cache:", err)
+        }
       }
 
       // Propagate reconciled canonical ID to remaining pending items in offlineQueue
@@ -436,15 +568,21 @@ class SyncEngine {
         let newEndpoint = queueItem.endpoint
         let newPayload = queueItem.payload
 
+        const targetReplacement =
+          entityType === "mother" &&
+          (queueItem.entity_type === "message" || queueItem.endpoint?.includes("/message"))
+            ? (responseData?.result?.user?.user_id || responseData?.user?.user_id || primaryCanonicalId)
+            : primaryCanonicalId
+
         if (newEndpoint && newEndpoint.includes(tempId)) {
-          newEndpoint = newEndpoint.replaceAll(tempId, primaryCanonicalId)
+          newEndpoint = newEndpoint.replaceAll(tempId, targetReplacement)
           modified = true
         }
 
         if (newPayload) {
           let payloadStr = JSON.stringify(newPayload)
           if (payloadStr.includes(tempId)) {
-            payloadStr = payloadStr.replaceAll(tempId, primaryCanonicalId)
+            payloadStr = payloadStr.replaceAll(tempId, targetReplacement)
             newPayload = JSON.parse(payloadStr)
             modified = true
           }
@@ -456,6 +594,14 @@ class SyncEngine {
             payload: newPayload,
           })
         }
+      }
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("bms:temp-id-reconciled", {
+            detail: { entityType, tempId, canonicalId: primaryCanonicalId, responseData },
+          })
+        )
       }
     })
   }
@@ -476,6 +622,39 @@ class SyncEngine {
         const pMid = p.mother_id || p.motherId
         if (pId && !pId.startsWith("temp-") && pMid) {
           pregMap.set(pMid, pId)
+        }
+      }
+
+      // 0. Recover Unsynced Mothers
+      const mothers = await db.mothers.toArray()
+      for (const mother of mothers) {
+        const isTemp = String(mother.id).startsWith("temp-") || mother.sync_status === "pending_create"
+        if (isTemp && !queuedTempIds.has(mother.id)) {
+          console.log(`[SyncEngine] Auto-recovering offline mother ${mother.id} to outbox queue...`)
+          await db.offlineQueue.add({
+            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            entity_type: "mother",
+            action: "CREATE",
+            endpoint: "/api/v1/mother/register",
+            method: "POST",
+            payload: {
+              first_name: mother.first_name || mother.user?.first_name,
+              last_name: mother.last_name || mother.user?.last_name,
+              middle_name: mother.middle_name || mother.user?.middle_name,
+              address: mother.address || mother.user?.address,
+              phone_number: mother.phone_number || mother.user?.phone_number,
+              email: mother.email || mother.user?.email,
+              birth_date: mother.birth_date,
+              civil_status: mother.civil_status,
+              blood_type: mother.blood_type,
+              family_serial_no: mother.family_serial_no,
+              facility_id: mother.facility_id,
+            },
+            temp_id: mother.id,
+            retry_count: 0,
+            created_at: Date.now(),
+          })
+          queuedTempIds.add(mother.id)
         }
       }
 
@@ -554,6 +733,36 @@ class SyncEngine {
         }
       }
 
+      // 2.1 Recover Unsynced Appointments
+      const appointments = await db.appointments.toArray()
+      for (const appt of appointments) {
+        const isTemp = String(appt.id).startsWith("temp-") || appt.sync_status === "pending_create"
+        if (isTemp && !queuedTempIds.has(appt.id)) {
+          console.log(`[SyncEngine] Auto-recovering offline appointment ${appt.id} to outbox queue...`)
+          await db.offlineQueue.add({
+            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            entity_type: "appointment",
+            action: "CREATE",
+            endpoint: "/api/v1/appointment/register",
+            method: "POST",
+            payload: {
+              mother_id: appt.mother_id,
+              user_id: appt.user_id,
+              facility_id: appt.facility_id,
+              appointment_date: appt.appointment_date,
+              appointment_time: appt.appointment_time,
+              appointment_type: appt.appointment_type,
+              reason: (appt as any).reason || undefined,
+              status: appt.status || "Scheduled",
+            },
+            temp_id: appt.id,
+            retry_count: 0,
+            created_at: Date.now(),
+          })
+          queuedTempIds.add(appt.id)
+        }
+      }
+
       // 3. Recover Unsynced Lab Records
       const labs = await db.labRecords.toArray()
       for (const lab of labs) {
@@ -609,6 +818,107 @@ class SyncEngine {
             created_at: Date.now(),
           })
           queuedTempIds.add(supp.id)
+        }
+      }
+
+      // 5. Recover Unsynced Referrals
+      const referrals = await db.referrals.toArray()
+      for (const ref of referrals) {
+        const isTemp = String(ref.id).startsWith("temp-") || ref.sync_status === "pending_create"
+        if (isTemp && !queuedTempIds.has(ref.id)) {
+          console.log(`[SyncEngine] Auto-recovering offline referral ${ref.id} to outbox queue...`)
+          await db.offlineQueue.add({
+            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            entity_type: "custom_request",
+            action: "CREATE",
+            endpoint: "/api/v1/referral/register",
+            method: "POST",
+            payload: {
+              pregnancy_id: ref.pregnancy_id,
+              from_facility_id: ref.from_facility_id,
+              to_facility_id: ref.to_facility_id,
+              external_facility_name: ref.external_facility_name,
+              reason: ref.reason,
+            },
+            temp_id: ref.id,
+            retry_count: 0,
+            created_at: Date.now(),
+          })
+          queuedTempIds.add(ref.id)
+        } else if (ref.sync_status === "pending_update" && ref.id && !ref.id.startsWith("temp-")) {
+          console.log(`[SyncEngine] Auto-recovering offline referral update ${ref.id} to outbox queue...`)
+          await db.offlineQueue.add({
+            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            entity_type: "custom_request",
+            action: "UPDATE",
+            endpoint: `/api/v1/referral/respond/${ref.referral_id || ref.id}`,
+            method: "PUT",
+            payload: {
+              status: ref.status,
+              response_notes: ref.response_notes,
+              outcome: ref.outcome,
+              is_completed: ref.is_completed,
+            },
+            retry_count: 0,
+            created_at: Date.now(),
+          })
+        }
+      }
+
+      // 6. Recover Unsynced Messages
+      const msgs = await db.messages.toArray()
+      for (const msg of msgs) {
+        const isTemp = String(msg.id).startsWith("temp-") || msg.sync_status === "pending_create"
+        if (isTemp && !queuedTempIds.has(msg.id)) {
+          console.log(`[SyncEngine] Auto-recovering offline message ${msg.id} to outbox queue...`)
+          await db.offlineQueue.add({
+            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            entity_type: "message",
+            action: "CREATE",
+            endpoint: "/api/v1/message/create",
+            method: "POST",
+            payload: {
+              receiver_id: msg.receiver_id,
+              message_content: msg.message_content,
+              message_type: msg.message_type || "text",
+              message_date: msg.message_date || new Date().toISOString(),
+            },
+            temp_id: msg.id,
+            retry_count: 0,
+            created_at: Date.now(),
+          })
+          queuedTempIds.add(msg.id)
+        }
+      }
+
+      // 7. Recover Unsynced Staff Users
+      const staffCached = await db.userSession.get("facility_staff_cache")
+      if (staffCached && Array.isArray(staffCached.data)) {
+        for (const staff of staffCached.data) {
+          const isTemp = String(staff.id).startsWith("temp-") || staff.sync_status === "pending_create"
+          if (isTemp && !queuedTempIds.has(staff.id)) {
+            console.log(`[SyncEngine] Auto-recovering offline staff creation ${staff.id} to outbox queue...`)
+            await db.offlineQueue.add({
+              client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+              entity_type: "user",
+              action: "CREATE",
+              endpoint: "/api/v1/auth/create-staff",
+              method: "POST",
+              payload: {
+                first_name: staff.first_name,
+                last_name: staff.last_name,
+                email: staff.email,
+                phone_number: staff.phone_number,
+                role: staff.role || staff.position,
+                sector: staff.sector,
+                password: Math.random().toString(36).slice(-8) + "Aa1!",
+              },
+              temp_id: staff.id,
+              retry_count: 0,
+              created_at: Date.now(),
+            })
+            queuedTempIds.add(staff.id)
+          }
         }
       }
     } catch (err) {

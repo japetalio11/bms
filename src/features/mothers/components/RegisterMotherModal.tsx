@@ -103,9 +103,9 @@ export function RegisterMotherModal({
             {error}
           </div>
         )}
-        <div className="w-full h-1.5 bg-sidebar-border rounded-full overflow-hidden">
+        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
           <div 
-            className="h-full bg-[#111] dark:bg-white transition-all duration-300 ease-in-out" 
+            className="h-full bg-primary transition-all duration-300 ease-in-out" 
             style={{ width: step === 1 ? '50%' : '100%' }}
           />
         </div>
@@ -114,28 +114,28 @@ export function RegisterMotherModal({
           <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="firstName" className="text-xs font-medium text-foreground dark:text-white">First Name</Label>
-                <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Maria" className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white" />
+                <Label htmlFor="firstName" className="text-xs font-medium text-foreground">First Name</Label>
+                <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Maria" className="!h-8 bg-card border-border text-xs text-foreground" />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="lastName" className="text-xs font-medium text-foreground dark:text-white">Last Name</Label>
-                <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Santos" className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white" />
+                <Label htmlFor="lastName" className="text-xs font-medium text-foreground">Last Name</Label>
+                <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Santos" className="!h-8 bg-card border-border text-xs text-foreground" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="middleName" className="text-xs font-medium text-foreground dark:text-white">Middle Name <span className="text-muted-foreground font-normal">(Optional)</span></Label>
-                <Input id="middleName" value={middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder="Dela Cruz" className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white" />
+                <Label htmlFor="middleName" className="text-xs font-medium text-foreground">Middle Name <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                <Input id="middleName" value={middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder="Dela Cruz" className="!h-8 bg-card border-border text-xs text-foreground" />
               </div>
               <div className="flex flex-col gap-2">
-                <Label className="text-xs font-medium text-foreground dark:text-white">Date of Birth</Label>
+                <Label className="text-xs font-medium text-foreground">Date of Birth</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full !h-8 justify-start text-left font-normal bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs",
+                        "w-full !h-8 justify-start text-left font-normal bg-card border-border text-xs text-foreground",
                         !dob && "text-muted-foreground"
                       )}
                     >
@@ -156,31 +156,31 @@ export function RegisterMotherModal({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="phone" className="text-xs font-medium text-foreground dark:text-white">Phone Number</Label>
-                <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="09123456789" className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white" />
+                <Label htmlFor="phone" className="text-xs font-medium text-foreground">Phone Number</Label>
+                <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="09123456789" className="!h-8 bg-card border-border text-xs text-foreground" />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="email" className="text-xs font-medium text-foreground dark:text-white">Email <span className="text-muted-foreground font-normal">(Optional)</span></Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="maria@example.com" className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white" />
+                <Label htmlFor="email" className="text-xs font-medium text-foreground">Email <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="maria@example.com" className="!h-8 bg-card border-border text-xs text-foreground" />
               </div>
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="address" className="text-xs font-medium text-foreground dark:text-white">Address</Label>
+              <Label htmlFor="address" className="text-xs font-medium text-foreground">Address</Label>
               <Textarea 
                 id="address" 
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Complete address including barangay..." 
-                className="resize-none h-[80px] bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white"
+                className="resize-none h-[80px] bg-card border-border text-xs text-foreground"
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t border-sidebar-border mt-2">
+            <div className="flex justify-end gap-2 pt-4 border-t border-border mt-2">
               <Button variant="ghost" onClick={() => onOpenChange?.(false)} className="h-8 text-xs">
                 Cancel
               </Button>
-              <Button onClick={() => setStep(2)} className="h-8 text-xs bg-[#111] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+              <Button onClick={() => setStep(2)} className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90">
                 Next Step
               </Button>
             </div>
@@ -188,15 +188,15 @@ export function RegisterMotherModal({
         ) : (
           <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="familySerialNo" className="text-xs font-medium text-foreground dark:text-white">Family Serial No. <span className="text-muted-foreground font-normal">(Optional)</span></Label>
-              <Input id="familySerialNo" value={familySerialNo} onChange={(e) => setFamilySerialNo(e.target.value)} placeholder="F-2026-001" className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white" />
+              <Label htmlFor="familySerialNo" className="text-xs font-medium text-foreground">Family Serial No. <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+              <Input id="familySerialNo" value={familySerialNo} onChange={(e) => setFamilySerialNo(e.target.value)} placeholder="F-2026-001" className="!h-8 bg-card border-border text-xs text-foreground" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <Label className="text-xs font-medium text-foreground dark:text-white">Civil Status</Label>
+                <Label className="text-xs font-medium text-foreground">Civil Status</Label>
                 <Select value={civilStatus} onValueChange={setCivilStatus}>
-                  <SelectTrigger className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+                  <SelectTrigger className="!h-8 bg-card border-border text-xs text-foreground">
                     <SelectValue placeholder="Civil status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -209,9 +209,9 @@ export function RegisterMotherModal({
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label className="text-xs font-medium text-foreground dark:text-white">Blood Type</Label>
+                <Label className="text-xs font-medium text-foreground">Blood Type</Label>
                 <Select value={bloodType} onValueChange={setBloodType}>
-                  <SelectTrigger className="!h-8 bg-background dark:bg-[#0a0a0a] border-sidebar-border text-xs text-foreground dark:text-white">
+                  <SelectTrigger className="!h-8 bg-card border-border text-xs text-foreground">
                     <SelectValue placeholder="Blood type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -228,11 +228,11 @@ export function RegisterMotherModal({
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t border-sidebar-border mt-2">
+            <div className="flex justify-end gap-2 pt-4 border-t border-border mt-2">
               <Button variant="ghost" onClick={() => setStep(1)} className="h-8 text-xs">
                 Back
               </Button>
-              <Button onClick={handleRegister} disabled={loading} className="h-8 text-xs bg-[#111] text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-zinc-200">
+              <Button onClick={handleRegister} disabled={loading} className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90">
                 {loading ? "Registering..." : "Register Mother"}
               </Button>
             </div>

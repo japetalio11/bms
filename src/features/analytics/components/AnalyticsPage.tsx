@@ -47,68 +47,68 @@ const pieChartConfig = {
 
 export function AnalyticsPage() {
   return (
-    <div className="flex-1 w-full h-full flex flex-col overflow-y-auto bg-background dark:bg-black text-foreground relative">
+    <div className="flex-1 w-full h-full flex flex-col overflow-y-auto bg-background text-foreground relative">
       <div className="flex flex-col p-4 md:p-8 max-w-7xl mx-auto w-full">
         
         {/* Executive Overview Section */}
-        <div className="grid grid-cols-1 md:grid-cols-4 border border-sidebar-border rounded-xl bg-card dark:bg-[#0a0a0a] shadow-sm mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 border border-border rounded-xl bg-card shadow-sm mb-6">
           
           {/* Metric 1 */}
-          <div className="flex flex-col p-6 border-b md:border-b-0 md:border-r border-sidebar-border">
+          <div className="flex flex-col p-6 border-b md:border-b-0 md:border-r border-border">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-sm font-semibold text-foreground dark:text-white">Total Blood Units</span>
-              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-                <Droplet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-semibold text-card-foreground">Total Blood Units</span>
+              <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
+                <Droplet className="h-4 w-4 text-blue-500" />
               </div>
             </div>
-            <div className="text-3xl font-bold text-foreground dark:text-white mt-1">1,265</div>
-            <p className="text-[11px] font-medium text-[#22C55E] mt-1">+12.5% from last month</p>
+            <div className="text-3xl font-bold text-card-foreground mt-1">1,265</div>
+            <p className="text-[11px] font-medium text-emerald-500 mt-1">+12.5% from last month</p>
           </div>
 
           {/* Metric 2 */}
-          <div className="flex flex-col p-6 border-b md:border-b-0 md:border-r border-sidebar-border">
+          <div className="flex flex-col p-6 border-b md:border-b-0 md:border-r border-border">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-sm font-semibold text-foreground dark:text-white">Active Donor Pool</span>
-              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center shrink-0">
-                <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <span className="text-sm font-semibold text-card-foreground">Active Donor Pool</span>
+              <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <Users className="h-4 w-4 text-emerald-500" />
               </div>
             </div>
-            <div className="text-3xl font-bold text-foreground dark:text-white mt-1">3,842</div>
-            <p className="text-[11px] font-medium text-[#22C55E] mt-1">+5.2% from last month</p>
+            <div className="text-3xl font-bold text-card-foreground mt-1">3,842</div>
+            <p className="text-[11px] font-medium text-emerald-500 mt-1">+5.2% from last month</p>
           </div>
 
           {/* Metric 3 */}
-          <div className="flex flex-col p-6 border-b md:border-b-0 md:border-r border-sidebar-border">
+          <div className="flex flex-col p-6 border-b md:border-b-0 md:border-r border-border">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-sm font-semibold text-foreground dark:text-white">Goal Attainment</span>
-              <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
-                <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <span className="text-sm font-semibold text-card-foreground">Goal Attainment</span>
+              <div className="h-8 w-8 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0">
+                <Target className="h-4 w-4 text-purple-500" />
               </div>
             </div>
-            <div className="text-3xl font-bold text-foreground dark:text-white mt-1">92%</div>
+            <div className="text-3xl font-bold text-card-foreground mt-1">92%</div>
             <p className="text-[11px] font-medium text-red-500 mt-1">-2.1% from last month</p>
           </div>
 
           {/* Metric 4 */}
           <div className="flex flex-col p-6">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-sm font-semibold text-foreground dark:text-white">Capacity Utilization</span>
-              <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center shrink-0">
-                <Activity className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+              <span className="text-sm font-semibold text-card-foreground">Capacity Utilization</span>
+              <div className="h-8 w-8 rounded-full bg-orange-500/10 flex items-center justify-center shrink-0">
+                <Activity className="h-4 w-4 text-orange-500" />
               </div>
             </div>
-            <div className="text-3xl font-bold text-foreground dark:text-white mt-1">84%</div>
-            <p className="text-[11px] font-medium text-[#22C55E] mt-1">+1.4% from last month</p>
+            <div className="text-3xl font-bold text-card-foreground mt-1">84%</div>
+            <p className="text-[11px] font-medium text-emerald-500 mt-1">+1.4% from last month</p>
           </div>
         </div>
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-          <div className="xl:col-span-2 flex flex-col pt-6 pb-6 rounded-xl border border-sidebar-border bg-card dark:bg-[#0a0a0a] shadow-sm overflow-hidden w-full h-full">
+          <div className="xl:col-span-2 flex flex-col pt-6 pb-6 rounded-xl border border-border bg-card shadow-sm overflow-hidden w-full h-full">
             <div className="flex items-center justify-between px-6 pb-4">
-              <span className="text-sm font-semibold text-foreground dark:text-white">Donation Trends</span>
+              <span className="text-sm font-semibold text-card-foreground">Donation Trends</span>
               <Select defaultValue="2026">
-                <SelectTrigger className="w-[85px] h-8 text-xs bg-transparent border-sidebar-border focus:ring-0 focus:ring-offset-0">
+                <SelectTrigger className="w-[85px] h-8 text-xs bg-card border-border text-card-foreground focus:ring-0 focus:ring-offset-0">
                   <SelectValue placeholder="Year" />
                 </SelectTrigger>
                 <SelectContent>
@@ -134,9 +134,9 @@ export function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="xl:col-span-1 flex flex-col pt-6 pb-6 rounded-xl border border-sidebar-border bg-card dark:bg-[#0a0a0a] shadow-sm overflow-hidden w-full h-full">
+          <div className="xl:col-span-1 flex flex-col pt-6 pb-6 rounded-xl border border-border bg-card shadow-sm overflow-hidden w-full h-full">
             <div className="flex items-center justify-between px-6 pb-2">
-              <span className="text-sm font-semibold text-foreground dark:text-white">Donations by Type</span>
+              <span className="text-sm font-semibold text-card-foreground">Donations by Type</span>
             </div>
             <div className="flex-1 min-h-[300px] px-2 flex items-center justify-center">
               <ChartContainer config={pieChartConfig} className="w-full h-[300px]">
@@ -165,14 +165,14 @@ export function AnalyticsPage() {
 
         {/* Tables Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="flex flex-col gap-0 pt-6 pb-6 rounded-xl border border-sidebar-border bg-card dark:bg-[#0a0a0a] shadow-sm overflow-hidden w-full h-full">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground dark:text-white px-6 pb-4">
+          <div className="flex flex-col gap-0 pt-6 pb-6 rounded-xl border border-border bg-card shadow-sm overflow-hidden w-full h-full">
+            <div className="flex items-center gap-2 text-sm font-semibold text-card-foreground px-6 pb-4">
               Yield by Location
             </div>
             <div className="overflow-x-auto w-full px-2">
               <Table>
-                <TableHeader className="bg-muted/50 dark:bg-black/50">
-                  <TableRow className="border-sidebar-border hover:bg-transparent">
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="border-border hover:bg-transparent">
                     <TableHead className="w-[80px]">Rank</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead className="text-right">Total Donors</TableHead>
@@ -181,11 +181,11 @@ export function AnalyticsPage() {
                 </TableHeader>
                 <TableBody>
                   {LOCATION_YIELD_DATA.map((item) => (
-                    <TableRow key={item.rank} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5">
-                      <TableCell className="font-medium text-foreground dark:text-white">#{item.rank}</TableCell>
+                    <TableRow key={item.rank} className="border-border hover:bg-accent/50">
+                      <TableCell className="font-medium text-card-foreground">#{item.rank}</TableCell>
                       <TableCell className="text-muted-foreground">{item.location}</TableCell>
-                      <TableCell className="text-right text-foreground dark:text-white">{item.donors}</TableCell>
-                      <TableCell className="text-right font-bold text-foreground dark:text-white">{item.units}</TableCell>
+                      <TableCell className="text-right text-card-foreground">{item.donors}</TableCell>
+                      <TableCell className="text-right font-bold text-card-foreground">{item.units}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -193,14 +193,14 @@ export function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-0 pt-6 pb-6 rounded-xl border border-sidebar-border bg-card dark:bg-[#0a0a0a] shadow-sm overflow-hidden w-full h-full">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground dark:text-white px-6 pb-4">
+          <div className="flex flex-col gap-0 pt-6 pb-6 rounded-xl border border-border bg-card shadow-sm overflow-hidden w-full h-full">
+            <div className="flex items-center gap-2 text-sm font-semibold text-card-foreground px-6 pb-4">
               Stakeholder Link Engagement
             </div>
             <div className="overflow-x-auto w-full px-2">
               <Table>
-                <TableHeader className="bg-muted/50 dark:bg-black/50">
-                  <TableRow className="border-sidebar-border hover:bg-transparent">
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="border-border hover:bg-transparent">
                     <TableHead>Partner Name</TableHead>
                     <TableHead className="text-right">Link Clicks</TableHead>
                     <TableHead className="text-right">Reserved Slots</TableHead>
@@ -209,11 +209,11 @@ export function AnalyticsPage() {
                 </TableHeader>
                 <TableBody>
                   {STAKEHOLDER_DATA.map((item, idx) => (
-                    <TableRow key={idx} className="border-sidebar-border hover:bg-accent dark:hover:bg-white/5">
-                      <TableCell className="font-medium text-foreground dark:text-white">{item.partner}</TableCell>
+                    <TableRow key={idx} className="border-border hover:bg-accent/50">
+                      <TableCell className="font-medium text-card-foreground">{item.partner}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{item.clicks}</TableCell>
                       <TableCell className="text-right text-muted-foreground">{item.reserved}</TableCell>
-                      <TableCell className="text-right font-bold text-foreground dark:text-white">{item.successful}</TableCell>
+                      <TableCell className="text-right font-bold text-card-foreground">{item.successful}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
