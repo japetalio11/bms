@@ -75,6 +75,13 @@ export const motherRepository = {
                 }
               }
 
+              const enrollments = m.facilityEnrollments || []
+              const facilityIds = Array.from(new Set([
+                m.facility_id,
+                m.user?.facility_id,
+                ...enrollments.filter((e: any) => e.status === "Active" || !e.status).map((e: any) => e.facility_id)
+              ].filter(Boolean))) as string[]
+
               return {
                 ...m,
                 id: motherId,
@@ -87,6 +94,8 @@ export const motherRepository = {
                 phone_number: phoneNumber,
                 photo_url: photoUrl,
                 facility_id: m.facility_id || m.user?.facility_id || facilityId,
+                facility_ids: facilityIds,
+                facilityEnrollments: enrollments,
                 sync_status: "synced" as const,
                 updated_at: Date.now(),
               }
@@ -94,7 +103,15 @@ export const motherRepository = {
 
           // Safe reconciliation: do NOT clear whole table
           const remoteIds = new Set(formattedRemote.map((m) => m.id))
-          const staleMothers = localMothers.filter((m) => m.sync_status === "synced" && !remoteIds.has(m.id))
+          const staleMothers = localMothers.filter((m) => {
+            if (m.sync_status !== "synced") return false
+            if (remoteIds.has(m.id)) return false
+            if (facilityId) {
+              const matchesThisFacility = m.facility_id === facilityId || m.facility_ids?.includes(facilityId)
+              return matchesThisFacility
+            }
+            return true
+          })
           for (const sm of staleMothers) {
             await db.mothers.delete(sm.id).catch(() => {})
           }
@@ -205,7 +222,14 @@ export const motherRepository = {
 
     let result = deduplicated
     if (facilityId) {
-      result = deduplicated.filter((m) => !m.facility_id || m.facility_id === facilityId)
+      result = deduplicated.filter(
+        (m) =>
+          !m.facility_id ||
+          m.facility_id === facilityId ||
+          (Array.isArray(m.facility_ids) && m.facility_ids.includes(facilityId)) ||
+          (Array.isArray(m.facilityEnrollments) &&
+            m.facilityEnrollments.some((e: any) => e.facility_id === facilityId && (e.status === "Active" || !e.status)))
+      )
     }
 
     return result.length > 0 ? result : deduplicated
@@ -303,6 +327,13 @@ export const motherRepository = {
             shouldUpdateMother = false
           }
 
+          const enrollments = data.facilityEnrollments || []
+          const facilityIds = Array.from(new Set([
+            data.facility_id,
+            data.user?.facility_id,
+            ...enrollments.filter((e: any) => e.status === "Active" || !e.status).map((e: any) => e.facility_id)
+          ].filter(Boolean))) as string[]
+
           const syncedMother: LocalMother = {
             ...data,
             id: canonicalId,
@@ -311,6 +342,9 @@ export const motherRepository = {
             user_id: canonicalUid,
             photo_url: photoUrl,
             profile_url: photoUrl,
+            facility_id: data.facility_id || data.user?.facility_id,
+            facility_ids: facilityIds,
+            facilityEnrollments: enrollments,
             user: {
               ...(data.user || {}),
               ...(photoUrl ? { profile_url: photoUrl, photo_url: photoUrl } : {}),
@@ -1487,6 +1521,60 @@ export const motherRepository = {
       return response.data
     } else {
       throw new Error("Connecting a mother via code requires an active network connection.")
+    }
+  },
+
+  async enrollMotherInFacility(motherId: string, facilityId: string, notes?: string): Promise<any> {
+    if (syncEngine.isNetworkOnline()) {
+      const response = await apiClient.post("/api/v1/mother/enroll", {
+        mother_id: motherId,
+        facility_id: facilityId,
+        notes
+      })
+      const local = await db.mothers.get(motherId)
+      if (local) {
+        const currentIds = new Set(local.facility_ids || [local.facility_id].filter(Boolean))
+        currentIds.add(facilityId)
+        await db.mothers.update(motherId, {
+          facility_ids: Array.from(currentIds),
+          updated_at: Date.now()
+        })
+      }
+      return response.data
+    } else {
+      await syncEngine.enqueueMutation({
+        entity_type: "mother",
+        action: "UPDATE",
+        endpoint: "/api/v1/mother/enroll",
+        method: "POST",
+        payload: { mother_id: motherId, facility_id: facilityId, notes }
+      })
+      const local = await db.mothers.get(motherId)
+      if (local) {
+        const currentIds = new Set(local.facility_ids || [local.facility_id].filter(Boolean))
+        currentIds.add(facilityId)
+        await db.mothers.update(motherId, {
+          facility_ids: Array.from(currentIds),
+          updated_at: Date.now()
+        })
+      }
+      return { success: true, offline: true }
+    }
+  },
+
+  async getMotherFacilities(motherId: string): Promise<any> {
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.get(`/api/v1/mother/${motherId}/facilities`)
+        return response.data
+      } catch (e) {
+        console.warn("[motherRepository] Failed to fetch facilities for mother:", e)
+      }
+    }
+    const local = await db.mothers.get(motherId)
+    return {
+      homeFacility: local?.facility || null,
+      enrollments: local?.facilityEnrollments || []
     }
   },
 }

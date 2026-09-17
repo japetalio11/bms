@@ -7,6 +7,16 @@ export interface LocalMother {
   middle_name?: string
   phone_number?: string
   facility_id?: string
+  facility_ids?: string[]
+  facilityEnrollments?: Array<{
+    facility_id: string
+    status: string
+    facility?: {
+      facility_id: string
+      facility_name: string
+      type?: string
+    }
+  }>
   photo_url?: string
   sync_status: "synced" | "pending_create" | "pending_update" | "error"
   updated_at: number
