@@ -300,7 +300,7 @@ export function DashboardPage() {
           {appointments.map((app, idx) => (
             <div
               key={app.id || idx}
-              className="flex cursor-pointer flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-xs transition-colors hover:border-foreground/20"
+              className="flex cursor-pointer flex-col gap-4 rounded-[14px] border border-border bg-card p-6 shadow-xs transition-colors hover:border-foreground/20"
               onClick={() =>
                 setSelectedAppointment({
                   ...app,
@@ -505,7 +505,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[900px] flex-col gap-12 px-8 pt-10 pb-8 text-foreground">
+    <div className="mx-auto flex w-full max-w-[900px] flex-col gap-12 px-4 pt-10 pb-24 text-foreground md:px-12 md:pb-10 lg:px-24">
       <div className="space-y-1 text-center">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground">
           Good morning, {firstName}! 👋

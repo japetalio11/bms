@@ -684,14 +684,20 @@ export function AppointmentListPage() {
             label="Loading appointments..."
           >
             {!isLoading && filteredAppointments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-sidebar-border p-12 text-center">
-                <CalendarDays className="h-8 w-8 text-muted-foreground/50" />
-                <p className="text-xs font-medium text-foreground dark:text-white">
-                  No appointments found
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center">
+                <CalendarDays className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
+                <h3 className="text-sm font-semibold text-card-foreground">
+                  No Appointments Found
+                </h3>
+                <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                  Try adjusting your filters or schedule a new appointment to get started.
                 </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Try adjusting your filters or schedule a new appointment.
-                </p>
+                <Button
+                  onClick={() => setIsScheduleOpen(true)}
+                  className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+                >
+                  <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Schedule Appointment
+                </Button>
               </div>
             ) : (
               <>

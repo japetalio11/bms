@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Search,
   QrCode,
+  Users,
 } from "lucide-react"
 import { extractRiskLevel } from "@/lib/riskUtils"
 
@@ -436,7 +437,7 @@ export function MothersPage() {
               <Button
                 onClick={() => setConnectModalOpen(true)}
                 variant="outline"
-                className="h-8 w-full gap-2 border-primary/50 px-2 text-xs font-medium text-primary hover:bg-primary/10 md:w-auto"
+                className="h-8 w-full gap-2 border-border px-2 text-xs font-medium text-foreground hover:bg-muted md:w-auto"
               >
                 <QrCode className="h-3.5 w-3.5" />
                 Connect Mother (QR/Code)
@@ -506,10 +507,20 @@ export function MothersPage() {
                   </div>
                 ))
               ) : displayedMothers.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-xl border border-sidebar-border bg-card p-8 text-center dark:bg-black">
-                  <p className="text-xs text-muted-foreground">
-                    No mothers found
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center md:hidden">
+                  <Users className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
+                  <h3 className="text-sm font-semibold text-card-foreground">
+                    No Mothers Found
+                  </h3>
+                  <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                    No records match your current criteria. Register a new mother to get started.
                   </p>
+                  <Button
+                    onClick={() => setIsRegisterOpen(true)}
+                    className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+                  >
+                    <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Register Mother
+                  </Button>
                 </div>
               ) : (
                 displayedMothers.map((mother: any) => (
@@ -556,8 +567,27 @@ export function MothersPage() {
               )}
             </div>
 
-            <div className="hidden overflow-x-auto rounded-xl border border-border bg-card shadow-xs md:block">
-              <div className="min-w-[900px]">
+            {!loading && displayedMothers.length === 0 && (
+              <div className="hidden flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center md:flex">
+                <Users className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
+                <h3 className="text-sm font-semibold text-card-foreground">
+                  No Mothers Found
+                </h3>
+                <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                  No records match your current criteria. Register a new mother to get started.
+                </p>
+                <Button
+                  onClick={() => setIsRegisterOpen(true)}
+                  className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+                >
+                  <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Register Mother
+                </Button>
+              </div>
+            )}
+
+            {(loading || displayedMothers.length > 0) && (
+              <div className="hidden overflow-x-auto rounded-xl border border-border bg-card shadow-xs md:block">
+                <div className="min-w-[900px]">
                 <Table>
                   <TableHeader className="bg-muted/40">
                     <TableRow className="border-border hover:bg-transparent">
@@ -612,15 +642,6 @@ export function MothersPage() {
                           </TableCell>
                         </TableRow>
                       ))
-                    ) : displayedMothers.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={7}
-                          className="h-24 text-center text-xs text-muted-foreground"
-                        >
-                          No mothers found
-                        </TableCell>
-                      </TableRow>
                     ) : (
                       displayedMothers.map((mother: any) => (
                         <TableRow
@@ -698,10 +719,11 @@ export function MothersPage() {
                         </TableRow>
                       ))
                     )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+        )}
           </UnifiedTableLoader>
 
           <div className="mt-2 hidden flex-row items-center justify-between gap-4 text-xs text-muted-foreground md:flex">

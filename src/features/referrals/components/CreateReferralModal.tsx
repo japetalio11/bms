@@ -83,6 +83,7 @@ export function CreateReferralModal({
   const [localSuccessOpen, setLocalSuccessOpen] = useState<boolean>(false)
   const [localSuccessData, setLocalSuccessData] =
     useState<ReferralSuccessData | null>(null)
+  const [step, setStep] = useState<number>(1)
 
   const [mothers, setMothers] = useState<any[]>([])
   const [selectedMotherId, setSelectedMotherId] = useState<string>("")
@@ -137,7 +138,10 @@ export function CreateReferralModal({
   }, [])
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setTimeout(() => setStep(1), 300)
+      return
+    }
 
     const loadModalData = async () => {
       setErrorMsg("")
@@ -471,20 +475,28 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
       open={open}
       onOpenChange={onOpenChange}
       title="Initiate Online Referral"
-      description="Create a structured clinical e-Referral handoff to higher-level facilities."
-      className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-[620px]"
+      description={`Step ${step} of 3: ${step === 1 ? 'Patient & Destination' : step === 2 ? 'Clinical Assessment' : 'Notification & Handoff'}`}
+      className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-[500px]"
     >
-      <div className="flex max-h-[75vh] flex-col gap-4 overflow-y-auto py-2 pr-1">
+      <div className="flex max-h-[75vh] flex-col gap-6 overflow-y-auto py-2 pr-1">
         {errorMsg && (
           <div className="rounded-md border border-red-500/20 bg-red-500/10 p-2.5 text-xs font-medium text-red-500">
             {errorMsg}
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-muted/40 p-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-              <User className="h-3.5 w-3.5 text-primary" />
+        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-primary transition-all duration-300 ease-in-out" 
+            style={{ width: `${(step / 3) * 100}%` }}
+          />
+        </div>
+
+        {step === 1 && (
+          <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label className="text-xs font-medium text-foreground">
               Select Patient / Mother
             </Label>
             <Select
@@ -514,9 +526,8 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
             </Select>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-              <Building2 className="h-3.5 w-3.5 text-primary" />
+          <div className="flex flex-col gap-2">
+            <Label className="text-xs font-medium text-foreground">
               Destination Facility
             </Label>
             <Input
@@ -574,17 +585,20 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
             </div>
           </div>
         )}
+          </div>
+        )}
 
-        <div className="flex flex-col gap-2">
-          <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <Activity className="h-3.5 w-3.5 text-amber-500" />
+        {step === 2 && (
+          <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="flex flex-col gap-4">
+              <Label className="text-sm font-semibold text-foreground">
             Vital Signs (V/S)
           </Label>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-            <div className="flex flex-col gap-1">
-              <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                <Thermometer className="h-3 w-3 text-red-500" /> T (°C)
-              </span>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium text-foreground">
+                T (°C)
+              </Label>
               <Input
                 value={temp}
                 onChange={(e) => setTemp(e.target.value)}
@@ -592,10 +606,10 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
                 placeholder="36.5"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                <Heart className="h-3 w-3 text-rose-500" /> PR (bpm)
-              </span>
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium text-foreground">
+                PR (bpm)
+              </Label>
               <Input
                 value={pulseRate}
                 onChange={(e) => setPulseRate(e.target.value)}
@@ -603,10 +617,10 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
                 placeholder="80"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                <Activity className="h-3 w-3 text-blue-500" /> BP (mmHg)
-              </span>
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium text-foreground">
+                BP (mmHg)
+              </Label>
               <Input
                 value={bloodPressure}
                 onChange={(e) => setBloodPressure(e.target.value)}
@@ -614,10 +628,10 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
                 placeholder="120/80"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                <Scale className="h-3 w-3 text-emerald-500" /> wt (kg)
-              </span>
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium text-foreground">
+                wt (kg)
+              </Label>
               <Input
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
@@ -625,10 +639,10 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
                 placeholder="55"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-                <Ruler className="h-3 w-3 text-purple-500" /> ht (cm)
-              </span>
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium text-foreground">
+                ht (cm)
+              </Label>
               <Input
                 value={height}
                 onChange={(e) => setHeight(e.target.value)}
@@ -639,9 +653,8 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <FileText className="h-3.5 w-3.5 text-primary" />
+        <div className="flex flex-col gap-2">
+          <Label className="text-sm font-semibold text-foreground">
             Chief Complaint (CC)
           </Label>
           <Input
@@ -652,17 +665,16 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
           />
         </div>
 
-        <div className="flex flex-col gap-2.5">
-          <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <CalendarIcon className="h-3.5 w-3.5 text-primary" />
+        <div className="flex flex-col gap-4">
+          <Label className="text-sm font-semibold text-foreground">
             Obstetrical History
           </Label>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-medium text-muted-foreground">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium text-foreground">
                 LMP
-              </span>
+              </Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -691,10 +703,10 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
               </Popover>
             </div>
 
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-medium text-muted-foreground">
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium text-foreground">
                 EDC / EDD
-              </span>
+              </Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -723,10 +735,10 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
               </Popover>
             </div>
 
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-medium text-muted-foreground">
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium text-foreground">
                 AOG (Gestation)
-              </span>
+              </Label>
               <Input
                 value={aog}
                 onChange={(e) => setAog(e.target.value)}
@@ -735,10 +747,10 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
               />
             </div>
 
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-medium text-muted-foreground">
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium text-foreground">
                 Gravida / Para
-              </span>
+              </Label>
               <Input
                 value={gravidaPara}
                 onChange={(e) => setGravidaPara(e.target.value)}
@@ -748,11 +760,11 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-medium text-muted-foreground">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium text-foreground">
                 Previous Delivery
-              </span>
+              </Label>
               <Input
                 value={previousDelivery}
                 onChange={(e) => setPreviousDelivery(e.target.value)}
@@ -760,10 +772,10 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
                 placeholder="None"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-medium text-muted-foreground">
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium text-foreground">
                 Co-morbidities
-              </span>
+              </Label>
               <Input
                 value={comorbidities}
                 onChange={(e) => setComorbidities(e.target.value)}
@@ -773,9 +785,13 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
             </div>
           </div>
         </div>
+          </div>
+        )}
 
-        <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3">
-          <div className="flex cursor-pointer items-center space-x-2">
+        {step === 3 && (
+          <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="flex flex-col gap-4">
+              <div className="flex cursor-pointer items-center space-x-2">
             <Checkbox
               id="send-email-check"
               checked={sendEmailNotification}
@@ -784,9 +800,8 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
             />
             <label
               htmlFor="send-email-check"
-              className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-foreground select-none"
+              className="flex cursor-pointer items-center gap-2 text-xs font-medium text-foreground select-none"
             >
-              <Mail className="h-3.5 w-3.5 text-blue-500" />
               Send specialized email notification to receiving facility /
               physician?
             </label>
@@ -807,23 +822,43 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
             </div>
           )}
         </div>
+            
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 mt-2">
+              <h4 className="text-xs font-semibold text-primary mb-1">Ready to Submit</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Please review the patient's handoff details. Once submitted, the destination facility will be notified of this high-risk referral and provided with a secure PIN to view clinical records.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-col-reverse justify-end gap-2 border-t border-border pt-3 sm:flex-row">
-        <Button
-          variant="ghost"
-          className="h-8 w-full text-xs sm:w-auto"
-          onClick={() => onOpenChange(false)}
-        >
-          Cancel
-        </Button>
-        <Button
-          disabled={loading || !selectedMotherId}
-          onClick={handleSubmit}
-          className="h-8 w-full bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
-        >
-          {loading ? "Submitting Handoff..." : "Submit Online Referral"}
-        </Button>
+      <div className="flex flex-col-reverse justify-end gap-2 border-t border-border pt-3 sm:flex-row mt-2">
+        {step === 1 && (
+           <>
+             <Button variant="ghost" className="h-8 w-full text-xs sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
+             <Button className="h-8 w-full bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto" onClick={() => {
+                if (!selectedMotherId) { setErrorMsg("Please select a patient / mother."); return; }
+                if (!destinationFacility.trim()) { setErrorMsg("Please enter the destination facility."); return; }
+                setErrorMsg("");
+                setStep(2);
+             }}>Next Step</Button>
+           </>
+        )}
+        {step === 2 && (
+           <>
+             <Button variant="ghost" className="h-8 w-full text-xs sm:w-auto" onClick={() => setStep(1)}>Back</Button>
+             <Button className="h-8 w-full bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto" onClick={() => setStep(3)}>Next Step</Button>
+           </>
+        )}
+        {step === 3 && (
+           <>
+             <Button variant="ghost" className="h-8 w-full text-xs sm:w-auto" onClick={() => setStep(2)}>Back</Button>
+             <Button disabled={loading || !selectedMotherId} onClick={handleSubmit} className="h-8 w-full bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto">
+               {loading ? "Submitting Handoff..." : "Submit Online Referral"}
+             </Button>
+           </>
+        )}
       </div>
 
       <ReferralSuccessModal

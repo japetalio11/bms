@@ -176,8 +176,9 @@ export function EhrPage() {
   }
 
   return (
-    <div className="flex h-full flex-col space-y-4 overflow-y-auto bg-background p-4 text-foreground md:p-6">
-      <div className="flex flex-col gap-4">
+    <div className="relative flex h-full w-full items-start overflow-hidden bg-background">
+      <div className="relative flex h-full w-full min-w-0 flex-col overflow-y-auto text-foreground">
+        <div className="sticky top-0 z-10 flex flex-col gap-4 border-b border-border bg-background p-4 pr-4 pb-4 pl-3 md:border-none">
         <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <Tabs
             value={activeTab}
@@ -281,15 +282,25 @@ export function EhrPage() {
             </UploadDocumentModal>
           </div>
         </div>
-      </div>
+        </div>
 
-      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 p-4 pr-4 pb-24 pl-3 md:pt-0 md:pb-4">
         <div className="flex flex-col gap-4 md:hidden">
           {filteredDocuments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card p-8 text-center">
-              <p className="text-xs text-muted-foreground">
-                No EHR records found
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center md:hidden">
+              <FileText className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
+              <h3 className="text-sm font-semibold text-card-foreground">
+                No EHR Records Found
+              </h3>
+              <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                No electronic health records match your current criteria. Upload a new document to get started.
               </p>
+              <Button
+                onClick={() => setIsUploadModalOpen(true)}
+                className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+              >
+                <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload Document
+              </Button>
             </div>
           ) : (
             filteredDocuments.map((doc) => (
@@ -389,8 +400,27 @@ export function EhrPage() {
           )}
         </div>
 
-        <div className="hidden overflow-x-auto rounded-md border border-border bg-card md:block">
-          <div className="min-w-[900px]">
+        {filteredDocuments.length === 0 && (
+          <div className="hidden flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center md:flex">
+            <FileText className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
+            <h3 className="text-sm font-semibold text-card-foreground">
+              No EHR Records Found
+            </h3>
+            <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+              No electronic health records match your current criteria. Upload a new document to get started.
+            </p>
+            <Button
+              onClick={() => setIsUploadModalOpen(true)}
+              className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+            >
+              <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload Document
+            </Button>
+          </div>
+        )}
+
+        {filteredDocuments.length > 0 && (
+          <div className="hidden overflow-x-auto rounded-md border border-border bg-card md:block">
+            <div className="min-w-[900px]">
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow className="border-border hover:bg-transparent">
@@ -419,17 +449,7 @@ export function EhrPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredDocuments.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      className="h-24 text-center text-xs text-muted-foreground"
-                    >
-                      No EHR records found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredDocuments.map((doc) => (
+                {filteredDocuments.map((doc) => (
                     <TableRow
                       key={doc.id}
                       className="group cursor-pointer border-border transition-colors hover:bg-accent/50"
@@ -563,11 +583,12 @@ export function EhrPage() {
                       </TableCell>
                     </TableRow>
                   ))
-                )}
+                }
               </TableBody>
             </Table>
           </div>
         </div>
+        )}
       </div>
 
       {previewDocIndex !== null &&
@@ -840,6 +861,7 @@ export function EhrPage() {
         isDeleting={isDeleting}
         onConfirm={executeDeleteDocument}
       />
+      </div>
     </div>
   )
 }

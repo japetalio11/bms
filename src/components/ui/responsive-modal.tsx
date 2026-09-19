@@ -42,7 +42,7 @@ export function ResponsiveModal({
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
         {trigger && <DrawerTrigger asChild>{trigger}</DrawerTrigger>}
-        <DrawerContent className="bg-card text-card-foreground border-t border-border border-x-0 border-b-0 before:hidden rounded-t-xl overflow-hidden focus-visible:outline-none flex flex-col px-4 pb-4 max-h-[85dvh]">
+        <DrawerContent className="bg-card text-card-foreground border-t border-border border-x-0 border-b-0 before:hidden rounded-t-xl overflow-hidden focus-visible:outline-none flex flex-col px-6 pb-6 max-h-[80dvh]">
           <div className="overflow-y-auto no-scrollbar pt-2">
             {(title || description) && (
               <DrawerHeader className="px-0 pt-2 pb-4 text-left">

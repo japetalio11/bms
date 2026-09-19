@@ -19,6 +19,7 @@ import {
   UserPlus,
   WifiOff,
   CloudOff,
+  Users,
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -387,8 +388,26 @@ export function TeamManagementPage() {
         </div>
 
         <div className="flex flex-col gap-4 p-4 pr-4 pb-24 pl-3 md:pt-0 md:pb-4">
-          <div className="hidden overflow-x-auto rounded-md border border-border bg-card md:block">
-            <div className="min-w-[900px]">
+          {filteredStaff.length === 0 && (
+            <div className="hidden flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center md:flex">
+              <Users className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
+              <h3 className="text-sm font-semibold text-card-foreground">
+                No Team Members Found
+              </h3>
+              <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                No team members match your current criteria. Invite a new team member to get started.
+              </p>
+              <InviteTeamMemberModal>
+                <Button className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90">
+                  <UserPlus className="mr-1.5 h-3.5 w-3.5" /> Invite Team Member
+                </Button>
+              </InviteTeamMemberModal>
+            </div>
+          )}
+
+          {filteredStaff.length > 0 && (
+            <div className="hidden overflow-x-auto rounded-md border border-border bg-card md:block">
+              <div className="min-w-[900px]">
               <Table>
                 <TableHeader className="bg-muted/50">
                   <TableRow className="border-border hover:bg-transparent">
@@ -421,15 +440,6 @@ export function TeamManagementPage() {
                         className="py-8 text-center text-muted-foreground"
                       >
                         Loading team members...
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredStaff.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={7}
-                        className="py-8 text-center text-muted-foreground"
-                      >
-                        No team members found.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -585,6 +595,7 @@ export function TeamManagementPage() {
               </Table>
             </div>
           </div>
+          )}
 
           <div className="hidden flex-row items-center justify-between gap-4 text-xs text-muted-foreground md:flex">
             <div>0 of {filteredStaff.length} row(s) selected.</div>
@@ -634,7 +645,23 @@ export function TeamManagementPage() {
           </div>
 
           <div className="flex flex-col gap-4 md:hidden">
-            {filteredStaff.map((staff) => (
+            {filteredStaff.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center md:hidden">
+                <Users className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
+                <h3 className="text-sm font-semibold text-card-foreground">
+                  No Team Members Found
+                </h3>
+                <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                  No team members match your current criteria. Invite a new team member to get started.
+                </p>
+                <InviteTeamMemberModal>
+                  <Button className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90">
+                    <UserPlus className="mr-1.5 h-3.5 w-3.5" /> Invite Team Member
+                  </Button>
+                </InviteTeamMemberModal>
+              </div>
+            ) : (
+              filteredStaff.map((staff) => (
               <div
                 key={staff.id}
                 className={`flex cursor-pointer flex-col gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-accent/50`}
@@ -779,7 +806,7 @@ export function TeamManagementPage() {
                   )
                 })()}
               </div>
-            ))}
+            )))}
           </div>
         </div>
       </div>

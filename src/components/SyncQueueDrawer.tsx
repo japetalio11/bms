@@ -13,7 +13,10 @@ import {
   AlertCircle,
   X,
   Trash2,
-  HardDrive
+  HardDrive,
+  Users,
+  Calendar,
+  Activity
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -70,94 +73,117 @@ export function SyncQueueDrawer({ open, onClose }: Props) {
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          <div className="rounded-xl border border-border p-4 space-y-3 bg-card shadow-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Network Connection</span>
+        <div className="flex-1 overflow-y-auto">
+          <div className="flex flex-col gap-3 p-5 border-b border-border">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+              Network & Sync Status
+            </span>
+
+            <div className="flex items-center">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                <Wifi className="h-3.5 w-3.5" />
+                <span className="text-xs">Connection</span>
+              </div>
               <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                className={`flex-1 text-xs font-semibold ${
                   isOnline
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-amber-600 dark:text-amber-400"
                 }`}
               >
-                {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
                 {isOnline ? "Online" : "Offline"}
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/50">
-              <span>Last Synced</span>
-              <span>{lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : "Not synced yet"}</span>
+            <div className="flex items-center">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                <Clock className="h-3.5 w-3.5" />
+                <span className="text-xs">Last Synced</span>
+              </div>
+              <span className="flex-1 text-xs font-medium text-foreground">
+                {lastSyncedAt ? new Date(lastSyncedAt).toLocaleTimeString() : "Not synced yet"}
+              </span>
             </div>
 
             {error && (
-              <div className="p-2.5 rounded-lg bg-destructive/10 text-destructive text-xs flex items-start gap-2">
+              <div className="p-2.5 mt-2 rounded-lg bg-destructive/10 text-destructive text-xs flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
 
-            <Button
-              disabled={!isOnline || isSyncing || pendingCount === 0}
-              onClick={forceSync}
-              className="w-full flex items-center justify-center gap-2"
-              size="sm"
-            >
-              <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
-              {isSyncing ? "Syncing Pending Mutations..." : `Sync Now (${pendingCount} Pending)`}
-            </Button>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <HardDrive className="w-3.5 h-3.5" />
-              Dexie Persistent Storage Cache
-            </h3>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="p-3 rounded-lg border border-border bg-card">
-                <div className="text-lg font-bold">{motherCount}</div>
-                <div className="text-[11px] text-muted-foreground">Mothers</div>
-              </div>
-              <div className="p-3 rounded-lg border border-border bg-card">
-                <div className="text-lg font-bold">{visitCount}</div>
-                <div className="text-[11px] text-muted-foreground">Visits</div>
-              </div>
-              <div className="p-3 rounded-lg border border-border bg-card">
-                <div className="text-lg font-bold">{appointmentCount}</div>
-                <div className="text-[11px] text-muted-foreground">Appointments</div>
-              </div>
+            <div className="pt-2">
+              <Button
+                disabled={!isOnline || isSyncing || pendingCount === 0}
+                onClick={forceSync}
+                className="w-full flex items-center justify-center gap-2"
+                size="sm"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
+                {isSyncing ? "Syncing Pending Mutations..." : `Sync Now (${pendingCount} Pending)`}
+              </Button>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3 p-5 border-b border-border">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+              Dexie Persistent Storage Cache
+            </span>
+
+            <div className="flex items-center">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                <Users className="h-3.5 w-3.5" />
+                <span className="text-xs">Mothers</span>
+              </div>
+              <span className="flex-1 text-xs font-medium text-foreground">{motherCount} records</span>
+            </div>
+
+            <div className="flex items-center">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                <Activity className="h-3.5 w-3.5" />
+                <span className="text-xs">Visits</span>
+              </div>
+              <span className="flex-1 text-xs font-medium text-foreground">{visitCount} records</span>
+            </div>
+
+            <div className="flex items-center">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5" />
+                <span className="text-xs">Appointments</span>
+              </div>
+              <span className="flex-1 text-xs font-medium text-foreground">{appointmentCount} records</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 p-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                 Pending Outbox Queue ({queueItems?.length || 0})
-              </h3>
+              </span>
               {queueItems && queueItems.length > 0 && (
-                <Button variant="ghost" size="xs" onClick={handleClearQueue} className="text-xs text-destructive hover:text-destructive">
+                <Button variant="ghost" size="xs" onClick={handleClearQueue} className="h-6 text-[10px] text-destructive hover:bg-destructive/10 px-2">
                   <Trash2 className="w-3 h-3 mr-1" />
-                  Clear Queue
+                  Clear
                 </Button>
               )}
             </div>
 
             {!queueItems || queueItems.length === 0 ? (
-              <div className="p-8 text-center rounded-xl border border-dashed border-border text-muted-foreground space-y-2">
-                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
-                <p className="text-sm font-medium">All changes synced!</p>
-                <p className="text-xs text-muted-foreground">
-                  Your offline memory is 100% up to date with the server.
-                </p>
+              <div className="flex items-center gap-3 pt-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                <div className="flex flex-col">
+                  <span className="text-xs font-medium text-foreground">All changes synced!</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Your offline memory is 100% up to date with the server.
+                  </span>
+                </div>
               </div>
             ) : (
-              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+              <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1 mt-2">
                 {queueItems.map((item: OfflineQueueItem) => (
-                  <div key={item.id} className="p-3 rounded-lg border border-border bg-card text-xs space-y-1">
+                  <div key={item.id} className="flex flex-col gap-1 pb-3 border-b border-border last:border-0">
                     <div className="flex items-center justify-between font-semibold">
-                      <span className="capitalize">
+                      <span className="text-xs capitalize text-foreground">
                         {item.action} {item.entity_type.replace("_", " ")}
                       </span>
                       <span className="text-[10px] text-muted-foreground">
@@ -177,10 +203,6 @@ export function SyncQueueDrawer({ open, onClose }: Props) {
               </div>
             )}
           </div>
-        </div>
-
-        <div className="p-4 border-t border-border text-xs text-center text-muted-foreground bg-muted/20">
-          Dexie IndexedDB ensures 100% memory persistence across restarts.
         </div>
       </div>
     </div>

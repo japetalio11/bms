@@ -18,9 +18,8 @@ import {
   History,
   CheckCircle2,
   CloudOff,
-  Trash2,
-  Check,
-  Ban,
+  Wind,
+  Gauge
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -113,6 +112,20 @@ export function ReferralSidepeek({
       ? `LMP: ${new Date(referral.pregnancy.lmp).toLocaleDateString()}`
       : "N/A"
 
+  const latestVisit = referral.pregnancy?.prenatalVisits?.[referral.pregnancy.prenatalVisits.length - 1] || {}
+  const bloodPressure = latestVisit.blood_pressure || "N/A"
+  const heartRate = latestVisit.heart_rate ? `${latestVisit.heart_rate} bpm` : "N/A"
+  const bloodSugar = latestVisit.blood_sugar ? `${latestVisit.blood_sugar} mg/dL` : "N/A"
+  const bodyTemp = latestVisit.temperature ? `${latestVisit.temperature} C` : "N/A"
+  const weight = latestVisit.weight ? `${latestVisit.weight} kg` : "N/A"
+  const respRate = latestVisit.respiratory_rate ? `${latestVisit.respiratory_rate} rpm` : "N/A"
+  const o2Sat = latestVisit.oxygen_saturation ? `${latestVisit.oxygen_saturation} %` : "N/A"
+
+  // Mock danger signs for demonstration if none exist, normally extracted from complications
+  const dangerSigns = referral.pregnancy?.complications 
+    ? referral.pregnancy.complications.split(',').map((s: string) => s.trim())
+    : []
+
   const handleCopy = (text: string, label: string) => {
     if (!text || text === "N/A") return
     navigator.clipboard.writeText(text)
@@ -144,36 +157,24 @@ export function ReferralSidepeek({
   }
 
   return (
-    <div className="flex h-full w-full flex-col border-l border-border bg-card text-card-foreground xl:w-[450px]">
-      <div className="flex shrink-0 items-start justify-between border-b border-border p-4 pb-4">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-foreground">
-              {motherName}
-            </h2>
-            {isOrigin && (
-              <span className="rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
-                Outgoing Referral
-              </span>
-            )}
-            {isDestination && !isOrigin && (
-              <span className="rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                Incoming Referral
-              </span>
-            )}
-          </div>
+    <div className="flex h-full w-full flex-col border-l border-white/10 bg-[#111111] text-zinc-100 xl:w-[450px]">
+      <div className="flex shrink-0 items-start justify-between border-b border-white/10 p-4 pb-4">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-base font-semibold text-white">
+            {motherName}
+          </h2>
           <div className="flex flex-wrap items-center gap-2">
             <div
-              className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${
+              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                 isHighRisk
-                  ? "bg-red-500/10 text-red-500"
+                  ? "bg-red-500/20 text-red-400"
                   : isMedRisk
-                    ? "bg-amber-500/10 text-amber-500"
-                    : "bg-green-500/10 text-green-500"
+                    ? "bg-amber-500/20 text-amber-400"
+                    : "bg-green-500/20 text-green-400"
               }`}
             >
               {isHighRisk ? (
-                <Activity className="h-3 w-3" />
+                <AlertTriangle className="h-3 w-3" />
               ) : isMedRisk ? (
                 <AlertTriangle className="h-3 w-3" />
               ) : (
@@ -182,14 +183,14 @@ export function ReferralSidepeek({
               {riskFlag}
             </div>
             <div
-              className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${
+              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                 statusLower === "accepted" || statusLower === "completed"
-                  ? "bg-green-500/10 text-green-500"
+                  ? "bg-emerald-500/20 text-emerald-400"
                   : statusLower === "pending"
-                    ? "bg-amber-500/10 text-amber-500"
+                    ? "bg-amber-500/20 text-amber-400"
                     : statusLower === "rejected" || statusLower === "cancelled"
-                      ? "bg-red-500/10 text-red-500"
-                      : "bg-blue-500/10 text-blue-500"
+                      ? "bg-red-500/20 text-red-400"
+                      : "bg-blue-500/20 text-blue-400"
               }`}
             >
               {statusLower === "accepted" || statusLower === "completed" ? (
@@ -201,30 +202,13 @@ export function ReferralSidepeek({
               )}
               {status}
             </div>
-            {referral.sync_status && referral.sync_status !== "synced" && (
-              <div className="inline-flex items-center gap-1 rounded-sm border border-amber-500/20 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">
-                <CloudOff className="h-3 w-3" />
-                Pending Offline Sync
-              </div>
-            )}
           </div>
         </div>
         <div className="flex items-center gap-1">
-          {onDelete && (
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Delete Referral"
-              className="h-7 w-7 text-muted-foreground hover:bg-red-500/10 hover:text-red-500"
-              onClick={() => onDelete(referral)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
           <Button
             variant="ghost"
             size="icon"
-            className="hidden h-7 w-7 text-muted-foreground hover:text-foreground md:flex"
+            className="hidden h-7 w-7 text-zinc-400 hover:text-white md:flex"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -233,174 +217,244 @@ export function ReferralSidepeek({
       </div>
 
       <div className="flex flex-1 flex-col overflow-y-auto">
-        <div className="flex flex-col gap-3 border-b border-border p-4">
-          <h3 className="text-xs font-semibold text-foreground">
-            Clinical Referral Handoff Summary
+        <div className="flex flex-col gap-2 border-b border-white/10 p-4">
+          <h3 className="text-xs font-semibold text-white">
+            Handoff Summary
           </h3>
-          <div className="rounded-lg border border-border bg-muted/40 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-foreground">
+          <p className="text-xs leading-relaxed text-zinc-300">
             {reasonText}
-          </div>
+          </p>
         </div>
 
-        <div className="flex flex-col gap-3 border-b border-border p-4">
-          <h3 className="text-xs font-semibold text-foreground">
-            Destination Facility
+        <div className="flex flex-col gap-2 border-b border-white/10 p-4">
+          <h3 className="text-xs font-semibold text-white">
+            Preferred Hospital
           </h3>
-          <div className="flex h-8 items-center justify-between rounded-md border border-border bg-card px-3 text-xs text-foreground">
+          <div className="flex h-8 items-center justify-between rounded-md border border-white/10 bg-[#1A1A1A] px-3 text-xs text-white">
             <span>{destination}</span>
             <ChevronDown className="h-4 w-4 opacity-50" />
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 border-b border-border p-4">
-          <h3 className="text-xs font-semibold text-foreground">
+        <div className="flex flex-col gap-2 border-b border-white/10 p-4">
+          <h3 className="text-xs font-semibold text-white">
             Transfer Patient Record Link
           </h3>
           <div className="flex items-center gap-2">
-            <Input
-              readOnly
-              value={recordLink}
-              className="h-8 border-border bg-card text-xs text-foreground"
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => handleCopy(recordLink, "link")}
-              className="h-8 w-8 shrink-0 border-border text-foreground hover:bg-accent"
-            >
-              <Copy className="h-3.5 w-3.5" />
-            </Button>
+            <div className="flex h-8 flex-1 items-center justify-between rounded-md border border-white/10 bg-[#1A1A1A] px-3 text-xs text-white">
+              <span className="truncate">{recordLink}</span>
+              <button onClick={() => handleCopy(recordLink, "link")} className="ml-2 shrink-0 text-zinc-400 hover:text-white">
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
-          {copySuccess === "link" && (
-            <span className="text-[10px] text-green-500">
-              Link copied to clipboard!
-            </span>
-          )}
+          <p className="text-[10px] text-zinc-400">
+            {copySuccess === "link" ? <span className="text-green-400">Link copied to clipboard!</span> : "Share this link with partners so they can book dates within this block."}
+          </p>
         </div>
 
-        <div className="flex flex-col gap-3 border-b border-border p-4">
-          <h3 className="text-xs font-semibold text-foreground">
-            Transfer PIN / Code
+        <div className="flex flex-col gap-2 border-b border-white/10 p-4">
+          <h3 className="text-xs font-semibold text-white">
+            Transfer Code
           </h3>
           <div className="flex items-center gap-2">
-            <Input
-              readOnly
-              value={transferCode}
-              className="h-8 border-border bg-card text-xs text-foreground"
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => handleCopy(transferCode, "code")}
-              className="h-8 w-8 shrink-0 border-border text-foreground hover:bg-accent"
-            >
-              <Copy className="h-3.5 w-3.5" />
-            </Button>
+            <div className="flex h-8 flex-1 items-center justify-between rounded-md border border-white/10 bg-[#1A1A1A] px-3 text-xs text-white">
+              <span className="truncate">{transferCode}</span>
+              <button onClick={() => handleCopy(transferCode, "code")} className="ml-2 shrink-0 text-zinc-400 hover:text-white">
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
-          {copySuccess === "code" && (
-            <span className="text-[10px] text-green-500">PIN code copied!</span>
-          )}
+          <p className="text-[10px] text-zinc-400">
+            {copySuccess === "code" ? <span className="text-green-400">Code copied to clipboard!</span> : "Share this code with partners so they can access the booking link."}
+          </p>
         </div>
 
-        <div className="flex flex-col gap-5 border-b border-border p-4">
-          <h3 className="text-xs font-semibold text-foreground">Properties</h3>
+        <div className="flex flex-col gap-5 border-b border-white/10 p-4">
+          <h3 className="text-xs font-semibold text-white">Properties</h3>
 
           <div className="flex flex-col gap-3">
-            <span className="text-[10px] font-medium text-muted-foreground">
+            <span className="text-[10px] font-medium text-zinc-400">
               Patient Demographic
             </span>
 
             <div className="flex items-center">
-              <div className="flex w-[180px] shrink-0 items-center gap-2 text-muted-foreground">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
                 <User className="h-3.5 w-3.5" />
                 <span className="text-xs">Patient Name</span>
               </div>
-              <span className="flex-1 text-xs text-foreground">
+              <span className="flex-1 text-xs text-white">
                 {motherName}
               </span>
             </div>
 
             <div className="flex items-center">
-              <div className="flex w-[180px] shrink-0 items-center gap-2 text-muted-foreground">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
                 <Calendar className="h-3.5 w-3.5" />
                 <span className="text-xs">Gestational Age</span>
               </div>
-              <span className="flex-1 text-xs text-foreground">
+              <span className="flex-1 text-xs text-white">
                 {gestationalAge}
               </span>
             </div>
           </div>
 
           <div className="flex flex-col gap-3">
-            <span className="text-[10px] font-medium text-muted-foreground">
+            <span className="text-[10px] font-medium text-zinc-400">
               Transfer Logistics
             </span>
 
             <div className="flex items-center">
-              <div className="flex w-[180px] shrink-0 items-center gap-2 text-muted-foreground">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
                 <Send className="h-3.5 w-3.5" />
                 <span className="text-xs">Referred By</span>
               </div>
-              <span className="flex-1 text-xs text-foreground">
+              <span className="flex-1 text-xs text-white">
                 {referredBy}
               </span>
             </div>
 
             <div className="flex items-center">
-              <div className="flex w-[180px] shrink-0 items-center gap-2 text-muted-foreground">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
                 <Building2 className="h-3.5 w-3.5" />
                 <span className="text-xs">Destination Facility</span>
               </div>
-              <span className="flex-1 text-xs text-foreground">
+              <span className="flex-1 text-xs text-white">
                 {destination}
               </span>
             </div>
 
             <div className="flex items-center">
-              <div className="flex w-[180px] shrink-0 items-center gap-2 text-muted-foreground">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
                 <Clock className="h-3.5 w-3.5" />
                 <span className="text-xs">Initiated At</span>
               </div>
-              <span className="flex-1 text-xs text-foreground">
+              <span className="flex-1 text-xs text-white">
                 {initiatedAt}
               </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <span className="text-[10px] font-medium text-zinc-400">
+              Clinical Indicators
+            </span>
+
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-zinc-400">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <span className="text-xs">Primary Danger Signs</span>
+              </div>
+              {dangerSigns.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {dangerSigns.map((sign: string, idx: number) => (
+                    <span key={idx} className="rounded-full border border-white/10 bg-[#1A1A1A] px-2.5 py-1 text-[10px] text-white">
+                      {sign}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-xs text-zinc-500 pl-5">None reported</span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <span className="text-[10px] font-medium text-zinc-400">
+              Maternal Vitals
+            </span>
+
+            <div className="flex items-center">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+                <Activity className="h-3.5 w-3.5" />
+                <span className="text-xs">Blood Pressure</span>
+              </div>
+              <span className="flex-1 text-xs text-white">{bloodPressure}</span>
+            </div>
+
+            <div className="flex items-center">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+                <Heart className="h-3.5 w-3.5" />
+                <span className="text-xs">Heart Rate</span>
+              </div>
+              <span className="flex-1 text-xs text-white">{heartRate}</span>
+            </div>
+
+            <div className="flex items-center">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+                <Droplet className="h-3.5 w-3.5" />
+                <span className="text-xs">Blood Sugar</span>
+              </div>
+              <span className="flex-1 text-xs text-white">{bloodSugar}</span>
+            </div>
+
+            <div className="flex items-center">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+                <Thermometer className="h-3.5 w-3.5" />
+                <span className="text-xs">Body Temp</span>
+              </div>
+              <span className="flex-1 text-xs text-white">{bodyTemp}</span>
+            </div>
+
+            <div className="flex items-center">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+                <Scale className="h-3.5 w-3.5" />
+                <span className="text-xs">Weight</span>
+              </div>
+              <span className="flex-1 text-xs text-white">{weight}</span>
+            </div>
+
+            <div className="flex items-center">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+                <Wind className="h-3.5 w-3.5" />
+                <span className="text-xs">Respiratory Rate</span>
+              </div>
+              <span className="flex-1 text-xs text-white">{respRate}</span>
+            </div>
+
+            <div className="flex items-center">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+                <Gauge className="h-3.5 w-3.5" />
+                <span className="text-xs">O2 Saturation</span>
+              </div>
+              <span className="flex-1 text-xs text-white">{o2Sat}</span>
             </div>
           </div>
         </div>
 
         <div className="flex flex-col gap-4 p-4 pb-6">
           <div className="flex items-center gap-2">
-            <h3 className="text-xs font-semibold text-foreground">
-              Activity Log
+            <h3 className="text-xs font-semibold text-white">
+              Activity Log <History className="ml-1 inline h-3 w-3 text-zinc-400" />
             </h3>
-            <History className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
+          <p className="text-[10px] text-zinc-400">Recent actions performed by this user.</p>
 
           {referral.date_responded && (
-            <div className="mt-1 flex gap-3">
+            <div className="mt-2 flex gap-3">
               <div className="mt-1.5 flex flex-col items-center">
-                <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-foreground" />
+                <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-white" />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-foreground">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-white">
                   Status updated to {status}
                 </span>
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] text-zinc-400">
                   {new Date(referral.date_responded).toLocaleString()}
                 </span>
               </div>
             </div>
           )}
 
-          <div className="mt-1 flex gap-3">
+          <div className="mt-2 flex gap-3">
             <div className="mt-1.5 flex flex-col items-center">
-              <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-foreground" />
+              <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-white" />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-foreground">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-white">
                 Initiated referral to {destination}
               </span>
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-[10px] text-zinc-400">
                 {initiatedAt}
               </span>
             </div>
@@ -408,80 +462,40 @@ export function ReferralSidepeek({
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-col gap-2 border-t border-border p-4 pb-8 md:pb-4">
-        {isDestination && !isOrigin && (
-          <>
-            {statusLower === "pending" && (
-              <div className="flex items-center gap-2">
-                <Button
-                  disabled={actionLoading}
-                  onClick={() => handleStatusChange("accepted")}
-                  className="h-8 flex-1 border-none bg-emerald-600 text-xs font-medium text-white hover:bg-emerald-700"
-                >
-                  <Check className="mr-1 h-3.5 w-3.5" />
-                  Accept Referral Transfer
-                </Button>
-                <Button
-                  disabled={actionLoading}
-                  variant="outline"
-                  onClick={() => handleStatusChange("rejected")}
-                  className="h-8 border-destructive/30 text-xs font-medium text-destructive hover:bg-destructive/10"
-                >
-                  <Ban className="mr-1 h-3.5 w-3.5" />
-                  Decline
-                </Button>
-              </div>
-            )}
-            {statusLower === "accepted" && (
-              <Button
-                disabled={actionLoading}
-                onClick={() => handleStatusChange("completed")}
-                className="h-8 w-full border-none bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                Mark Transfer Completed
-              </Button>
-            )}
-          </>
-        )}
-
-        {isOrigin && (
-          <div className="flex items-center gap-2">
-            {statusLower === "pending" && (
-              <Button
-                disabled={actionLoading}
-                variant="outline"
-                onClick={() => handleStatusChange("cancelled")}
-                className="h-8 flex-1 border-amber-500/30 text-xs font-medium text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
-              >
-                Cancel Transfer
-              </Button>
-            )}
-            {onDelete && (
-              <Button
-                disabled={actionLoading}
-                onClick={() => onDelete(referral)}
-                className="text-destructive-foreground h-8 flex-1 border-none bg-destructive text-xs font-medium hover:bg-destructive/90"
-              >
-                Delete Referral
-              </Button>
-            )}
+      <div className="flex shrink-0 flex-col gap-2 border-t border-white/10 bg-[#111111] p-4 pb-8 md:pb-4">
+        {statusLower === "pending" && isOrigin ? (
+          <Button
+            disabled={actionLoading}
+            onClick={() => handleStatusChange("cancelled")}
+            className="h-9 w-full bg-red-400/90 text-xs font-medium text-red-950 hover:bg-red-400"
+          >
+            Cancel Transfer
+          </Button>
+        ) : statusLower === "pending" && isDestination ? (
+          <div className="flex gap-2">
+            <Button
+              disabled={actionLoading}
+              onClick={() => handleStatusChange("accepted")}
+              className="h-9 flex-1 bg-emerald-400/90 text-xs font-medium text-emerald-950 hover:bg-emerald-400"
+            >
+              Accept Transfer
+            </Button>
+            <Button
+              disabled={actionLoading}
+              onClick={() => handleStatusChange("rejected")}
+              className="h-9 flex-1 bg-red-400/90 text-xs font-medium text-red-950 hover:bg-red-400"
+            >
+              Decline
+            </Button>
           </div>
-        )}
+        ) : null}
 
-        {!isOrigin && !isDestination && (
-          <div className="flex items-center gap-2">
-            {onDelete && (
-              <Button
-                disabled={actionLoading}
-                onClick={() => onDelete(referral)}
-                className="text-destructive-foreground h-8 w-full border-none bg-destructive text-xs font-medium hover:bg-destructive/90"
-              >
-                Delete Referral
-              </Button>
-            )}
-          </div>
-        )}
+        <Button
+          variant="outline"
+          className="h-9 w-full border-white/10 bg-[#1A1A1A] text-xs font-medium text-white hover:bg-white/10 hover:text-white"
+        >
+          Print Transfer Form
+        </Button>
       </div>
     </div>
   )
