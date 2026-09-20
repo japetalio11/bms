@@ -76,11 +76,6 @@ export function RegisterSupplementModal({
       return
     }
 
-    if (!visitId) {
-      setError("Associated visit encounter is required.")
-      return
-    }
-
     if (!supplementType || !tabletsCount || !dateGiven) {
       setError("Please fill in supplement type, tablets count, and date given.")
       return
@@ -96,7 +91,7 @@ export function RegisterSupplementModal({
       const payload = {
         mother_id: motherId,
         pregnancy_id: pregnancyId,
-        visit_id: visitId,
+        visit_id: (visitId && visitId !== "baseline") ? visitId : undefined,
         supplement_type: supplementType,
         tablets_given_count: Number(tabletsCount),
         date_given: dateGiven.toISOString(),
@@ -136,6 +131,8 @@ export function RegisterSupplementModal({
               const matching = allVisits.filter((v: any) => v.pregnancy_id === val)
               if (matching.length > 0) {
                 setVisitId(matching[0].visit_id || matching[0]._id || matching[0].id || "")
+              } else {
+                setVisitId("baseline")
               }
             }}>
               <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
@@ -155,20 +152,20 @@ export function RegisterSupplementModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-foreground">Associated Visit *</Label>
-            <Select value={visitId} onValueChange={setVisitId}>
+            <Label className="text-xs font-medium text-foreground">Associated Visit</Label>
+            <Select value={visitId || "baseline"} onValueChange={setVisitId}>
               <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
                 <SelectValue placeholder="Select Visit" />
               </SelectTrigger>
               <SelectContent>
                 {availableVisits.length === 0 ? (
-                  <SelectItem value="none" disabled>No visits recorded yet</SelectItem>
+                  <SelectItem value="baseline">Baseline Visit (Auto-create)</SelectItem>
                 ) : (
                   availableVisits.map((v: any, idx: number) => {
                     const vId = v.visit_id || v._id || v.id || String(idx)
                     return (
                       <SelectItem key={vId} value={vId}>
-                        Visit #{v.visit_number || idx + 1} ({v.visit_date ? new Date(v.visit_date).toLocaleDateString() : "N/A"})
+                        Visit #{v.visit_number || idx + 1} - {format(new Date(v.visit_date), "MMM d, yyyy")}
                       </SelectItem>
                     )
                   })

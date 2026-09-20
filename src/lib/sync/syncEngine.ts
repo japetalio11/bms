@@ -222,11 +222,12 @@ class SyncEngine {
           break
         }
 
-        const isClientError = status && status >= 400 && status < 500
+        const isUnrecoverableAuth = status === 401 || status === 403
+        const isMaxRetries = (item.retry_count || 0) >= 5
 
-        if (isTooLarge || isClientError || (item.retry_count || 0) >= 3) {
+        if (isTooLarge || isUnrecoverableAuth || isMaxRetries) {
           console.warn(
-            `[SyncEngine] Discarding unresolvable item #${item.id} (${item.entity_type}) after status ${status || "too large / client error"}`
+            `[SyncEngine] Discarding unresolvable item #${item.id} (${item.entity_type}) after status ${status || "too large / max retries"}`
           )
           if (item.id) {
             await db.offlineQueue.delete(item.id)
@@ -324,8 +325,66 @@ class SyncEngine {
     return null
   }
 
+  private async resolvePayloadIdentifiers(payload: any): Promise<any> {
+    if (!payload || typeof payload !== "object") return payload
+    const resolved = { ...payload }
+
+    // 1. Resolve mother_id
+    if (resolved.mother_id && String(resolved.mother_id).startsWith("temp-")) {
+      try {
+        const m = await db.mothers.get(resolved.mother_id)
+        if (m && m.mother_id && !String(m.mother_id).startsWith("temp-")) {
+          resolved.mother_id = m.mother_id
+          if (resolved.motherId) resolved.motherId = m.mother_id
+        }
+      } catch {}
+    }
+
+    // 2. Resolve pregnancy_id
+    if (resolved.pregnancy_id && String(resolved.pregnancy_id).startsWith("temp-")) {
+      try {
+        const p = await db.pregnancies.get(resolved.pregnancy_id)
+        if (p && p.pregnancy_id && !String(p.pregnancy_id).startsWith("temp-")) {
+          resolved.pregnancy_id = p.pregnancy_id
+        } else if (resolved.mother_id && !String(resolved.mother_id).startsWith("temp-")) {
+          const matchingPreg = await db.pregnancies
+            .where("mother_id")
+            .equals(resolved.mother_id)
+            .first()
+          if (matchingPreg && matchingPreg.pregnancy_id && !String(matchingPreg.pregnancy_id).startsWith("temp-")) {
+            resolved.pregnancy_id = matchingPreg.pregnancy_id
+          }
+        }
+      } catch {}
+    }
+
+    // 3. Resolve visit_id
+    if (resolved.visit_id && String(resolved.visit_id).startsWith("temp-")) {
+      try {
+        const v = await db.prenatalVisits.get(resolved.visit_id)
+        if (v && v.visit_id && !String(v.visit_id).startsWith("temp-")) {
+          resolved.visit_id = v.visit_id
+        } else if (resolved.pregnancy_id && !String(resolved.pregnancy_id).startsWith("temp-")) {
+          const matchingVisit = await db.prenatalVisits
+            .where("pregnancy_id")
+            .equals(resolved.pregnancy_id)
+            .first()
+          if (matchingVisit && matchingVisit.visit_id && !String(matchingVisit.visit_id).startsWith("temp-")) {
+            resolved.visit_id = matchingVisit.visit_id
+          } else {
+            delete resolved.visit_id
+          }
+        } else {
+          delete resolved.visit_id
+        }
+      } catch {}
+    }
+
+    return resolved
+  }
+
   private async processItem(item: OfflineQueueItem) {
-    let payload = item.payload
+    let payload = await this.resolvePayloadIdentifiers(item.payload)
 
     if (item.blob_ids && item.blob_ids.length > 0) {
       for (const blobId of item.blob_ids) {
@@ -872,6 +931,51 @@ class SyncEngine {
         }
       }
 
+      const pregnancies = await db.pregnancies.toArray()
+      for (const preg of pregnancies) {
+        const isTemp =
+          String(preg.id).startsWith("temp-") ||
+          preg.sync_status === "pending_create"
+        if (isTemp && !queuedTempIds.has(preg.id)) {
+          console.log(
+            `[SyncEngine] Auto-recovering offline pregnancy ${preg.id} to outbox queue...`
+          )
+          const resolvedMotherId =
+            preg.mother_id && !String(preg.mother_id).startsWith("temp-")
+              ? preg.mother_id
+              : (await db.mothers.get(preg.mother_id))?.mother_id || preg.mother_id
+
+          await db.offlineQueue.add({
+            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            entity_type: "pregnancy",
+            action: "CREATE",
+            endpoint: "/api/v1/pregnancy/register",
+            method: "POST",
+            payload: {
+              mother_id: resolvedMotherId,
+              date_of_registration:
+                preg.date_of_registration || new Date().toISOString(),
+              lmp_date: preg.lmp_date || preg.date_of_registration || new Date().toISOString(),
+              gravida: Number(preg.gravida ?? 1),
+              parity: Number(preg.parity ?? 0),
+              previous_delivery_history:
+                preg.previous_delivery_history || undefined,
+              co_morbidities: preg.co_morbidities || undefined,
+              age_group: preg.age_group || "Adult",
+              bmi_1st_trimester: preg.bmi_1st_trimester
+                ? Number(preg.bmi_1st_trimester)
+                : null,
+              bmi_category: preg.bmi_category || "Normal",
+              pregnancy_status: preg.pregnancy_status || "Active",
+            },
+            temp_id: preg.id,
+            retry_count: 0,
+            created_at: Date.now(),
+          })
+          queuedTempIds.add(preg.id)
+        }
+      }
+
       const visits = await db.prenatalVisits.toArray()
       for (const visit of visits) {
         const isTemp =
@@ -922,46 +1026,6 @@ class SyncEngine {
             created_at: Date.now(),
           })
           queuedTempIds.add(visit.id)
-        }
-      }
-
-      const pregnancies = await db.pregnancies.toArray()
-      for (const preg of pregnancies) {
-        const isTemp =
-          String(preg.id).startsWith("temp-") ||
-          preg.sync_status === "pending_create"
-        if (isTemp && !queuedTempIds.has(preg.id)) {
-          console.log(
-            `[SyncEngine] Auto-recovering offline pregnancy ${preg.id} to outbox queue...`
-          )
-          await db.offlineQueue.add({
-            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-            entity_type: "pregnancy",
-            action: "CREATE",
-            endpoint: "/api/v1/pregnancy/register",
-            method: "POST",
-            payload: {
-              mother_id: preg.mother_id,
-              date_of_registration:
-                preg.date_of_registration || new Date().toISOString(),
-              lmp_date: preg.lmp_date,
-              gravida: Number(preg.gravida) || 1,
-              parity: Number(preg.parity) || 0,
-              previous_delivery_history:
-                preg.previous_delivery_history || undefined,
-              co_morbidities: preg.co_morbidities || undefined,
-              age_group: preg.age_group || "Adult",
-              bmi_1st_trimester: preg.bmi_1st_trimester
-                ? Number(preg.bmi_1st_trimester)
-                : null,
-              bmi_category: preg.bmi_category || "Normal",
-              pregnancy_status: preg.pregnancy_status || "Active",
-            },
-            temp_id: preg.id,
-            retry_count: 0,
-            created_at: Date.now(),
-          })
-          queuedTempIds.add(preg.id)
         }
       }
 
