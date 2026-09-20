@@ -112,14 +112,75 @@ export function ReferralSidepeek({
       ? `LMP: ${new Date(referral.pregnancy.lmp).toLocaleDateString()}`
       : "N/A"
 
-  const latestVisit = referral.pregnancy?.prenatalVisits?.[referral.pregnancy.prenatalVisits.length - 1] || {}
-  const bloodPressure = latestVisit.blood_pressure || "N/A"
-  const heartRate = latestVisit.heart_rate ? `${latestVisit.heart_rate} bpm` : "N/A"
-  const bloodSugar = latestVisit.blood_sugar ? `${latestVisit.blood_sugar} mg/dL` : "N/A"
-  const bodyTemp = latestVisit.temperature ? `${latestVisit.temperature} C` : "N/A"
-  const weight = latestVisit.weight ? `${latestVisit.weight} kg` : "N/A"
-  const respRate = latestVisit.respiratory_rate ? `${latestVisit.respiratory_rate} rpm` : "N/A"
-  const o2Sat = latestVisit.oxygen_saturation ? `${latestVisit.oxygen_saturation} %` : "N/A"
+  const latestVisit =
+    referral.pregnancy?.prenatalVisits?.[0] ||
+    referral.pregnancy?.prenatalVisits?.[
+      referral.pregnancy.prenatalVisits.length - 1
+    ] ||
+    referral.latestVisit ||
+    {}
+
+  const bloodPressure =
+    latestVisit.bp_systolic && latestVisit.bp_diastolic
+      ? `${latestVisit.bp_systolic}/${latestVisit.bp_diastolic} mmHg`
+      : latestVisit.blood_pressure ||
+        (referral.bp_systolic && referral.bp_diastolic
+          ? `${referral.bp_systolic}/${referral.bp_diastolic} mmHg`
+          : referral.blood_pressure || "N/A")
+
+  const heartRate =
+    latestVisit.pulse_rate_bpm != null
+      ? `${latestVisit.pulse_rate_bpm} bpm`
+      : latestVisit.heart_rate != null
+        ? `${latestVisit.heart_rate} bpm`
+        : referral.pulse_rate_bpm != null
+          ? `${referral.pulse_rate_bpm} bpm`
+          : referral.heart_rate != null
+            ? `${referral.heart_rate} bpm`
+            : "N/A"
+
+  const bloodSugar =
+    latestVisit.blood_sugar != null
+      ? `${latestVisit.blood_sugar} mg/dL`
+      : referral.blood_sugar != null
+        ? `${referral.blood_sugar} mg/dL`
+        : "N/A"
+
+  const bodyTemp =
+    latestVisit.temperature_celsius != null
+      ? `${latestVisit.temperature_celsius} °C`
+      : latestVisit.temperature != null
+        ? `${latestVisit.temperature} °C`
+        : referral.temperature_celsius != null
+          ? `${referral.temperature_celsius} °C`
+          : referral.temperature != null
+            ? `${referral.temperature} °C`
+            : "N/A"
+
+  const weight =
+    latestVisit.weight_kg != null
+      ? `${latestVisit.weight_kg} kg`
+      : latestVisit.weight != null
+        ? `${latestVisit.weight} kg`
+        : referral.weight_kg != null
+          ? `${referral.weight_kg} kg`
+          : referral.weight != null
+            ? `${referral.weight} kg`
+            : "N/A"
+
+  const respRate =
+    latestVisit.respiratory_rate != null
+      ? `${latestVisit.respiratory_rate} rpm`
+      : referral.respiratory_rate != null
+        ? `${referral.respiratory_rate} rpm`
+        : "N/A"
+
+  const o2Sat =
+    latestVisit.oxygen_saturation != null
+      ? `${latestVisit.oxygen_saturation} %`
+      : referral.oxygen_saturation != null
+        ? `${referral.oxygen_saturation} %`
+        : "N/A"
 
   // Mock danger signs for demonstration if none exist, normally extracted from complications
   const dangerSigns = referral.pregnancy?.complications 
@@ -155,6 +216,11 @@ export function ReferralSidepeek({
       setActionLoading(false)
     }
   }
+
+  const displayRecordLink =
+    recordLink && recordLink !== "N/A"
+      ? recordLink.replace(/^https?:\/\/[^/]+/, "") || recordLink
+      : "N/A"
 
   return (
     <div className="flex h-full w-full flex-col border-l border-white/10 bg-[#111111] text-zinc-100 xl:w-[450px]">
@@ -219,15 +285,6 @@ export function ReferralSidepeek({
       <div className="flex flex-1 flex-col overflow-y-auto">
         <div className="flex flex-col gap-2 border-b border-white/10 p-4">
           <h3 className="text-xs font-semibold text-white">
-            Handoff Summary
-          </h3>
-          <p className="text-xs leading-relaxed text-zinc-300">
-            {reasonText}
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2 border-b border-white/10 p-4">
-          <h3 className="text-xs font-semibold text-white">
             Preferred Hospital
           </h3>
           <div className="flex h-8 items-center justify-between rounded-md border border-white/10 bg-[#1A1A1A] px-3 text-xs text-white">
@@ -240,10 +297,17 @@ export function ReferralSidepeek({
           <h3 className="text-xs font-semibold text-white">
             Transfer Patient Record Link
           </h3>
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 flex-1 items-center justify-between rounded-md border border-white/10 bg-[#1A1A1A] px-3 text-xs text-white">
-              <span className="truncate">{recordLink}</span>
-              <button onClick={() => handleCopy(recordLink, "link")} className="ml-2 shrink-0 text-zinc-400 hover:text-white">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex h-8 min-w-0 flex-1 items-center justify-between rounded-md border border-white/10 bg-[#1A1A1A] px-3 text-xs text-white">
+              <span className="truncate font-mono text-[11px]" title={recordLink}>
+                {displayRecordLink}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleCopy(recordLink, "link")}
+                className="ml-2 shrink-0 text-zinc-400 hover:text-white transition-colors"
+                title="Copy Link"
+              >
                 <Copy className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -257,10 +321,15 @@ export function ReferralSidepeek({
           <h3 className="text-xs font-semibold text-white">
             Transfer Code
           </h3>
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 flex-1 items-center justify-between rounded-md border border-white/10 bg-[#1A1A1A] px-3 text-xs text-white">
-              <span className="truncate">{transferCode}</span>
-              <button onClick={() => handleCopy(transferCode, "code")} className="ml-2 shrink-0 text-zinc-400 hover:text-white">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex h-8 min-w-0 flex-1 items-center justify-between rounded-md border border-white/10 bg-[#1A1A1A] px-3 text-xs text-white">
+              <span className="truncate font-mono">{transferCode}</span>
+              <button
+                type="button"
+                onClick={() => handleCopy(transferCode, "code")}
+                className="ml-2 shrink-0 text-zinc-400 hover:text-white transition-colors"
+                title="Copy Code"
+              >
                 <Copy className="h-3.5 w-3.5" />
               </button>
             </div>

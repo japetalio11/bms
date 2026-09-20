@@ -692,12 +692,13 @@ export function AppointmentListPage() {
                 <p className="mt-1 max-w-sm text-xs text-muted-foreground">
                   Try adjusting your filters or schedule a new appointment to get started.
                 </p>
-                <Button
-                  onClick={() => setIsScheduleOpen(true)}
-                  className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
-                >
-                  <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Schedule Appointment
-                </Button>
+                <CreateAppointmentModal onSuccess={fetchAppointments}>
+                  <Button
+                    className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+                  >
+                    <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Schedule Appointment
+                  </Button>
+                </CreateAppointmentModal>
               </div>
             ) : (
               <>

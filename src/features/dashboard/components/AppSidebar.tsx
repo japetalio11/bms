@@ -50,6 +50,18 @@ export function AppSidebar() {
   const [facilityName, setFacilityName] = useState<string>(
     "Rural Health Unit 1"
   )
+  const [facilityLogo, setFacilityLogo] = useState<string>("")
+
+  const loadFacilityInfo = async (facId: string) => {
+    try {
+      const res = await apiClient.get(`/api/v1/facility/${facId}`)
+      const fac = res.data?.result || res.data?.data || res.data
+      if (fac) {
+        if (fac.facility_name) setFacilityName(fac.facility_name)
+        if (fac.facility_profile_url) setFacilityLogo(fac.facility_profile_url)
+      }
+    } catch (e) {}
+  }
 
   useEffect(() => {
     const userStr = localStorage.getItem("user")
@@ -58,25 +70,34 @@ export function AppSidebar() {
         const parsed = JSON.parse(userStr)
         setUser(parsed)
 
+        if (parsed.facility_profile_url) {
+          setFacilityLogo(parsed.facility_profile_url)
+        } else if (parsed.facility?.facility_profile_url) {
+          setFacilityLogo(parsed.facility.facility_profile_url)
+        }
+
         if (parsed.facility_name) {
           setFacilityName(parsed.facility_name)
         } else if (parsed.facility?.facility_name) {
           setFacilityName(parsed.facility.facility_name)
-        } else if (parsed.facility_id) {
-          apiClient
-            .get(`/api/v1/facility/${parsed.facility_id}`)
-            .then((res) => {
-              const fac = res.data?.result || res.data?.data || res.data
-              if (fac?.facility_name) {
-                setFacilityName(fac.facility_name)
-              }
-            })
-            .catch(() => {})
+        }
+
+        const facId = parsed.facility_id || parsed.facility?.facility_id
+        if (facId) {
+          loadFacilityInfo(facId)
         }
       } catch (err) {
         console.error("Failed to parse user from localStorage", err)
       }
     }
+
+    const handleFacilityUpdated = (e: any) => {
+      if (e.detail?.facility_name) setFacilityName(e.detail.facility_name)
+      if (e.detail?.facility_profile_url) setFacilityLogo(e.detail.facility_profile_url)
+    }
+
+    window.addEventListener("bms:facility-updated", handleFacilityUpdated)
+    return () => window.removeEventListener("bms:facility-updated", handleFacilityUpdated)
   }, [])
 
   const handleNavigate = (path: string) => {
@@ -139,11 +160,14 @@ export function AppSidebar() {
         </div>
         <div className="px-4 pt-2 pb-2 transition-all duration-200 ease-linear group-data-[collapsible=icon]:px-0">
           <div className="flex items-center gap-2 text-left transition-all duration-200 ease-linear group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-transparent ring-1 ring-border transition-all duration-200 ease-linear">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card ring-1 ring-border transition-all duration-200 ease-linear">
               <img
-                src={rhuLogo}
+                src={facilityLogo || rhuLogo}
                 alt={facilityName}
-                className="h-full w-full scale-[1.2] object-contain"
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = rhuLogo
+                }}
               />
             </div>
             <div className="flex max-w-[250px] flex-1 flex-col overflow-hidden text-left whitespace-nowrap transition-all duration-200 ease-linear group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0">

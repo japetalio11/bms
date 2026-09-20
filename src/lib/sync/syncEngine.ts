@@ -241,6 +241,7 @@ class SyncEngine {
               supplement: db.supplements,
               referral: db.referrals,
               message: db.messages,
+              ehr_document: db.ehrDocuments,
             }
             const table = tableMap[item.entity_type]
             if (table) {
@@ -691,6 +692,21 @@ class SyncEngine {
               ...existingLocal,
               ...(typeof respObj === "object" ? respObj : {}),
               id: canonicalId,
+              sync_status: "synced",
+              updated_at: Date.now(),
+            })
+          }
+        } else if (entityType === "ehr_document") {
+          const existingLocal = await db.ehrDocuments.get(tempId)
+          if (existingLocal) {
+            await db.ehrDocuments.delete(tempId)
+            const respObj =
+              responseData?.data || responseData?.result || responseData
+            await db.ehrDocuments.put({
+              ...existingLocal,
+              ...(typeof respObj === "object" ? respObj : {}),
+              id: canonicalId,
+              document_id: canonicalId,
               sync_status: "synced",
               updated_at: Date.now(),
             })
@@ -1160,6 +1176,41 @@ class SyncEngine {
             })
             queuedTempIds.add(staff.id)
           }
+        }
+      }
+      const ehrDocs = await db.ehrDocuments.toArray()
+      for (const doc of ehrDocs) {
+        const isTemp =
+          String(doc.id).startsWith("temp-") ||
+          String(doc.id).startsWith("EHR-") ||
+          doc.sync_status === "pending_create"
+        if (isTemp && !queuedTempIds.has(doc.id)) {
+          console.log(
+            `[SyncEngine] Auto-recovering offline EHR document ${doc.id} to outbox queue...`
+          )
+          await db.offlineQueue.add({
+            client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            entity_type: "ehr_doc",
+            action: "CREATE",
+            endpoint: "/api/v1/ehr/register",
+            method: "POST",
+            payload: {
+              title: doc.title || doc.document_name,
+              category: doc.category,
+              patient_name: doc.patientName || doc.patient_name,
+              security_level: doc.securityLevel || doc.security_level,
+              format: doc.format,
+              size: doc.size,
+              file_url: doc.fileUrl || doc.file_url,
+              uploaded_by: doc.uploadedBy || doc.uploaded_by,
+              mother_id: doc.mother_id,
+              facility_id: doc.facility_id,
+            },
+            temp_id: doc.id,
+            retry_count: 0,
+            created_at: Date.now(),
+          })
+          queuedTempIds.add(doc.id)
         }
       }
     } catch (err) {
