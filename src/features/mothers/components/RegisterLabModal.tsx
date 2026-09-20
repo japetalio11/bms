@@ -136,11 +136,6 @@ export function RegisterLabModal({
       return
     }
 
-    if (!visitId) {
-      setError("A recorded visitation encounter is required for lab screening.")
-      return
-    }
-
     if (!screeningType || !result || !screeningDate) {
       setError("Please fill in screening type, result, and screening date.")
       return
@@ -159,7 +154,7 @@ export function RegisterLabModal({
       const payload = {
         mother_id: motherId,
         pregnancy_id: pregnancyId,
-        visit_id: visitId,
+        visit_id: (visitId && visitId !== "baseline") ? visitId : undefined,
         screening_type: screeningType,
         result: result,
         file_url: fileUrl || undefined,
@@ -215,6 +210,8 @@ export function RegisterLabModal({
                       matching[0].id ||
                       ""
                   )
+                } else {
+                  setVisitId("baseline")
                 }
               }}
             >
@@ -237,27 +234,24 @@ export function RegisterLabModal({
 
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs font-medium text-foreground">
-              Associated Visit *
+              Associated Visit
             </Label>
-            <Select value={visitId} onValueChange={setVisitId}>
+            <Select value={visitId || "baseline"} onValueChange={setVisitId}>
               <SelectTrigger className="!h-9 border-border bg-card text-xs text-card-foreground">
                 <SelectValue placeholder="Select Visit" />
               </SelectTrigger>
               <SelectContent>
                 {availableVisits.length === 0 ? (
-                  <SelectItem value="none" disabled>
-                    No visits recorded yet
+                  <SelectItem value="baseline">
+                    Baseline Visit (Auto-create)
                   </SelectItem>
                 ) : (
                   availableVisits.map((v: any, idx: number) => {
                     const vId = v.visit_id || v._id || v.id || String(idx)
                     return (
                       <SelectItem key={vId} value={vId}>
-                        Visit #{v.visit_number || idx + 1} (
-                        {v.visit_date
-                          ? new Date(v.visit_date).toLocaleDateString()
-                          : "N/A"}
-                        )
+                        Visit #{v.visit_number || idx + 1} -{" "}
+                        {format(new Date(v.visit_date), "MMM d, yyyy")}
                       </SelectItem>
                     )
                   })
