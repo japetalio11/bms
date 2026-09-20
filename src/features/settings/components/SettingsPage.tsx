@@ -10,6 +10,9 @@ import {
   Smartphone,
   CheckCircle2,
   AlertCircle,
+  Upload,
+  ImageIcon,
+  Trash2,
 } from "lucide-react"
 
 import { toast } from "sonner"
@@ -17,6 +20,7 @@ import { db } from "@/lib/db/bmsDatabase"
 import { syncEngine } from "@/lib/sync/syncEngine"
 import { useSettings } from "@/features/settings/hooks/useSettings"
 import { apiClient } from "@/lib/apiClient"
+import { mothersApi } from "@/features/mothers/api/mothersApi"
 import { useNetworkStatus } from "@/hooks/useNetworkStatus"
 import { setupPin } from "@/lib/security/pinSessionStore"
 
@@ -55,6 +59,7 @@ export function SettingsPage() {
   const [contactNumber, setContactNumber] = useState("")
   const [officialEmail, setOfficialEmail] = useState("")
   const [completeAddress, setCompleteAddress] = useState("")
+  const [facilityLogo, setFacilityLogo] = useState("")
   const [facilityId, setFacilityId] = useState("")
   const [userRole, setUserRole] = useState("")
 
@@ -64,6 +69,7 @@ export function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false)
   const [updatingSecurity, setUpdatingSecurity] = useState(false)
   const [savingFacility, setSavingFacility] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
 
   const isAdminOrAbove = React.useMemo(() => {
     const r = (userRole || "").toLowerCase()
@@ -74,6 +80,24 @@ export function SettingsPage() {
       r === "admin"
     )
   }, [userRole])
+
+  const fetchFacilityDetails = async (facId: string) => {
+    if (!facId) return
+    try {
+      const res = await apiClient.get(`/api/v1/facility/${facId}`)
+      const fac = res.data?.result || res.data?.data || res.data
+      if (fac) {
+        if (fac.facility_name) setFacilityName(fac.facility_name)
+        if (fac.type) setFacilityType(fac.type.toLowerCase())
+        if (fac.contact_number) setContactNumber(fac.contact_number)
+        if (fac.email) setOfficialEmail(fac.email)
+        if (fac.address) setCompleteAddress(fac.address)
+        if (fac.facility_profile_url) setFacilityLogo(fac.facility_profile_url)
+      }
+    } catch (err) {
+      console.warn("Failed to fetch fresh facility details:", err)
+    }
+  }
 
   useEffect(() => {
     syncEngine
@@ -115,45 +139,74 @@ export function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    db.userSession
-      .get("current_user")
-      .then((userSession) => {
-        if (userSession) {
-          setUserRole(userSession.role || userSession.cachedUser?.role || "")
-          setFirstName(
-            userSession.first_name || userSession.cachedUser?.first_name || ""
-          )
-          setLastName(
-            userSession.last_name || userSession.cachedUser?.last_name || ""
-          )
-          setPhoneNumber(
-            userSession.phone_number ||
-              userSession.cachedUser?.phone_number ||
-              ""
-          )
-          setEmail(userSession.email || userSession.cachedUser?.email || "")
+    const loadSession = async () => {
+      let resolvedFacId = ""
 
-          if (userSession.facility || userSession.cachedUser?.facility) {
-            const fac = userSession.facility || userSession.cachedUser.facility
-            setFacilityId(fac.facility_id || userSession.facility_id || "")
-            setFacilityName(fac.facility_name || "")
-            setFacilityType(fac.type?.toLowerCase() || "rhu")
-            setContactNumber(fac.contact_number || "")
-            setOfficialEmail(fac.email || "")
-            setCompleteAddress(fac.address || "")
-          }
-        } else if (typeof window !== "undefined") {
-          const storedUserStr = localStorage.getItem("user")
-          if (storedUserStr) {
-            try {
-              const parsed = JSON.parse(storedUserStr)
-              setUserRole(parsed.role || "")
-              setFacilityId(parsed.facility_id || "")
-            } catch (e) {}
-          }
+      const userSession = await db.userSession.get("current_user").catch(() => null)
+      if (userSession) {
+        setUserRole(userSession.role || userSession.cachedUser?.role || "")
+        setFirstName(
+          userSession.first_name || userSession.cachedUser?.first_name || ""
+        )
+        setLastName(
+          userSession.last_name || userSession.cachedUser?.last_name || ""
+        )
+        setPhoneNumber(
+          userSession.phone_number ||
+            userSession.cachedUser?.phone_number ||
+            ""
+        )
+        setEmail(userSession.email || userSession.cachedUser?.email || "")
+
+        const fac = userSession.facility || userSession.cachedUser?.facility
+        if (fac) {
+          resolvedFacId = fac.facility_id || userSession.facility_id || ""
+          setFacilityId(resolvedFacId)
+          setFacilityName(fac.facility_name || "")
+          setFacilityType(fac.type?.toLowerCase() || "rhu")
+          setContactNumber(fac.contact_number || "")
+          setOfficialEmail(fac.email || "")
+          setCompleteAddress(fac.address || "")
+          if (fac.facility_profile_url) setFacilityLogo(fac.facility_profile_url)
+        } else if (userSession.facility_id) {
+          resolvedFacId = userSession.facility_id
+          setFacilityId(resolvedFacId)
         }
-      })
-      .catch(console.error)
+      }
+
+      if (typeof window !== "undefined") {
+        const storedUserStr = localStorage.getItem("user")
+        if (storedUserStr) {
+          try {
+            const parsed = JSON.parse(storedUserStr)
+            if (!userRole && parsed.role) setUserRole(parsed.role)
+            if (!firstName && parsed.first_name) setFirstName(parsed.first_name)
+            if (!lastName && parsed.last_name) setLastName(parsed.last_name)
+            if (!email && parsed.email) setEmail(parsed.email)
+            if (!phoneNumber && parsed.phone_number) setPhoneNumber(parsed.phone_number)
+
+            const localFacId = parsed.facility_id || parsed.facility?.facility_id || ""
+            if (!resolvedFacId && localFacId) {
+              resolvedFacId = localFacId
+              setFacilityId(localFacId)
+            }
+
+            if (parsed.facility?.facility_name && !facilityName) {
+              setFacilityName(parsed.facility.facility_name)
+            }
+            if (parsed.facility?.facility_profile_url && !facilityLogo) {
+              setFacilityLogo(parsed.facility.facility_profile_url)
+            }
+          } catch (e) {}
+        }
+      }
+
+      if (resolvedFacId) {
+        fetchFacilityDetails(resolvedFacId)
+      }
+    }
+
+    loadSession()
   }, [])
 
   const handleSaveProfile = async () => {
@@ -293,6 +346,35 @@ export function SettingsPage() {
     }
   }
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return
+    const file = e.target.files[0]
+    setUploadingLogo(true)
+
+    try {
+      if (syncEngine.isNetworkOnline()) {
+        const res = await mothersApi.uploadLabFile(file)
+        const remoteUrl = res?.file_url || res?.fileUrl || res?.url
+        if (remoteUrl) {
+          setFacilityLogo(remoteUrl)
+          toast.success("Logo uploaded", { description: "Click Save Clinic Identification to apply changes." })
+        }
+      } else {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          setFacilityLogo(reader.result as string)
+          toast.info("Logo loaded locally", { description: "Click Save Clinic Identification to save changes." })
+        }
+        reader.readAsDataURL(file)
+      }
+    } catch (err: any) {
+      console.error("Failed to upload facility logo:", err)
+      toast.error("Upload Failed", { description: "Could not upload clinic logo image." })
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
   const handleSaveFacility = async () => {
     if (!isAdminOrAbove) {
       toast.error("Permission Denied", {
@@ -309,6 +391,7 @@ export function SettingsPage() {
       contact_number: contactNumber,
       email: officialEmail,
       address: completeAddress,
+      facility_profile_url: facilityLogo || null,
     }
 
     try {
@@ -330,6 +413,34 @@ export function SettingsPage() {
           ...facilityPayload,
         }
         await db.userSession.put(userSession)
+      }
+
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("user")
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored)
+            parsed.facility_name = facilityName
+            parsed.facility_profile_url = facilityLogo
+            if (parsed.facility) {
+              parsed.facility.facility_name = facilityName
+              parsed.facility.facility_profile_url = facilityLogo
+              parsed.facility.contact_number = contactNumber
+              parsed.facility.email = officialEmail
+              parsed.facility.address = completeAddress
+              parsed.facility.type = facilityType
+            }
+            localStorage.setItem("user", JSON.stringify(parsed))
+          } catch (e) {}
+        }
+        window.dispatchEvent(
+          new CustomEvent("bms:facility-updated", {
+            detail: {
+              facility_name: facilityName,
+              facility_profile_url: facilityLogo,
+            },
+          })
+        )
       }
     } catch (err: any) {
       console.error("Failed to update facility:", err)
@@ -609,6 +720,70 @@ export function SettingsPage() {
                     : "Read-only facility details. Admin privilege required to modify."}
                 </p>
               </div>
+              <div className="mb-6 flex flex-col gap-3 rounded-lg border border-border/70 bg-accent/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3.5">
+                  <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                    {facilityLogo ? (
+                      <img
+                        src={facilityLogo}
+                        alt="Facility Logo"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Building2 className="h-7 w-7 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-semibold text-card-foreground">
+                      Facility Logo / Branding
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Appears in the navigation sidebar, transfer slips, and reports.
+                    </span>
+                  </div>
+                </div>
+
+                {isAdminOrAbove && (
+                  <div className="flex items-center gap-2">
+                    <label
+                      htmlFor="facility-logo-upload"
+                      className={`inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-medium text-card-foreground shadow-sm transition-colors hover:bg-accent ${
+                        uploadingLogo ? "pointer-events-none opacity-50" : ""
+                      }`}
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      {uploadingLogo ? "Uploading..." : "Upload Logo"}
+                      <input
+                        id="facility-logo-upload"
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/jpg"
+                        className="hidden"
+                        onChange={handleLogoUpload}
+                        disabled={uploadingLogo || savingFacility}
+                      />
+                    </label>
+                    {facilityLogo && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setFacilityLogo("")
+                          toast.info("Logo removed", {
+                            description: "Click Save Clinic Identification to apply changes.",
+                          })
+                        }}
+                        disabled={savingFacility}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        title="Remove custom logo"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-medium text-card-foreground">

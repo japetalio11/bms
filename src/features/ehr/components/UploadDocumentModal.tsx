@@ -39,6 +39,7 @@ export function UploadDocumentModal({
   const [title, setTitle] = React.useState("")
   const [category, setCategory] = React.useState("Clinical Protocols")
   const [patientName, setPatientName] = React.useState("Facility General")
+  const [selectedMotherId, setSelectedMotherId] = React.useState<string | undefined>(undefined)
   const [securityLevel, setSecurityLevel] = React.useState("Confidential")
   const [file, setFile] = React.useState<File | null>(null)
   const [fileUrl, setFileUrl] = React.useState<string | undefined>(undefined)
@@ -160,6 +161,10 @@ export function UploadDocumentModal({
         }
       }
 
+      const userStr = localStorage.getItem("user")
+      const user = userStr ? JSON.parse(userStr) : null
+      const facilityId = user?.facility_id || user?.facilityId
+
       const newDoc = {
         id: `EHR-${Date.now().toString().slice(-6)}`,
         title: finalTitle,
@@ -175,8 +180,10 @@ export function UploadDocumentModal({
           day: "numeric",
           year: "numeric",
         }),
-        uploadedBy: "Current Healthcare Staff",
+        uploadedBy: user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Current Healthcare Staff" : "Current Healthcare Staff",
         fileUrl: finalFileUrl,
+        mother_id: selectedMotherId || undefined,
+        facility_id: facilityId || undefined,
       }
 
       if (onSuccess) {
@@ -190,6 +197,7 @@ export function UploadDocumentModal({
         setTitle("")
         setCategory("Clinical Protocols")
         setPatientName("Facility General")
+        setSelectedMotherId(undefined)
         setFile(null)
         setFileUrl(undefined)
       }, 800)
@@ -280,7 +288,35 @@ export function UploadDocumentModal({
               <Label htmlFor="doc-patient" className="text-xs font-medium">
                 Associated Mother / Patient
               </Label>
-              <Select value={patientName} onValueChange={setPatientName}>
+              <Select
+                value={selectedMotherId || "general"}
+                onValueChange={(val) => {
+                  if (val === "general") {
+                    setSelectedMotherId(undefined)
+                    setPatientName("Facility General")
+                  } else {
+                    setSelectedMotherId(val)
+                    const chosenMother = mothers.find(
+                      (m: any) => (m.mother_id || m.id || m.user_id) === val
+                    )
+                    if (chosenMother) {
+                      const userObj = chosenMother.user || chosenMother
+                      const name =
+                        [
+                          userObj.first_name,
+                          userObj.middle_name,
+                          userObj.last_name,
+                        ]
+                          .filter(Boolean)
+                          .join(" ") ||
+                        chosenMother.name ||
+                        chosenMother.full_name ||
+                        "Patient Record"
+                      setPatientName(name)
+                    }
+                  }
+                }}
+              >
                 <SelectTrigger
                   id="doc-patient"
                   className="h-9 w-full min-w-0 text-xs"
@@ -288,7 +324,7 @@ export function UploadDocumentModal({
                   <SelectValue placeholder="Select Mother / Patient" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Facility General">
+                  <SelectItem value="general">
                     Facility General (No specific mother)
                   </SelectItem>
                   {mothers.map((m: any) => {
@@ -306,7 +342,7 @@ export function UploadDocumentModal({
                       "Patient Record"
                     const motherKey = m.mother_id || m.id || m.user_id
                     return (
-                      <SelectItem key={motherKey} value={name}>
+                      <SelectItem key={motherKey} value={motherKey}>
                         {name}
                       </SelectItem>
                     )

@@ -516,7 +516,7 @@ export function MothersPage() {
                     No records match your current criteria. Register a new mother to get started.
                   </p>
                   <Button
-                    onClick={() => setIsRegisterOpen(true)}
+                    onClick={() => setRegisterModalOpen(true)}
                     className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
                   >
                     <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Register Mother
@@ -577,7 +577,7 @@ export function MothersPage() {
                   No records match your current criteria. Register a new mother to get started.
                 </p>
                 <Button
-                  onClick={() => setIsRegisterOpen(true)}
+                  onClick={() => setRegisterModalOpen(true)}
                   className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
                 >
                   <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Register Mother
