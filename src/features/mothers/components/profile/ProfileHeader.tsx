@@ -10,12 +10,16 @@ import {
   Baby,
   Pencil,
   Building2,
+  UserCheck,
+  UserX,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
 import { extractRiskLevel } from "@/lib/riskUtils"
+import { useLiveQuery } from "dexie-react-hooks"
+import { db } from "@/lib/db/bmsDatabase"
 
 interface ProfileHeaderProps {
   motherData: any
@@ -24,6 +28,8 @@ interface ProfileHeaderProps {
   onEditClick: () => void
   onLogVitalsClick: () => void
   onAvatarClick: () => void
+  onAssignStaffClick?: () => void
+  isAdmin?: boolean
 }
 
 export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
@@ -34,7 +40,47 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
     onEditClick,
     onLogVitalsClick,
     onAvatarClick,
+    onAssignStaffClick,
+    isAdmin: propIsAdmin,
   }) => {
+    const sessionUser = useLiveQuery(() => db.userSession.get("current_user"))
+    const currentUser = useMemo(() => {
+      if (sessionUser) return sessionUser
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("user")
+        if (stored) {
+          try {
+            return JSON.parse(stored)
+          } catch {}
+        }
+      }
+      return null
+    }, [sessionUser])
+
+    const isAdmin = useMemo(() => {
+      if (propIsAdmin !== undefined) return propIsAdmin
+      return (
+        currentUser?.role === "Admin" || currentUser?.role === "SystemAdmin"
+      )
+    }, [propIsAdmin, currentUser])
+
+    const assignedStaff = useMemo(() => {
+      return (
+        motherData?.assignedWorker ||
+        motherData?.assigned_worker ||
+        motherData?.assignedStaff ||
+        null
+      )
+    }, [motherData])
+
+    const assignedStaffName = useMemo(() => {
+      if (!assignedStaff) return null
+      return (
+        [assignedStaff.first_name, assignedStaff.last_name]
+          .filter(Boolean)
+          .join(" ") || "Healthcare Worker"
+      )
+    }, [assignedStaff])
     const currentPregnancy = useMemo(
       () => pregnancies[0] || motherData?.pregnancies?.[0] || null,
       [pregnancies, motherData]
@@ -222,9 +268,20 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
                 </h2>
                 {getRiskBadge(risk)}
               </div>
-              {connectedFacilities.length > 0 && (
-                <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                  {connectedFacilities.map((fac, idx) => (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {assignedStaff ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                    <UserCheck className="h-3 w-3" />
+                    Care Provider: {assignedStaffName} ({assignedStaff.role || "Staff"})
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    <UserX className="h-3 w-3 opacity-60" />
+                    Unassigned Care Provider
+                  </span>
+                )}
+                {connectedFacilities.length > 0 &&
+                  connectedFacilities.map((fac, idx) => (
                     <span
                       key={idx}
                       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
@@ -238,12 +295,22 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
                       {fac.isHome ? " (Home)" : ""}
                     </span>
                   ))}
-                </div>
-              )}
+              </div>
             </div>
           </div>
 
-          <div className="flex w-full items-center gap-2 md:w-auto">
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
+            {isAdmin && onAssignStaffClick && (
+              <Button
+                onClick={onAssignStaffClick}
+                variant="outline"
+                size="sm"
+                className="h-9 flex-1 gap-1.5 border-primary/30 bg-primary/5 px-3 text-xs font-medium text-primary hover:bg-primary/10 md:flex-none"
+              >
+                <UserCheck className="h-3.5 w-3.5" />
+                {assignedStaff ? "Change Staff" : "Assign Staff"}
+              </Button>
+            )}
             <Button
               onClick={onEditClick}
               variant="outline"

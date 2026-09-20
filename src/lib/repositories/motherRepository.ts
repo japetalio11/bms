@@ -110,6 +110,11 @@ export const motherRepository = {
                 middle_name: middleName,
                 phone_number: phoneNumber,
                 photo_url: photoUrl,
+                assigned_worker_id: m.assigned_worker_id || m.assignedWorker?.user_id,
+                created_by_id: m.created_by_id || m.creator?.user_id,
+                assignedWorker: m.assignedWorker || m.assigned_worker,
+                assigned_worker: m.assignedWorker || m.assigned_worker,
+                creator: m.creator,
                 facility_id: m.facility_id || m.user?.facility_id || facilityId,
                 facility_ids: facilityIds,
                 facilityEnrollments: enrollments,
@@ -323,7 +328,31 @@ export const motherRepository = {
       )
     }
 
-    return result.length > 0 ? result : deduplicated
+    let currentUser: any = null
+    try {
+      currentUser = await db.userSession.get("current_user")
+      if (!currentUser && typeof window !== "undefined") {
+        const stored = localStorage.getItem("user")
+        if (stored) currentUser = JSON.parse(stored)
+      }
+    } catch {}
+
+    const isHealthcareStaff =
+      currentUser?.role &&
+      !["SystemAdmin", "Admin", "Mother"].includes(currentUser.role)
+    const currentUserId = currentUser?.user_id || currentUser?.id
+
+    if (isHealthcareStaff && currentUserId) {
+      result = result.filter(
+        (m) =>
+          m.assigned_worker_id === currentUserId ||
+          m.created_by_id === currentUserId ||
+          m.assignedWorker?.user_id === currentUserId ||
+          m.creator?.user_id === currentUserId
+      )
+    }
+
+    return result
   },
 
   async getCompositeProfile(targetId: string): Promise<any> {
@@ -2114,5 +2143,62 @@ export const motherRepository = {
       homeFacility: local?.facility || null,
       enrollments: local?.facilityEnrollments || [],
     }
+  },
+
+  async assignStaff(
+    motherId: string,
+    assignedWorkerId: string,
+    staffData?: any
+  ): Promise<any> {
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.put(
+          `/api/v1/mother/assign-staff/${motherId}`,
+          { assigned_worker_id: assignedWorkerId }
+        )
+        const updated = response.data?.result || response.data
+        if (updated) {
+          const mId = updated.mother_id || updated.id || motherId
+          await db.mothers
+            .where("id")
+            .equals(mId)
+            .modify({
+              assigned_worker_id: assignedWorkerId,
+              assignedWorker: updated.assignedWorker || staffData,
+              assigned_worker: updated.assignedWorker || staffData,
+              updated_at: Date.now(),
+            })
+            .catch(() => {})
+        }
+        return response.data
+      } catch (err) {
+        console.warn(
+          "[motherRepository] assignStaff online call failed, queuing offline:",
+          err
+        )
+      }
+    }
+
+    await syncEngine.queueMutation({
+      client_mutation_id: `assign-staff-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      entity_type: "mother",
+      action: "UPDATE",
+      endpoint: `/api/v1/mother/assign-staff/${motherId}`,
+      method: "PUT",
+      payload: { assigned_worker_id: assignedWorkerId },
+    })
+
+    await db.mothers
+      .where("id")
+      .equals(motherId)
+      .modify({
+        assigned_worker_id: assignedWorkerId,
+        assignedWorker: staffData,
+        assigned_worker: staffData,
+        updated_at: Date.now(),
+      })
+      .catch(() => {})
+
+    return { success: true, offline: true }
   },
 }

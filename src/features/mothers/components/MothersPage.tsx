@@ -18,6 +18,8 @@ import {
   Search,
   QrCode,
   Users,
+  UserCheck,
+  UserX,
 } from "lucide-react"
 import { extractRiskLevel } from "@/lib/riskUtils"
 
@@ -51,6 +53,7 @@ import { UnifiedTableLoader } from "@/components/ui/unified-table-loader"
 import { RegisterMotherModal } from "./RegisterMotherModal"
 import { ConnectMotherModal } from "./ConnectMotherModal"
 import { ExportMaternalDataModal } from "./ExportMaternalDataModal"
+import { AssignStaffModal } from "./AssignStaffModal"
 import { formatDate } from "@/lib/utils"
 import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
 import { toast } from "sonner"
@@ -62,6 +65,8 @@ export function MothersPage() {
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
   const [connectModalOpen, setConnectModalOpen] = useState(false)
   const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [assignModalOpen, setAssignModalOpen] = useState(false)
+  const [assignModalMother, setAssignModalMother] = useState<any>(null)
   const [motherToDelete, setMotherToDelete] = useState<any>(null)
   const [isDeletingMother, setIsDeletingMother] = useState(false)
   const [motherList, setMotherList] = useState<any[]>([])
@@ -71,6 +76,13 @@ export function MothersPage() {
   const [selectedBarangayFilters, setSelectedBarangayFilters] = useState<
     string[]
   >([])
+
+  const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null
+  const currentUser = userStr ? JSON.parse(userStr) : null
+  const isAdmin =
+    currentUser?.role === "SystemAdmin" ||
+    currentUser?.role === "Admin" ||
+    currentUser?.role === "FacilityAdmin"
 
   const fetchMothers = async () => {
     setLoading(true)
@@ -137,6 +149,14 @@ export function MothersPage() {
           : "N/A"
       const station = m.user?.address || m.address || "N/A"
 
+      const assignedWorker = m.assignedWorker || m.assigned_worker || null
+      const assignedStaffName = assignedWorker?.first_name
+        ? `${assignedWorker.first_name} ${assignedWorker.last_name || ""}`.trim()
+        : m.assigned_worker_id
+          ? "Assigned Staff"
+          : "Unassigned"
+      const assignedStaffRole = assignedWorker?.role || null
+
       return {
         id: m.id || m._id || m.mother_id || m.user_id,
         rawMother: m,
@@ -145,6 +165,9 @@ export function MothersPage() {
         gestationalAge,
         edd: eddVal,
         station,
+        assignedWorker,
+        assignedStaffName,
+        assignedStaffRole,
       }
     })
     .filter((m) => {
@@ -561,6 +584,21 @@ export function MothersPage() {
                           {mother.station}
                         </span>
                       </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                          Assigned Staff
+                        </span>
+                        <span className="text-xs font-medium text-foreground dark:text-white">
+                          {mother.assignedStaffName !== "Unassigned" ? (
+                            <span className="inline-flex items-center gap-1 text-primary">
+                              <UserCheck className="h-3 w-3" />
+                              {mother.assignedStaffName}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">Unassigned</span>
+                          )}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -609,6 +647,9 @@ export function MothersPage() {
                       <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                         Address
                       </TableHead>
+                      <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
+                        Assigned Staff
+                      </TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -636,6 +677,9 @@ export function MothersPage() {
                           </TableCell>
                           <TableCell>
                             <Skeleton className="h-4 w-28" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-24" />
                           </TableCell>
                           <TableCell>
                             <Skeleton className="h-6 w-6 rounded-md" />
@@ -666,6 +710,22 @@ export function MothersPage() {
                           </TableCell>
                           <TableCell className="text-xs whitespace-nowrap text-foreground">
                             {mother.station}
+                          </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap text-foreground">
+                            {mother.assignedStaffName !== "Unassigned" ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                                <UserCheck className="h-3 w-3" />
+                                {mother.assignedStaffName}
+                                {mother.assignedStaffRole && (
+                                  <span className="opacity-70">({mother.assignedStaffRole})</span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                <UserX className="h-3 w-3 opacity-60" />
+                                Unassigned
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <DropdownMenu>
@@ -704,6 +764,18 @@ export function MothersPage() {
                                 >
                                   Edit Profile
                                 </DropdownMenuItem>
+                                {isAdmin && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setAssignModalMother(mother)
+                                      setAssignModalOpen(true)
+                                    }}
+                                    className="cursor-pointer rounded-md text-xs text-primary focus:text-primary"
+                                  >
+                                    Assign Staff
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem
                                   onClick={(e) => {
                                     e.stopPropagation()
@@ -790,6 +862,23 @@ export function MothersPage() {
       <ConnectMotherModal
         open={connectModalOpen}
         onOpenChange={setConnectModalOpen}
+        onSuccess={fetchMothers}
+      />
+      <AssignStaffModal
+        open={assignModalOpen}
+        onOpenChange={setAssignModalOpen}
+        motherId={assignModalMother?.id || assignModalMother?.mother_id || ""}
+        motherName={assignModalMother?.name}
+        currentStaffId={
+          assignModalMother?.rawMother?.assigned_worker_id ||
+          assignModalMother?.rawMother?.assignedWorker?.user_id ||
+          assignModalMother?.assignedWorker?.user_id
+        }
+        currentStaffName={
+          assignModalMother?.assignedStaffName !== "Unassigned"
+            ? assignModalMother?.assignedStaffName
+            : undefined
+        }
         onSuccess={fetchMothers}
       />
       <ConfirmDeleteModal
