@@ -56,9 +56,11 @@ export function InboxSidebar({
           .catch(() => {})
       }
 
-      if (currentUser.role === "SystemAdmin" || !userFacilityId) {
-        return allMothers
-      }
+      const isFacilityAdmin =
+        currentUser.role === "SystemAdmin" ||
+        currentUser.role === "Admin" ||
+        currentUser.role === "FacilityAdmin"
+      const currentUserId = currentUser.user_id || currentUser.id
 
       return allMothers.filter((m: any) => {
         const mFac =
@@ -67,7 +69,14 @@ export function InboxSidebar({
           m.facilityId ||
           m.rawMother?.facility_id
 
-        return !mFac || mFac === userFacilityId
+        const matchesFacility = !userFacilityId || !mFac || mFac === userFacilityId
+        if (!matchesFacility) return false
+
+        if (isFacilityAdmin) return true
+
+        const assignedId = m.assigned_worker_id || m.assignedWorker?.user_id
+        const createdId = m.created_by_id || m.creator?.user_id || m.user?.created_by_id
+        return assignedId === currentUserId || createdId === currentUserId
       })
     }, [currentUser]) ?? []
 

@@ -8,6 +8,11 @@ export interface LocalMother {
   phone_number?: string
   facility_id?: string
   facility_ids?: string[]
+  assigned_worker_id?: string
+  created_by_id?: string
+  assignedWorker?: any
+  assigned_worker?: any
+  creator?: any
   facilityEnrollments?: Array<{
     facility_id: string
     status: string
@@ -283,6 +288,31 @@ export class BMSDatabase extends Dexie {
     this.version(5).stores({
       mothers:
         "id, mother_id, user_id, facility_id, phone_number, sync_status, updated_at",
+      pregnancies: "id, pregnancy_id, mother_id, sync_status, updated_at",
+      prenatalVisits:
+        "id, visit_id, pregnancy_id, mother_id, visit_date, sync_status, updated_at",
+      appointments:
+        "id, appointment_id, mother_id, user_id, facility_id, appointment_date, status, sync_status, updated_at",
+      labRecords:
+        "id, screening_id, pregnancy_id, mother_id, sync_status, updated_at",
+      supplements:
+        "id, supplement_id, pregnancy_id, mother_id, sync_status, updated_at",
+      ehrDocuments: "id, mother_id, sync_status, updated_at",
+      messages:
+        "id, sender_id, receiver_id, message_date, is_read, sync_status, updated_at",
+      referrals:
+        "id, referral_id, pregnancy_id, from_facility_id, to_facility_id, status, sync_status, updated_at",
+      notifications:
+        "id, notification_id, user_id, notification_type, is_read, sync_status, updated_at",
+      offlineQueue:
+        "++id, client_mutation_id, entity_type, created_at, retry_count",
+      blobs: "id",
+      userSession: "id",
+    })
+
+    this.version(6).stores({
+      mothers:
+        "id, mother_id, user_id, facility_id, assigned_worker_id, created_by_id, phone_number, sync_status, updated_at",
       pregnancies: "id, pregnancy_id, mother_id, sync_status, updated_at",
       prenatalVisits:
         "id, visit_id, pregnancy_id, mother_id, visit_date, sync_status, updated_at",

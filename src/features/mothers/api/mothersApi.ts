@@ -121,4 +121,8 @@ export const mothersApi = {
   async assignFacility(motherCode: string) {
     return await motherRepository.assignFacility(motherCode)
   },
+
+  async assignStaff(motherId: string, assignedWorkerId: string, staffData?: any) {
+    return await motherRepository.assignStaff(motherId, assignedWorkerId, staffData)
+  },
 }

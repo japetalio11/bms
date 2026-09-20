@@ -17,6 +17,7 @@ import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 
+import { apiClient } from "@/lib/apiClient"
 import { mothersApi } from "../api"
 
 export function RegisterMotherModal({ 
@@ -41,16 +42,37 @@ export function RegisterMotherModal({
   const [familySerialNo, setFamilySerialNo] = React.useState("")
   const [civilStatus, setCivilStatus] = React.useState("Single")
   const [bloodType, setBloodType] = React.useState("O+")
+  const [assignedWorkerId, setAssignedWorkerId] = React.useState<string>("")
+  const [facilityStaff, setFacilityStaff] = React.useState<any[]>([])
   const [password] = React.useState("Mother@123")
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+
+  const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null
+  const currentUser = userStr ? JSON.parse(userStr) : null
+  const isAdmin =
+    currentUser?.role === "SystemAdmin" ||
+    currentUser?.role === "Admin" ||
+    currentUser?.role === "FacilityAdmin"
 
   React.useEffect(() => {
     if (!open) {
       setTimeout(() => setStep(1), 300)
       setError(null)
+      setAssignedWorkerId("")
+    } else if (isAdmin) {
+      apiClient
+        .get("/api/v1/user/facility")
+        .then((res) => {
+          const list = res.data?.result || res.data?.data || []
+          const staff = Array.isArray(list)
+            ? list.filter((u: any) => u.role !== "Mother")
+            : []
+          setFacilityStaff(staff)
+        })
+        .catch(() => {})
     }
-  }, [open])
+  }, [open, isAdmin])
 
   const handleRegister = async () => {
     if (!firstName || !lastName || !address || !dob) {
@@ -61,8 +83,7 @@ export function RegisterMotherModal({
     setLoading(true)
     setError(null)
 
-    const userStr = localStorage.getItem("user")
-    const user = userStr ? JSON.parse(userStr) : null
+    const user = currentUser
 
     try {
       await mothersApi.registerMother({
@@ -77,6 +98,7 @@ export function RegisterMotherModal({
         blood_type: bloodType,
         family_serial_no: familySerialNo,
         facility_id: user?.facility_id || null,
+        assigned_worker_id: assignedWorkerId || undefined,
         password,
       })
 
@@ -227,6 +249,36 @@ export function RegisterMotherModal({
                 </Select>
               </div>
             </div>
+
+            {isAdmin ? (
+              <div className="flex flex-col gap-2">
+                <Label className="text-xs font-medium text-foreground">
+                  Assigned Staff / Care Provider <span className="text-muted-foreground font-normal">(Optional)</span>
+                </Label>
+                <Select
+                  value={assignedWorkerId || "none"}
+                  onValueChange={(val) => setAssignedWorkerId(val === "none" ? "" : val)}
+                >
+                  <SelectTrigger className="!h-8 bg-card border-border text-xs text-foreground">
+                    <SelectValue placeholder="Assign a healthcare staff member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-- Leave Unassigned --</SelectItem>
+                    {facilityStaff.map((staff) => (
+                      <SelectItem key={staff.user_id} value={staff.user_id}>
+                        {staff.first_name} {staff.last_name} ({staff.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="rounded-md border border-primary/20 bg-primary/5 p-2.5 text-xs text-muted-foreground">
+                <span className="font-medium text-primary">Care Assignment:</span> This mother will automatically be assigned to you (
+                {currentUser?.first_name ? `${currentUser.first_name} ${currentUser.last_name || ""}` : "your account"}
+                ) upon registration.
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 pt-4 border-t border-border mt-2">
               <Button variant="ghost" onClick={() => setStep(1)} className="h-8 text-xs">

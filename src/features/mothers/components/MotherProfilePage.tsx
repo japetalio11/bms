@@ -19,6 +19,7 @@ import { RegisterPregnancyModal } from "./RegisterPregnancyModal"
 import { RegisterAppointmentModal } from "./RegisterAppointmentModal"
 import { RegisterLabModal } from "./RegisterLabModal"
 import { RegisterSupplementModal } from "./RegisterSupplementModal"
+import { AssignStaffModal } from "./AssignStaffModal"
 import { DetailSideSheet } from "./DetailSideSheet"
 import { extractRiskLevel } from "@/lib/riskUtils"
 
@@ -32,6 +33,7 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [avatarModalOpen, setAvatarModalOpen] = useState(false)
   const [logVitalsModalOpen, setLogVitalsModalOpen] = useState(false)
+  const [assignStaffModalOpen, setAssignStaffModalOpen] = useState(false)
   const [registerPregnancyModalOpen, setRegisterPregnancyModalOpen] =
     useState(false)
   const [appointmentModalOpen, setAppointmentModalOpen] = useState(false)
@@ -202,6 +204,7 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
             onEditClick={() => setEditModalOpen(true)}
             onLogVitalsClick={() => setLogVitalsModalOpen(true)}
             onAvatarClick={() => setAvatarModalOpen(true)}
+            onAssignStaffClick={() => setAssignStaffModalOpen(true)}
           />
 
           <div className="sticky top-0 z-10 -mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto bg-background pt-2 pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
@@ -339,6 +342,28 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
         onOpenChange={setSideSheetOpen}
         type={sideSheetType}
         data={selectedRecord}
+        motherName={motherName}
+        onSuccess={refresh}
+      />
+      <AssignStaffModal
+        open={assignStaffModalOpen}
+        onOpenChange={setAssignStaffModalOpen}
+        motherId={
+          fullMotherData?.mother_id ||
+          fullMotherData?._id ||
+          fullMotherData?.id ||
+          targetId ||
+          ""
+        }
+        currentStaffId={
+          fullMotherData?.assigned_worker_id ||
+          fullMotherData?.assignedWorker?.user_id
+        }
+        currentStaffName={
+          fullMotherData?.assignedWorker
+            ? `${fullMotherData.assignedWorker.first_name} ${fullMotherData.assignedWorker.last_name}`
+            : undefined
+        }
         motherName={motherName}
         onSuccess={refresh}
       />
