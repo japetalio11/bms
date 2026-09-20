@@ -2179,13 +2179,13 @@ export const motherRepository = {
       }
     }
 
-    await syncEngine.queueMutation({
-      client_mutation_id: `assign-staff-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    await syncEngine.enqueueMutation({
       entity_type: "mother",
       action: "UPDATE",
       endpoint: `/api/v1/mother/assign-staff/${motherId}`,
       method: "PUT",
       payload: { assigned_worker_id: assignedWorkerId },
+      temp_id: motherId.startsWith("temp-") ? motherId : undefined,
     })
 
     await db.mothers
