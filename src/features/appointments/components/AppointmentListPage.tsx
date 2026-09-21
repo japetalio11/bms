@@ -1,5 +1,5 @@
 import * as React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { AppointmentSidepeek } from "@/features/dashboard/components/AppointmentSidepeek"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -169,157 +169,159 @@ export function AppointmentListPage() {
     }
   }
 
-  const formattedAppointments = appointmentList.map((item: any) => {
-    const targetKey =
-      item.mother_id || item.user_id || item.motherId || item.userId
-    const matchedMother = targetKey ? mothersMap.get(targetKey) : null
-    const motherUser =
-      item.user ||
-      item.patient?.user ||
-      item.patient ||
-      matchedMother?.user ||
-      matchedMother
+  const formattedAppointments = useMemo(() => {
+    return appointmentList.map((item: any) => {
+      const targetKey =
+        item.mother_id || item.user_id || item.motherId || item.userId
+      const matchedMother = targetKey ? mothersMap.get(targetKey) : null
+      const motherUser =
+        item.user ||
+        item.patient?.user ||
+        item.patient ||
+        matchedMother?.user ||
+        matchedMother
 
-    const name =
-      [
-        motherUser?.first_name || matchedMother?.first_name,
-        motherUser?.middle_name || matchedMother?.middle_name,
-        motherUser?.last_name || matchedMother?.last_name,
-      ]
-        .filter(Boolean)
-        .join(" ") ||
-      motherUser?.name ||
-      matchedMother?.name ||
-      "Unknown Mother"
+      const name =
+        [
+          motherUser?.first_name || matchedMother?.first_name,
+          motherUser?.middle_name || matchedMother?.middle_name,
+          motherUser?.last_name || matchedMother?.last_name,
+        ]
+          .filter(Boolean)
+          .join(" ") ||
+        motherUser?.name ||
+        matchedMother?.name ||
+        "Unknown Mother"
 
-    const currentPregnancy =
-      matchedMother?.pregnancies?.[0] || matchedMother?.pregnancy
-    const visits = [
-      ...(matchedMother?.prenatalVisits || []),
-      ...(currentPregnancy?.prenatalVisits || []),
-      ...(Array.isArray(matchedMother?.pregnancies)
-        ? matchedMother.pregnancies.flatMap((p: any) => p.prenatalVisits || [])
-        : []),
-    ]
-    const risk = extractRiskLevel(
-      matchedMother || item,
-      matchedMother?.pregnancies,
-      visits
-    )
+      const risk = extractRiskLevel(
+        matchedMother || item,
+        matchedMother?.pregnancies,
+        matchedMother?.prenatalVisits
+      )
 
-    let dateStr = "N/A"
-    if (item.appointment_date) {
-      const d = new Date(item.appointment_date)
-      if (!isNaN(d.getTime())) {
-        dateStr = d.toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })
+      let dateStr = "N/A"
+      if (item.appointment_date) {
+        const d = new Date(item.appointment_date)
+        if (!isNaN(d.getTime())) {
+          dateStr = d.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })
+        }
       }
-    }
-    if (item.appointment_time) {
-      dateStr =
-        dateStr !== "N/A"
-          ? `${dateStr} - ${item.appointment_time}`
-          : item.appointment_time
-    }
+      if (item.appointment_time) {
+        dateStr =
+          dateStr !== "N/A"
+            ? `${dateStr} - ${item.appointment_time}`
+            : item.appointment_time
+      }
 
-    const appDate = item.appointment_date
-      ? new Date(item.appointment_date)
-      : null
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const isPast = appDate ? appDate < today : false
+      const appDate = item.appointment_date
+        ? new Date(item.appointment_date)
+        : null
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const isPast = appDate ? appDate < today : false
 
-    let status = item.status || "Pending"
-    const lowerStatus = status.toLowerCase()
-    if (lowerStatus === "completed") {
-      status = "Completed"
-    } else if (lowerStatus === "cancelled") {
-      status = "Cancelled"
-    } else if (isPast) {
-      status = "Missed"
-    } else if (
-      lowerStatus === "confirmed" ||
-      lowerStatus === "active" ||
-      lowerStatus === "scheduled"
-    ) {
-      status = "Confirmed"
-    } else {
-      status = "Pending"
-    }
+      let status = item.status || "Pending"
+      const lowerStatus = status.toLowerCase()
+      if (lowerStatus === "completed") {
+        status = "Completed"
+      } else if (lowerStatus === "cancelled") {
+        status = "Cancelled"
+      } else if (isPast) {
+        status = "Missed"
+      } else if (
+        lowerStatus === "confirmed" ||
+        lowerStatus === "active" ||
+        lowerStatus === "scheduled"
+      ) {
+        status = "Confirmed"
+      } else {
+        status = "Pending"
+      }
 
-    return {
-      id: item.appointment_id || item.id,
-      raw: item,
-      mother_id:
-        item.mother_id ||
-        matchedMother?.mother_id ||
-        matchedMother?.id ||
-        item.user_id,
-      user_id: item.user_id || matchedMother?.user_id,
-      pregnancy_id:
-        item.pregnancy_id ||
-        matchedMother?.pregnancies?.[0]?.pregnancy_id ||
-        matchedMother?.pregnancies?.[0]?.id,
-      mother: matchedMother,
-      name,
-      risk,
-      status,
-      isPast,
-      type: item.appointment_type || "Prenatal Checkup",
-      date: dateStr,
-      rawDate: item.appointment_date,
-    }
-  })
+      return {
+        id: item.appointment_id || item.id,
+        raw: item,
+        mother_id:
+          item.mother_id ||
+          matchedMother?.mother_id ||
+          matchedMother?.id ||
+          item.user_id,
+        user_id: item.user_id || matchedMother?.user_id,
+        pregnancy_id:
+          item.pregnancy_id ||
+          matchedMother?.pregnancies?.[0]?.pregnancy_id ||
+          matchedMother?.pregnancies?.[0]?.id,
+        mother: matchedMother,
+        name,
+        risk,
+        status,
+        isPast,
+        type: item.appointment_type || "Prenatal Checkup",
+        date: dateStr,
+        rawDate: item.appointment_date,
+      }
+    })
+  }, [appointmentList, mothersMap])
 
-  const filteredAppointments = formattedAppointments.filter((appointment) => {
-    if (searchQuery.trim() !== "") {
-      const q = searchQuery.toLowerCase()
-      const matchName = appointment.name.toLowerCase().includes(q)
-      const matchType = appointment.type.toLowerCase().includes(q)
-      if (!matchName && !matchType) return false
-    }
+  const filteredAppointments = useMemo(() => {
+    return formattedAppointments.filter((appointment) => {
+      if (searchQuery.trim() !== "") {
+        const q = searchQuery.toLowerCase()
+        const matchName = appointment.name.toLowerCase().includes(q)
+        const matchType = appointment.type.toLowerCase().includes(q)
+        if (!matchName && !matchType) return false
+      }
 
-    if (activeTab === "upcoming") {
-      if (
-        appointment.isPast ||
-        appointment.status === "Cancelled" ||
-        appointment.status === "Completed" ||
-        appointment.status === "Missed"
-      )
-        return false
-    } else if (activeTab === "completed") {
-      if (appointment.status !== "Completed") return false
-    } else if (activeTab === "cancelled") {
-      if (appointment.status !== "Cancelled") return false
-    }
+      if (activeTab === "upcoming") {
+        if (
+          appointment.isPast ||
+          appointment.status === "Cancelled" ||
+          appointment.status === "Completed" ||
+          appointment.status === "Missed"
+        )
+          return false
+      } else if (activeTab === "completed") {
+        if (appointment.status !== "Completed") return false
+      } else if (activeTab === "cancelled") {
+        if (appointment.status !== "Cancelled") return false
+      }
 
-    if (selectedStatusFilters.length > 0) {
-      const match = selectedStatusFilters.some((s) =>
-        appointment.status.toLowerCase().includes(s.toLowerCase())
-      )
-      if (!match) return false
-    }
+      if (selectedStatusFilters.length > 0) {
+        const match = selectedStatusFilters.some((s) =>
+          appointment.status.toLowerCase().includes(s.toLowerCase())
+        )
+        if (!match) return false
+      }
 
-    if (selectedRiskFilters.length > 0) {
-      const appVariant = getRiskVariant(appointment.risk)
-      const match = selectedRiskFilters.some(
-        (r) => appVariant === getRiskVariant(r)
-      )
-      if (!match) return false
-    }
+      if (selectedRiskFilters.length > 0) {
+        const appVariant = getRiskVariant(appointment.risk)
+        const match = selectedRiskFilters.some(
+          (r) => appVariant === getRiskVariant(r)
+        )
+        if (!match) return false
+      }
 
-    if (selectedTypeFilters.length > 0) {
-      const match = selectedTypeFilters.some((t) =>
-        appointment.type.toLowerCase().includes(t.toLowerCase())
-      )
-      if (!match) return false
-    }
+      if (selectedTypeFilters.length > 0) {
+        const match = selectedTypeFilters.some((t) =>
+          appointment.type.toLowerCase().includes(t.toLowerCase())
+        )
+        if (!match) return false
+      }
 
-    return true
-  })
+      return true
+    })
+  }, [
+    formattedAppointments,
+    searchQuery,
+    activeTab,
+    selectedStatusFilters,
+    selectedRiskFilters,
+    selectedTypeFilters,
+  ])
 
   const totalPages = Math.max(
     1,
@@ -342,35 +344,22 @@ export function AppointmentListPage() {
     }
   }
 
-  const [touchStartPos, setTouchStartPos] = useState<{
-    x: number
-    y: number
-  } | null>(null)
-  const [touchEndPos, setTouchEndPos] = useState<{
-    x: number
-    y: number
-  } | null>(null)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
   const minSwipeDistance = 50
 
   const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEndPos(null)
-    setTouchStartPos({
+    touchStartRef.current = {
       x: e.targetTouches[0].clientX,
       y: e.targetTouches[0].clientY,
-    })
+    }
   }
 
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEndPos({
-      x: e.targetTouches[0].clientX,
-      y: e.targetTouches[0].clientY,
-    })
-  }
-
-  const onTouchEndHandler = () => {
-    if (!touchStartPos || !touchEndPos) return
-    const distanceX = touchStartPos.x - touchEndPos.x
-    const distanceY = Math.abs(touchStartPos.y - touchEndPos.y)
+  const onTouchEndHandler = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return
+    const touchEnd = e.changedTouches[0]
+    if (!touchEnd) return
+    const distanceX = touchStartRef.current.x - touchEnd.clientX
+    const distanceY = Math.abs(touchStartRef.current.y - touchEnd.clientY)
 
     if (
       Math.abs(distanceX) > distanceY &&
@@ -379,16 +368,19 @@ export function AppointmentListPage() {
       const isLeftSwipe = distanceX > minSwipeDistance
       const isRightSwipe = distanceX < -minSwipeDistance
 
-      const tabs = ["all", "upcoming", "ongoing", "completed"]
+      const tabs = ["all", "upcoming", "completed", "cancelled"]
       const currentIndex = tabs.indexOf(activeTab)
 
       if (isLeftSwipe && currentIndex < tabs.length - 1) {
         setActiveTab(tabs[currentIndex + 1])
+        setCurrentPage(1)
       }
       if (isRightSwipe && currentIndex > 0) {
         setActiveTab(tabs[currentIndex - 1])
+        setCurrentPage(1)
       }
     }
+    touchStartRef.current = null
   }
 
   return (
@@ -396,7 +388,6 @@ export function AppointmentListPage() {
       <div
         className="relative flex h-full w-full min-w-0 flex-col overflow-y-auto text-foreground"
         onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
         onTouchEnd={onTouchEndHandler}
       >
         <div className="sticky top-0 z-10 flex flex-col gap-4 border-b border-border bg-background p-4 pr-4 pb-4 pl-3 md:border-none">
