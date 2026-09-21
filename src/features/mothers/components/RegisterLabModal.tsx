@@ -20,6 +20,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon, Upload, Check, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { validateLabData } from "@/lib/clinicalValidation"
 import { mothersApi } from "../api"
 
 export interface RegisterLabModalProps {
@@ -138,6 +139,17 @@ export function RegisterLabModal({
 
     if (!screeningType || !result || !screeningDate) {
       setError("Please fill in screening type, result, and screening date.")
+      return
+    }
+
+    const labVal = validateLabData({
+      screening_type: screeningType,
+      result: result,
+      date_of_screening: screeningDate.toISOString(),
+    })
+
+    if (!labVal.isValid) {
+      setError(labVal.errors.join(" "))
       return
     }
 

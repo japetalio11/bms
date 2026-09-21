@@ -186,9 +186,24 @@ export function SyncQueueDrawer({ open, onClose }: Props) {
                       <span className="text-xs capitalize text-foreground">
                         {item.action} {item.entity_type.replace("_", " ")}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(item.created_at).toLocaleTimeString()}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(item.created_at).toLocaleTimeString()}
+                        </span>
+                        {item.id && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                            onClick={async () => {
+                              if (item.id) await db.offlineQueue.delete(item.id)
+                            }}
+                            title="Dismiss item"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     <div className="text-muted-foreground truncate font-mono text-[10px]">
                       {item.endpoint}

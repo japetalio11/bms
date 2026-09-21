@@ -15,6 +15,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { validateSupplementData } from "@/lib/clinicalValidation"
 import { mothersApi } from "../api"
 
 export interface RegisterSupplementModalProps {
@@ -78,6 +79,17 @@ export function RegisterSupplementModal({
 
     if (!supplementType || !tabletsCount || !dateGiven) {
       setError("Please fill in supplement type, tablets count, and date given.")
+      return
+    }
+
+    const suppVal = validateSupplementData({
+      supplement_type: supplementType,
+      date_given: dateGiven.toISOString(),
+      tablets_given_count: Number(tabletsCount),
+    })
+
+    if (!suppVal.isValid) {
+      setError(suppVal.errors.join(" "))
       return
     }
 

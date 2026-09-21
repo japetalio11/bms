@@ -6,6 +6,10 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { calculateOfflineTEWSRisk } from "@/lib/riskUtils"
+import {
+  validatePrenatalVitals,
+  CLINICAL_LIMITS,
+} from "@/lib/clinicalValidation"
 import { mothersApi } from "@/features/mothers/api"
 import { db } from "@/lib/db/bmsDatabase"
 import { toast } from "sonner"
@@ -96,12 +100,35 @@ export function LogVitalsModal({
       return
     }
 
-    const numSys = Number(sys)
-    const numDia = Number(dia)
-    if (numDia >= numSys) {
-      toast.error("Diastolic BP cannot be equal to or higher than Systolic BP.")
+    const numWeeks = Number(gest) || 24
+    let trimester = 2
+    if (numWeeks <= 12) trimester = 1
+    else if (numWeeks > 27) trimester = 3
+
+    const validation = validatePrenatalVitals({
+      trimester,
+      age_of_gestation_weeks: numWeeks,
+      weight_kg: weight,
+      temperature_celsius: temp,
+      pulse_rate_bpm: hr,
+      bp_systolic: sys,
+      bp_diastolic: dia,
+      fundic_height_cm: fundic || undefined,
+      fetal_heart_tone_bpm: fht || undefined,
+      blood_sugar_mg_dl: sugar || undefined,
+      respiratory_rate_cpm: resp || undefined,
+      oxygen_saturation_pct: o2 || undefined,
+    })
+
+    if (!validation.isValid) {
+      toast.error(validation.errors[0] || "Invalid medical data provided", {
+        description: validation.errors.slice(1).join(" • ") || undefined,
+      })
       return
     }
+
+    const numSys = Number(sys)
+    const numDia = Number(dia)
 
     const dangerText = getDangerSignsText()
     const result = calculateOfflineTEWSRisk({
@@ -189,11 +216,6 @@ export function LogVitalsModal({
           ? `mother-${appointment.id}`
           : "unknown-mother"
       if (!targetPregnancyId) targetPregnancyId = `preg-${targetMotherId}`
-
-      const numWeeks = Number(gest) || 24
-      let trimester = 2
-      if (numWeeks <= 12) trimester = 1
-      else if (numWeeks > 27) trimester = 3
 
       let visitNumber = 1
       try {
@@ -370,6 +392,8 @@ export function LogVitalsModal({
               <Input
                 id="sys"
                 type="number"
+                min={CLINICAL_LIMITS.bp_systolic.min}
+                max={CLINICAL_LIMITS.bp_systolic.max}
                 placeholder="120"
                 value={sys}
                 onChange={(e) => setSys(e.target.value)}
@@ -383,6 +407,8 @@ export function LogVitalsModal({
               <Input
                 id="dia"
                 type="number"
+                min={CLINICAL_LIMITS.bp_diastolic.min}
+                max={CLINICAL_LIMITS.bp_diastolic.max}
                 placeholder="80"
                 value={dia}
                 onChange={(e) => setDia(e.target.value)}
@@ -396,6 +422,8 @@ export function LogVitalsModal({
               <Input
                 id="hr"
                 type="number"
+                min={CLINICAL_LIMITS.pulse_rate_bpm.min}
+                max={CLINICAL_LIMITS.pulse_rate_bpm.max}
                 placeholder="85"
                 value={hr}
                 onChange={(e) => setHr(e.target.value)}
@@ -410,6 +438,8 @@ export function LogVitalsModal({
                 id="temp"
                 type="number"
                 step="0.1"
+                min={CLINICAL_LIMITS.temperature_celsius.min}
+                max={CLINICAL_LIMITS.temperature_celsius.max}
                 placeholder="36.5"
                 value={temp}
                 onChange={(e) => setTemp(e.target.value)}
@@ -423,6 +453,8 @@ export function LogVitalsModal({
               <Input
                 id="sugar"
                 type="number"
+                min={CLINICAL_LIMITS.blood_sugar_mg_dl.min}
+                max={CLINICAL_LIMITS.blood_sugar_mg_dl.max}
                 placeholder="95"
                 value={sugar}
                 onChange={(e) => setSugar(e.target.value)}
@@ -437,6 +469,8 @@ export function LogVitalsModal({
                 id="weight"
                 type="number"
                 step="0.1"
+                min={CLINICAL_LIMITS.weight_kg.min}
+                max={CLINICAL_LIMITS.weight_kg.max}
                 placeholder="65.2"
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
@@ -450,6 +484,8 @@ export function LogVitalsModal({
               <Input
                 id="resp"
                 type="number"
+                min={CLINICAL_LIMITS.respiratory_rate_cpm.min}
+                max={CLINICAL_LIMITS.respiratory_rate_cpm.max}
                 placeholder="18"
                 value={resp}
                 onChange={(e) => setResp(e.target.value)}
@@ -463,6 +499,8 @@ export function LogVitalsModal({
               <Input
                 id="o2"
                 type="number"
+                min={CLINICAL_LIMITS.oxygen_saturation_pct.min}
+                max={CLINICAL_LIMITS.oxygen_saturation_pct.max}
                 placeholder="98"
                 value={o2}
                 onChange={(e) => setO2(e.target.value)}
@@ -484,6 +522,8 @@ export function LogVitalsModal({
               <Input
                 id="gest"
                 type="number"
+                min={CLINICAL_LIMITS.age_of_gestation_weeks.min}
+                max={CLINICAL_LIMITS.age_of_gestation_weeks.max}
                 placeholder="24"
                 value={gest}
                 onChange={(e) => setGest(e.target.value)}
@@ -497,6 +537,8 @@ export function LogVitalsModal({
               <Input
                 id="fht"
                 type="number"
+                min={CLINICAL_LIMITS.fetal_heart_tone_bpm.min}
+                max={CLINICAL_LIMITS.fetal_heart_tone_bpm.max}
                 placeholder="140"
                 value={fht}
                 onChange={(e) => setFht(e.target.value)}
@@ -510,6 +552,9 @@ export function LogVitalsModal({
               <Input
                 id="fundic"
                 type="number"
+                step="0.5"
+                min={CLINICAL_LIMITS.fundic_height_cm.min}
+                max={CLINICAL_LIMITS.fundic_height_cm.max}
                 placeholder="24"
                 value={fundic}
                 onChange={(e) => setFundic(e.target.value)}
