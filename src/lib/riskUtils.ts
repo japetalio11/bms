@@ -1,18 +1,284 @@
+export type RiskVariant = "high" | "moderate" | "low" | "none"
+
+export function getRiskVariant(
+  risk?: string | null
+): RiskVariant {
+  if (
+    !risk ||
+    risk === "N/A" ||
+    risk.trim() === "" ||
+    risk.toLowerCase() === "no risk assessed"
+  ) {
+    return "none"
+  }
+  const lower = risk.toLowerCase().trim()
+  if (
+    lower.includes("high") ||
+    lower.includes("critical") ||
+    lower.includes("severe")
+  ) {
+    return "high"
+  }
+  if (
+    lower.includes("med") ||
+    lower.includes("mod") ||
+    lower.includes("warning") ||
+    lower.includes("amber")
+  ) {
+    return "moderate"
+  }
+  if (lower.includes("low")) {
+    return "low"
+  }
+  return "low"
+}
+
+export function getRiskLabel(risk?: string | null): string {
+  const variant = getRiskVariant(risk)
+  switch (variant) {
+    case "high":
+      return "High Risk"
+    case "moderate":
+      return "Moderate"
+    case "low":
+      return "Low Risk"
+    case "none":
+    default:
+      return "No Risk Assessed"
+  }
+}
+
+export function getRiskBadgeClasses(risk?: string | null): {
+  badge: string
+  bg: string
+  text: string
+  border: string
+  dot: string
+} {
+  const variant = getRiskVariant(risk)
+  switch (variant) {
+    case "high":
+      return {
+        badge: "bg-red-500/10 text-red-500 dark:text-red-400 border-red-500/20",
+        bg: "bg-red-500/10",
+        text: "text-red-500 dark:text-red-400",
+        border: "border-red-500/20",
+        dot: "bg-red-500",
+      }
+    case "moderate":
+      return {
+        badge: "bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20",
+        bg: "bg-amber-500/10",
+        text: "text-amber-500 dark:text-amber-400",
+        border: "border-amber-500/20",
+        dot: "bg-amber-500",
+      }
+    case "low":
+      return {
+        badge: "bg-green-500/10 text-green-500 dark:text-green-400 border-green-500/20",
+        bg: "bg-green-500/10",
+        text: "text-green-500 dark:text-green-400",
+        border: "border-green-500/20",
+        dot: "bg-green-500",
+      }
+    case "none":
+    default:
+      return {
+        badge: "bg-muted text-muted-foreground border-transparent",
+        bg: "bg-muted",
+        text: "text-muted-foreground",
+        border: "border-transparent",
+        dot: "bg-muted-foreground",
+      }
+  }
+}
+
+export function normalizeRiskString(str: string): string {
+  if (!str) return "Low Risk"
+  const variant = getRiskVariant(str)
+  if (variant === "high") return "High Risk"
+  if (variant === "moderate") return "Medium Risk"
+  if (variant === "low") return "Low Risk"
+  return str
+}
+
+export interface RiskSubjectRecord {
+  risk_flag?: string | null
+  risk_level?: string | null
+  risk?: string | null
+  user?: {
+    risk_flag?: string | null
+    risk_level?: string | null
+    user_id?: string
+  } | null
+  patient?: {
+    risk_flag?: string | null
+    risk_level?: string | null
+    user?: unknown
+  } | null
+  pregnancies?: Array<Record<string, unknown>>
+  pregnancy?: Record<string, unknown>
+  prenatalVisits?: Array<Record<string, unknown>>
+  visits?: Array<Record<string, unknown>>
+  prenatal_visits?: Array<Record<string, unknown>>
+  cdssAlerts?: Array<Record<string, unknown>>
+  alerts?: Array<Record<string, unknown>>
+  [key: string]: unknown
+}
+
 export function extractRiskLevel(
-  motherOrItem: any,
+  motherOrItem?: any,
   pregnancies?: any[],
   visits?: any[]
 ): string {
   if (!motherOrItem) return "Low Risk"
 
+  const castItem = (motherOrItem || {}) as RiskSubjectRecord
+
+  const pregs =
+    pregnancies ||
+    castItem.pregnancies ||
+    (castItem.pregnancy ? [castItem.pregnancy] : [])
+
+  // 2. Gather all visits from parameters, mother object, and all pregnancies
+  const rawVisits = [
+    ...(visits || []),
+    ...(castItem.prenatalVisits || []),
+    ...(castItem.visits || []),
+    ...(castItem.prenatal_visits || []),
+    ...(Array.isArray(pregs)
+      ? pregs.flatMap(
+          (p: Record<string, unknown>) =>
+            (p.prenatalVisits as Array<Record<string, unknown>>) ||
+            (p.visits as Array<Record<string, unknown>>) ||
+            []
+        )
+      : []),
+  ]
+
+  // Deduplicate visits by id / visit_id
+  const visitSeen = new Set<string>()
+  const allVisitsList: Array<Record<string, unknown>> = []
+  for (const v of rawVisits) {
+    if (!v) continue
+    const vid = String(
+      v.visit_id ||
+        v.id ||
+        v._id ||
+        `${v.visit_date}_${v.bp_systolic}_${v.visit_number}`
+    )
+    if (visitSeen.has(vid)) continue
+    visitSeen.add(vid)
+    allVisitsList.push(v)
+  }
+
+  // Sort visits so the latest visit is evaluated first
+  allVisitsList.sort((a, b) => {
+    const da = a.visit_date
+      ? new Date(String(a.visit_date)).getTime()
+      : a.created_at
+        ? new Date(String(a.created_at)).getTime()
+        : 0
+    const db = b.visit_date
+      ? new Date(String(b.visit_date)).getTime()
+      : b.created_at
+        ? new Date(String(b.created_at)).getTime()
+        : 0
+    return db - da
+  })
+
+  // 3. Gather all CDSS alerts
+  const rawAlerts = [
+    ...(castItem.cdssAlerts || []),
+    ...(castItem.alerts || []),
+    ...(castItem.pregnancy && Array.isArray((castItem.pregnancy as any).cdssAlerts)
+      ? ((castItem.pregnancy as any).cdssAlerts as Array<Record<string, unknown>>)
+      : []),
+    ...(Array.isArray(pregs)
+      ? pregs.flatMap(
+          (p: Record<string, unknown>) =>
+            (p.cdssAlerts as Array<Record<string, unknown>>) || []
+        )
+      : []),
+  ]
+
+  let hasHighRisk = false
+  let hasModerateRisk = false
+
+  // Check unresolved alerts
+  for (const a of rawAlerts) {
+    if (a.is_resolved) continue
+    const sev = String(a.severity || a.alert_type || "").toLowerCase()
+    if (
+      sev.includes("high") ||
+      sev.includes("critical") ||
+      sev.includes("severe")
+    ) {
+      hasHighRisk = true
+    } else if (
+      sev.includes("medium") ||
+      sev.includes("mod") ||
+      sev.includes("warning") ||
+      sev.includes("amber")
+    ) {
+      hasModerateRisk = true
+    }
+  }
+
+  // Check visits
+  for (const v of allVisitsList) {
+    const vRisk = String(
+      v.risk_level_assessed || v.risk_level || v.risk_flag || v.risk || ""
+    )
+    if (vRisk.trim() !== "" && vRisk.toUpperCase() !== "N/A") {
+      const variant = getRiskVariant(vRisk)
+      if (variant === "high") hasHighRisk = true
+      else if (variant === "moderate") hasModerateRisk = true
+    }
+
+    const bpStr =
+      v.blood_pressure ||
+      v.bp ||
+      (v.bp_systolic && v.bp_diastolic
+        ? `${v.bp_systolic}/${v.bp_diastolic}`
+        : null)
+    if (bpStr) {
+      const match = String(bpStr).match(/(\d+)\s*\/\s*(\d+)/)
+      if (match) {
+        const sys = parseInt(match[1], 10)
+        const dia = parseInt(match[2], 10)
+        if (sys >= 140 || dia >= 90) {
+          hasHighRisk = true
+        } else if (sys >= 130 || dia >= 85) {
+          hasModerateRisk = true
+        }
+      }
+    }
+  }
+
+  // Check active pregnancies
+  if (Array.isArray(pregs) && pregs.length > 0) {
+    for (const preg of pregs) {
+      const pregRisk = String(
+        preg.risk_flag || preg.risk_level || preg.risk || ""
+      )
+      if (pregRisk.trim() !== "" && pregRisk.toUpperCase() !== "N/A") {
+        const variant = getRiskVariant(pregRisk)
+        if (variant === "high") hasHighRisk = true
+        else if (variant === "moderate") hasModerateRisk = true
+      }
+    }
+  }
+
+  // Check direct risk on mother or item
   const directRisk =
-    motherOrItem.risk_flag ||
-    motherOrItem.risk_level ||
-    motherOrItem.risk ||
-    motherOrItem.user?.risk_flag ||
-    motherOrItem.user?.risk_level ||
-    motherOrItem.patient?.risk_flag ||
-    motherOrItem.patient?.risk_level
+    castItem.risk_flag ||
+    castItem.risk_level ||
+    castItem.risk ||
+    castItem.user?.risk_flag ||
+    castItem.user?.risk_level ||
+    castItem.patient?.risk_flag ||
+    castItem.patient?.risk_level
 
   if (
     directRisk &&
@@ -20,102 +286,15 @@ export function extractRiskLevel(
     directRisk.trim() !== "" &&
     directRisk.toUpperCase() !== "N/A"
   ) {
-    return normalizeRiskString(directRisk)
+    const variant = getRiskVariant(directRisk)
+    if (variant === "high") hasHighRisk = true
+    else if (variant === "moderate") hasModerateRisk = true
   }
 
-  const pregs =
-    pregnancies ||
-    motherOrItem.pregnancies ||
-    (motherOrItem.pregnancy ? [motherOrItem.pregnancy] : [])
-  if (Array.isArray(pregs) && pregs.length > 0) {
-    for (const preg of pregs) {
-      const pregRisk = preg.risk_flag || preg.risk_level || preg.risk
-      if (
-        pregRisk &&
-        typeof pregRisk === "string" &&
-        pregRisk.trim() !== "" &&
-        pregRisk.toUpperCase() !== "N/A"
-      ) {
-        return normalizeRiskString(pregRisk)
-      }
-    }
-  }
-
-  const vList =
-    visits ||
-    motherOrItem.prenatalVisits ||
-    motherOrItem.visits ||
-    motherOrItem.prenatal_visits ||
-    []
-  if (Array.isArray(vList) && vList.length > 0) {
-    for (const v of vList) {
-      const vRisk = v.risk_level_assessed || v.risk_level || v.risk_flag
-      if (
-        vRisk &&
-        typeof vRisk === "string" &&
-        vRisk.trim() !== "" &&
-        vRisk.toUpperCase() !== "N/A"
-      ) {
-        return normalizeRiskString(vRisk)
-      }
-
-      const bpStr =
-        v.blood_pressure ||
-        v.bp ||
-        (v.bp_systolic && v.bp_diastolic
-          ? `${v.bp_systolic}/${v.bp_diastolic}`
-          : null)
-      if (bpStr) {
-        const match = String(bpStr).match(/(\d+)\s*\/\s*(\d+)/)
-        if (match) {
-          const sys = parseInt(match[1], 10)
-          const dia = parseInt(match[2], 10)
-          if (sys >= 140 || dia >= 90) {
-            return "High Risk"
-          } else if (sys >= 130 || dia >= 85) {
-            return "Medium Risk"
-          }
-        }
-      }
-    }
-  }
-
-  const alerts =
-    motherOrItem.cdssAlerts ||
-    motherOrItem.alerts ||
-    motherOrItem.pregnancy?.cdssAlerts ||
-    []
-  if (Array.isArray(alerts) && alerts.length > 0) {
-    for (const a of alerts) {
-      if (a.is_resolved) continue
-      const sev = (a.severity || a.alert_type || "").toLowerCase()
-      if (
-        sev.includes("high") ||
-        sev.includes("critical") ||
-        sev.includes("severe")
-      ) {
-        return "High Risk"
-      }
-      if (
-        sev.includes("medium") ||
-        sev.includes("moderate") ||
-        sev.includes("warning")
-      ) {
-        return "Medium Risk"
-      }
-    }
-  }
-
+  // Final Clinical Decision
+  if (hasHighRisk) return "High Risk"
+  if (hasModerateRisk) return "Medium Risk"
   return "Low Risk"
-}
-
-export function normalizeRiskString(str: string): string {
-  if (!str) return "Low Risk"
-  const lower = str.toLowerCase()
-  if (lower.includes("high")) return "High Risk"
-  if (lower.includes("med") || lower.includes("moderate")) return "Medium Risk"
-  if (lower.includes("low")) return "Low Risk"
-  return str
 }
 
 export interface ClinicalVitalsInput {

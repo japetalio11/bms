@@ -7,6 +7,7 @@ import {
   X,
   Calendar,
   Activity,
+  AlertTriangle,
   ActivitySquare,
   HeartPulse,
   Stethoscope,
@@ -24,6 +25,11 @@ import { ConfirmationModal } from "@/components/ui/confirmation-modal"
 import { db } from "@/lib/db/bmsDatabase"
 import { toast } from "sonner"
 import { appointmentRepository } from "@/lib/repositories/appointmentRepository"
+import {
+  getRiskVariant,
+  getRiskLabel,
+  getRiskBadgeClasses,
+} from "@/lib/riskUtils"
 
 export function AppointmentSidepeek({
   appointment,
@@ -270,10 +276,18 @@ export function AppointmentSidepeek({
               {localStatus}
             </Badge>
             <Badge
-              className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${isHighRisk ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}
+              className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${getRiskBadgeClasses(localRisk).badge}`}
             >
-              <Activity className="h-3 w-3" />
-              {localRisk || "Low Risk"}
+              {getRiskVariant(localRisk) === "high" ? (
+                <Activity className="h-3 w-3" />
+              ) : getRiskVariant(localRisk) === "moderate" ? (
+                <AlertTriangle className="h-3 w-3" />
+              ) : getRiskVariant(localRisk) === "low" ? (
+                <CheckCircle2 className="h-3 w-3" />
+              ) : (
+                <Activity className="h-3 w-3 opacity-60" />
+              )}
+              {getRiskLabel(localRisk)}
             </Badge>
           </div>
         </div>

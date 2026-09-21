@@ -28,6 +28,11 @@ import {
 import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
 import { toast } from "sonner"
 import { EditRecordModal } from "./EditRecordModal"
+import {
+  getRiskVariant,
+  getRiskLabel,
+  getRiskBadgeClasses,
+} from "@/lib/riskUtils"
 import { mothersApi } from "../api"
 import { db } from "@/lib/db/bmsDatabase"
 import { motherRepository } from "@/lib/repositories/motherRepository"
@@ -203,10 +208,21 @@ export function DetailSideSheet({
                   {data.is_completed ? "Completed" : "In Progress"}
                 </Badge>
               )}
-              <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-500 shadow-none">
-                <Activity className="h-3 w-3" />
-                {data.risk_level_assessed || data.risk || "Low Risk"}
-              </Badge>
+              {(() => {
+                const currentRisk =
+                  data.risk_level_assessed || data.risk || "Low Risk"
+                const variant = getRiskVariant(currentRisk)
+                const label = getRiskLabel(currentRisk)
+                const classes = getRiskBadgeClasses(currentRisk)
+                return (
+                  <Badge
+                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${classes.badge}`}
+                  >
+                    <Activity className="h-3 w-3" />
+                    {label}
+                  </Badge>
+                )
+              })()}
             </div>
           </div>
           <Button

@@ -299,6 +299,11 @@ export const motherRepository = {
         if (!visitMap.has(mid)) visitMap.set(mid, [])
         visitMap.get(mid)!.push(v)
       }
+      if (v.pregnancy_id) {
+        if (!visitMap.has(`preg:${v.pregnancy_id}`))
+          visitMap.set(`preg:${v.pregnancy_id}`, [])
+        visitMap.get(`preg:${v.pregnancy_id}`)!.push(v)
+      }
     }
 
     const seen = new Set<string>()
@@ -323,20 +328,34 @@ export const motherRepository = {
         : (motherId && pregMap.get(motherId)) ||
           (userId && pregMap.get(userId)) ||
           []
-      const visits = mother.prenatalVisits?.length
-        ? mother.prenatalVisits
-        : (motherId && visitMap.get(motherId)) ||
-          (userId && visitMap.get(userId)) ||
+
+      const pregVisits = pregs.flatMap(
+        (p: any) =>
+          p.prenatalVisits ||
+          (p.pregnancy_id && visitMap.get(`preg:${p.pregnancy_id}`)) ||
+          (p.id && visitMap.get(`preg:${p.id}`)) ||
           []
+      )
+      const mappedVisits = [
+        ...(motherId ? visitMap.get(motherId) || [] : []),
+        ...(userId ? visitMap.get(userId) || [] : []),
+      ]
+
+      const visits = [
+        ...(mother.prenatalVisits || []),
+        ...pregVisits,
+        ...mappedVisits,
+      ]
+
       const computedRisk = extractRiskLevel(mother, pregs, visits)
 
       deduplicated.push({
         ...mother,
         pregnancies: pregs,
         prenatalVisits: visits,
-        risk_flag: mother.risk_flag || mother.risk_level || computedRisk,
-        risk_level: mother.risk_level || mother.risk_flag || computedRisk,
-        risk: mother.risk || mother.risk_flag || computedRisk,
+        risk_flag: computedRisk,
+        risk_level: computedRisk,
+        risk: computedRisk,
       })
     }
 

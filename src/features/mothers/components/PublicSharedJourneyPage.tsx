@@ -44,7 +44,12 @@ import {
   Layers,
   ChevronDown,
 } from "lucide-react"
-import { extractRiskLevel } from "@/lib/riskUtils"
+import {
+  extractRiskLevel,
+  getRiskVariant,
+  getRiskLabel,
+  getRiskBadgeClasses,
+} from "@/lib/riskUtils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -1023,19 +1028,9 @@ export function PublicSharedJourneyPage() {
                           <TableCell className="text-xs">
                             <Badge
                               variant="outline"
-                              className={`text-[10px] ${
-                                (v.risk_level_assessed || "")
-                                  .toLowerCase()
-                                  .includes("high")
-                                  ? "border-red-500/30 bg-red-500/10 text-red-500"
-                                  : (v.risk_level_assessed || "")
-                                        .toLowerCase()
-                                        .includes("mod")
-                                    ? "border-amber-500/30 bg-amber-500/10 text-amber-500"
-                                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
-                              }`}
+                              className={`text-[10px] ${getRiskBadgeClasses(v.risk_level_assessed).badge}`}
                             >
-                              {v.risk_level_assessed || "Low Risk"}
+                              {getRiskLabel(v.risk_level_assessed) || "Low Risk"}
                             </Badge>
                           </TableCell>
                         </TableRow>
