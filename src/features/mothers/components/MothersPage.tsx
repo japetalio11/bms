@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -122,98 +122,99 @@ export function MothersPage() {
     return Math.max(0, weeks)
   }
 
-  const displayedMothers = motherList
-    .map((m: any) => {
-      const name =
-        [
-          m.user?.first_name || m.first_name,
-          m.user?.middle_name || m.middle_name,
-          m.user?.last_name || m.last_name,
-        ]
-          .filter(Boolean)
-          .join(" ") ||
-        m.name ||
-        "Unknown"
-      const currentPregnancy = m.pregnancies?.[0] || m.pregnancy
-      const visits = [
-        ...(m.prenatalVisits || []),
-        ...(currentPregnancy?.prenatalVisits || []),
-        ...(Array.isArray(m.pregnancies)
-          ? m.pregnancies.flatMap((p: any) => p.prenatalVisits || [])
-          : []),
-      ]
-      const risk = extractRiskLevel(m, m.pregnancies, visits)
+  const displayedMothers = useMemo(() => {
+    return motherList
+      .map((m: any) => {
+        const name =
+          [
+            m.user?.first_name || m.first_name,
+            m.user?.middle_name || m.middle_name,
+            m.user?.last_name || m.last_name,
+          ]
+            .filter(Boolean)
+            .join(" ") ||
+          m.name ||
+          "Unknown"
+        const currentPregnancy = m.pregnancies?.[0] || m.pregnancy
+        const risk = extractRiskLevel(m, m.pregnancies, m.prenatalVisits)
 
-      const lmpRaw = currentPregnancy?.lmp_date || currentPregnancy?.lmp
-      const calculatedGA = lmpRaw
-        ? calculateGAWeeks(lmpRaw)
-        : currentPregnancy?.gestational_age_weeks || 0
-      const gestationalAge = calculatedGA > 0 ? `${calculatedGA} Weeks` : "N/A"
+        const lmpRaw = currentPregnancy?.lmp_date || currentPregnancy?.lmp
+        const calculatedGA = lmpRaw
+          ? calculateGAWeeks(lmpRaw)
+          : currentPregnancy?.gestational_age_weeks || 0
+        const gestationalAge = calculatedGA > 0 ? `${calculatedGA} Weeks` : "N/A"
 
-      const eddVal = lmpRaw
-        ? calculateEDD(lmpRaw)
-        : currentPregnancy?.edd
-          ? formatDate(currentPregnancy.edd)
-          : "N/A"
-      const station = m.user?.address || m.address || "N/A"
+        const eddVal = lmpRaw
+          ? calculateEDD(lmpRaw)
+          : currentPregnancy?.edd
+            ? formatDate(currentPregnancy.edd)
+            : "N/A"
+        const station = m.user?.address || m.address || "N/A"
 
-      const assignedWorker = m.assignedWorker || m.assigned_worker || null
-      const assignedStaffName = assignedWorker?.first_name
-        ? `${assignedWorker.first_name} ${assignedWorker.last_name || ""}`.trim()
-        : m.assigned_worker_id
-          ? "Assigned Staff"
-          : "Unassigned"
-      const assignedStaffRole = assignedWorker?.role || null
+        const assignedWorker = m.assignedWorker || m.assigned_worker || null
+        const assignedStaffName = assignedWorker?.first_name
+          ? `${assignedWorker.first_name} ${assignedWorker.last_name || ""}`.trim()
+          : m.assigned_worker_id
+            ? "Assigned Staff"
+            : "Unassigned"
+        const assignedStaffRole = assignedWorker?.role || null
 
-      return {
-        id: m.id || m._id || m.mother_id || m.user_id,
-        rawMother: m,
-        name,
-        risk,
-        gestationalAge,
-        edd: eddVal,
-        station,
-        assignedWorker,
-        assignedStaffName,
-        assignedStaffRole,
-      }
-    })
-    .filter((m) => {
-      if (searchQuery.trim() !== "") {
-        const q = searchQuery.toLowerCase()
-        const matchName = m.name.toLowerCase().includes(q)
-        const matchStation = m.station.toLowerCase().includes(q)
-        if (!matchName && !matchStation) return false
-      }
+        return {
+          id: m.id || m._id || m.mother_id || m.user_id,
+          rawMother: m,
+          name,
+          risk,
+          gestationalAge,
+          edd: eddVal,
+          station,
+          assignedWorker,
+          assignedStaffName,
+          assignedStaffRole,
+        }
+      })
+      .filter((m) => {
+        if (searchQuery.trim() !== "") {
+          const q = searchQuery.toLowerCase()
+          const matchName = m.name.toLowerCase().includes(q)
+          const matchStation = m.station.toLowerCase().includes(q)
+          if (!matchName && !matchStation) return false
+        }
 
-      const mVariant = getRiskVariant(m.risk)
+        const mVariant = getRiskVariant(m.risk)
 
-      if (activeTab === "high-risk") {
-        if (mVariant !== "high") return false
-      } else if (activeTab === "triage") {
-        if (mVariant !== "none") return false
-      } else if (activeTab === "postpartum") {
-        const status =
-          m.rawMother.pregnancies?.[0]?.pregnancy_status?.toLowerCase()
-        if (status !== "postpartum" && status !== "delivered") return false
-      }
+        if (activeTab === "high-risk") {
+          if (mVariant !== "high") return false
+        } else if (activeTab === "triage") {
+          if (mVariant !== "none") return false
+        } else if (activeTab === "postpartum") {
+          const status =
+            m.rawMother.pregnancies?.[0]?.pregnancy_status?.toLowerCase()
+          if (status !== "postpartum" && status !== "delivered") return false
+        }
 
-      if (selectedRiskFilters.length > 0) {
-        const match = selectedRiskFilters.some(
-          (rf) => mVariant === getRiskVariant(rf)
-        )
-        if (!match) return false
-      }
+        if (selectedRiskFilters.length > 0) {
+          const match = selectedRiskFilters.some(
+            (rf) => mVariant === getRiskVariant(rf)
+          )
+          if (!match) return false
+        }
 
-      if (selectedBarangayFilters.length > 0) {
-        const match = selectedBarangayFilters.some((bg) =>
-          m.station.toLowerCase().includes(bg.toLowerCase())
-        )
-        if (!match) return false
-      }
+        if (selectedBarangayFilters.length > 0) {
+          const match = selectedBarangayFilters.some((bg) =>
+            m.station.toLowerCase().includes(bg.toLowerCase())
+          )
+          if (!match) return false
+        }
 
-      return true
-    })
+        return true
+      })
+  }, [
+    motherList,
+    searchQuery,
+    activeTab,
+    selectedRiskFilters,
+    selectedBarangayFilters,
+  ])
 
   const getRiskBadge = (risk?: string | null) => {
     const variant = getRiskVariant(risk)

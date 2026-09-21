@@ -135,165 +135,171 @@ export function extractRiskLevel(
 
   const castItem = (motherOrItem || {}) as RiskSubjectRecord
 
-  const pregs =
+  const pregs: any[] =
     pregnancies ||
     castItem.pregnancies ||
     (castItem.pregnancy ? [castItem.pregnancy] : [])
 
-  // 2. Gather all visits from parameters, mother object, and all pregnancies
-  const rawVisits = [
-    ...(visits || []),
-    ...(castItem.prenatalVisits || []),
-    ...(castItem.visits || []),
-    ...(castItem.prenatal_visits || []),
-    ...(Array.isArray(pregs)
-      ? pregs.flatMap(
-          (p: Record<string, unknown>) =>
-            (p.prenatalVisits as Array<Record<string, unknown>>) ||
-            (p.visits as Array<Record<string, unknown>>) ||
-            []
-        )
-      : []),
-  ]
-
-  // Deduplicate visits by id / visit_id
-  const visitSeen = new Set<string>()
-  const allVisitsList: Array<Record<string, unknown>> = []
-  for (const v of rawVisits) {
-    if (!v) continue
-    const vid = String(
-      v.visit_id ||
-        v.id ||
-        v._id ||
-        `${v.visit_date}_${v.bp_systolic}_${v.visit_number}`
-    )
-    if (visitSeen.has(vid)) continue
-    visitSeen.add(vid)
-    allVisitsList.push(v)
+  let activePreg: any = null
+  if (Array.isArray(pregs) && pregs.length > 0) {
+    activePreg =
+      pregs.find(
+        (p: any) =>
+          String(p.pregnancy_status || p.status || "").toLowerCase() ===
+          "active"
+      ) || pregs[0]
   }
 
-  // Sort visits so the latest visit is evaluated first
-  allVisitsList.sort((a, b) => {
-    const da = a.visit_date
-      ? new Date(String(a.visit_date)).getTime()
-      : a.created_at
-        ? new Date(String(a.created_at)).getTime()
-        : 0
-    const db = b.visit_date
-      ? new Date(String(b.visit_date)).getTime()
-      : b.created_at
-        ? new Date(String(b.created_at)).getTime()
-        : 0
-    return db - da
-  })
+  const candidateVisits: any[] = []
+  if (Array.isArray(visits) && visits.length > 0) {
+    candidateVisits.push(...visits)
+  }
+  if (activePreg) {
+    if (Array.isArray(activePreg.prenatalVisits)) {
+      candidateVisits.push(...activePreg.prenatalVisits)
+    }
+    if (Array.isArray(activePreg.visits)) {
+      candidateVisits.push(...activePreg.visits)
+    }
+  }
+  if (candidateVisits.length === 0) {
+    if (Array.isArray(castItem.prenatalVisits)) {
+      candidateVisits.push(...castItem.prenatalVisits)
+    } else if (Array.isArray(castItem.visits)) {
+      candidateVisits.push(...castItem.visits)
+    } else if (Array.isArray(castItem.prenatal_visits)) {
+      candidateVisits.push(...castItem.prenatal_visits)
+    }
+  }
 
-  // 3. Gather all CDSS alerts
-  const rawAlerts = [
+  let latestVisit: any = null
+  let maxTime = -1
+
+  for (let i = 0; i < candidateVisits.length; i++) {
+    const v = candidateVisits[i]
+    if (!v) continue
+
+    const tRaw = v.visit_date || v.created_at || v.date || null
+    let t = 0
+    if (typeof tRaw === "number") {
+      t = tRaw
+    } else if (typeof tRaw === "string" && tRaw.trim() !== "") {
+      const parsed = Date.parse(tRaw)
+      t = isNaN(parsed) ? 0 : parsed
+    }
+
+    if (t === 0 && v.visit_number) {
+      t = Number(v.visit_number)
+    }
+
+    if (latestVisit === null || t >= maxTime) {
+      maxTime = t
+      latestVisit = v
+    }
+  }
+
+  if (latestVisit) {
+    const vRisk = String(
+      latestVisit.risk_level_assessed ||
+        latestVisit.risk_level ||
+        latestVisit.risk_flag ||
+        latestVisit.risk ||
+        ""
+    ).trim()
+
+    if (vRisk && vRisk.toUpperCase() !== "N/A" && vRisk.toLowerCase() !== "no risk assessed") {
+      const variant = getRiskVariant(vRisk)
+      if (variant === "high") return "High Risk"
+      if (variant === "moderate") return "Medium Risk"
+      if (variant === "low") return "Low Risk"
+    }
+
+    let sys: number | null =
+      latestVisit.bp_systolic != null && latestVisit.bp_systolic !== ""
+        ? Number(latestVisit.bp_systolic)
+        : null
+    let dia: number | null =
+      latestVisit.bp_diastolic != null && latestVisit.bp_diastolic !== ""
+        ? Number(latestVisit.bp_diastolic)
+        : null
+
+    if ((sys === null || dia === null) && latestVisit.blood_pressure) {
+      const match = String(latestVisit.blood_pressure).match(
+        /(\d+)\s*\/\s*(\d+)/
+      )
+      if (match) {
+        sys = parseInt(match[1], 10)
+        dia = parseInt(match[2], 10)
+      }
+    }
+
+    if ((sys !== null && sys >= 140) || (dia !== null && dia >= 90)) {
+      return "High Risk"
+    }
+    if ((sys !== null && sys >= 130) || (dia !== null && dia >= 85)) {
+      return "Medium Risk"
+    }
+  }
+
+  const candidateAlerts: any[] = [
     ...(castItem.cdssAlerts || []),
     ...(castItem.alerts || []),
-    ...(castItem.pregnancy && Array.isArray((castItem.pregnancy as any).cdssAlerts)
-      ? ((castItem.pregnancy as any).cdssAlerts as Array<Record<string, unknown>>)
-      : []),
-    ...(Array.isArray(pregs)
-      ? pregs.flatMap(
-          (p: Record<string, unknown>) =>
-            (p.cdssAlerts as Array<Record<string, unknown>>) || []
-        )
+    ...(activePreg && Array.isArray(activePreg.cdssAlerts)
+      ? activePreg.cdssAlerts
       : []),
   ]
 
-  let hasHighRisk = false
-  let hasModerateRisk = false
-
-  // Check unresolved alerts
-  for (const a of rawAlerts) {
-    if (a.is_resolved) continue
+  for (let i = 0; i < candidateAlerts.length; i++) {
+    const a = candidateAlerts[i]
+    if (!a || a.is_resolved) continue
     const sev = String(a.severity || a.alert_type || "").toLowerCase()
     if (
       sev.includes("high") ||
       sev.includes("critical") ||
       sev.includes("severe")
     ) {
-      hasHighRisk = true
-    } else if (
-      sev.includes("medium") ||
+      return "High Risk"
+    }
+    if (
+      sev.includes("med") ||
       sev.includes("mod") ||
       sev.includes("warning") ||
       sev.includes("amber")
     ) {
-      hasModerateRisk = true
+      return "Medium Risk"
     }
   }
 
-  // Check visits
-  for (const v of allVisitsList) {
-    const vRisk = String(
-      v.risk_level_assessed || v.risk_level || v.risk_flag || v.risk || ""
-    )
-    if (vRisk.trim() !== "" && vRisk.toUpperCase() !== "N/A") {
-      const variant = getRiskVariant(vRisk)
-      if (variant === "high") hasHighRisk = true
-      else if (variant === "moderate") hasModerateRisk = true
-    }
-
-    const bpStr =
-      v.blood_pressure ||
-      v.bp ||
-      (v.bp_systolic && v.bp_diastolic
-        ? `${v.bp_systolic}/${v.bp_diastolic}`
-        : null)
-    if (bpStr) {
-      const match = String(bpStr).match(/(\d+)\s*\/\s*(\d+)/)
-      if (match) {
-        const sys = parseInt(match[1], 10)
-        const dia = parseInt(match[2], 10)
-        if (sys >= 140 || dia >= 90) {
-          hasHighRisk = true
-        } else if (sys >= 130 || dia >= 85) {
-          hasModerateRisk = true
-        }
-      }
+  if (activePreg) {
+    const pregRisk = String(
+      activePreg.risk_flag || activePreg.risk_level || activePreg.risk || ""
+    ).trim()
+    if (pregRisk && pregRisk.toUpperCase() !== "N/A") {
+      const variant = getRiskVariant(pregRisk)
+      if (variant === "high") return "High Risk"
+      if (variant === "moderate") return "Medium Risk"
+      if (variant === "low") return "Low Risk"
     }
   }
 
-  // Check active pregnancies
-  if (Array.isArray(pregs) && pregs.length > 0) {
-    for (const preg of pregs) {
-      const pregRisk = String(
-        preg.risk_flag || preg.risk_level || preg.risk || ""
-      )
-      if (pregRisk.trim() !== "" && pregRisk.toUpperCase() !== "N/A") {
-        const variant = getRiskVariant(pregRisk)
-        if (variant === "high") hasHighRisk = true
-        else if (variant === "moderate") hasModerateRisk = true
-      }
-    }
-  }
-
-  // Check direct risk on mother or item
-  const directRisk =
+  const directRisk = String(
     castItem.risk_flag ||
-    castItem.risk_level ||
-    castItem.risk ||
-    castItem.user?.risk_flag ||
-    castItem.user?.risk_level ||
-    castItem.patient?.risk_flag ||
-    castItem.patient?.risk_level
+      castItem.risk_level ||
+      castItem.risk ||
+      castItem.user?.risk_flag ||
+      castItem.user?.risk_level ||
+      castItem.patient?.risk_flag ||
+      castItem.patient?.risk_level ||
+      ""
+  ).trim()
 
-  if (
-    directRisk &&
-    typeof directRisk === "string" &&
-    directRisk.trim() !== "" &&
-    directRisk.toUpperCase() !== "N/A"
-  ) {
+  if (directRisk && directRisk.toUpperCase() !== "N/A") {
     const variant = getRiskVariant(directRisk)
-    if (variant === "high") hasHighRisk = true
-    else if (variant === "moderate") hasModerateRisk = true
+    if (variant === "high") return "High Risk"
+    if (variant === "moderate") return "Medium Risk"
+    if (variant === "low") return "Low Risk"
   }
 
-  // Final Clinical Decision
-  if (hasHighRisk) return "High Risk"
-  if (hasModerateRisk) return "Medium Risk"
   return "Low Risk"
 }
 
