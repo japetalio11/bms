@@ -2,6 +2,7 @@ import { db } from "@/lib/db/bmsDatabase"
 import type { OfflineQueueItem } from "@/lib/db/bmsDatabase"
 import { apiClient } from "@/lib/apiClient"
 import { settingsStore } from "@/lib/settingsStore"
+import { validatePrenatalVitals } from "@/lib/clinicalValidation"
 
 type SyncListener = (status: {
   isSyncing: boolean
@@ -109,6 +110,25 @@ class SyncEngine {
     temp_id?: string
     blob_ids?: string[]
   }) {
+    if (params.entity_type === "prenatal_visit" && params.payload) {
+      const v = validatePrenatalVitals({
+        trimester: params.payload.trimester,
+        visit_number: params.payload.visit_number,
+        age_of_gestation_weeks: params.payload.age_of_gestation_weeks,
+        weight_kg: params.payload.weight_kg,
+        temperature_celsius: params.payload.temperature_celsius,
+        pulse_rate_bpm: params.payload.pulse_rate_bpm,
+        bp_systolic: params.payload.bp_systolic,
+        bp_diastolic: params.payload.bp_diastolic,
+        fundic_height_cm: params.payload.fundic_height_cm,
+        fetal_heart_tone_bpm: params.payload.fetal_heart_tone_bpm,
+      })
+      if (!v.isValid) {
+        console.error("[SyncEngine] Blocked enqueueing invalid prenatal visit:", v.errors)
+        throw new Error(`Invalid medical data provided: ${v.errors.join(", ")}`)
+      }
+    }
+
     const client_mutation_id = `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 
     await db.offlineQueue.add({
@@ -223,11 +243,19 @@ class SyncEngine {
         }
 
         const isUnrecoverableAuth = status === 401 || status === 403
+        const isUnrecoverableClient =
+          status === 400 ||
+          status === 422 ||
+          status === 404 ||
+          (typeof errMsg === "string" &&
+            (errMsg.toLowerCase().includes("invalid medical data") ||
+              errMsg.toLowerCase().includes("required fields are missing") ||
+              errMsg.toLowerCase().includes("validation")))
         const isMaxRetries = (item.retry_count || 0) >= 5
 
-        if (isTooLarge || isUnrecoverableAuth || isMaxRetries) {
+        if (isTooLarge || isUnrecoverableAuth || isUnrecoverableClient || isMaxRetries) {
           console.warn(
-            `[SyncEngine] Discarding unresolvable item #${item.id} (${item.entity_type}) after status ${status || "too large / max retries"}`
+            `[SyncEngine] Discarding unresolvable item #${item.id} (${item.entity_type}) after status ${status || "validation / too large / max retries"}: ${errMsg}`
           )
           if (item.id) {
             await db.offlineQueue.delete(item.id)

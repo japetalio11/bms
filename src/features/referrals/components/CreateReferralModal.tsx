@@ -37,6 +37,7 @@ import { motherRepository } from "@/lib/repositories/motherRepository"
 import { referralRepository } from "@/lib/repositories/referralRepository"
 import { apiClient } from "@/lib/apiClient"
 import { db } from "@/lib/db/bmsDatabase"
+import { useLiveQuery } from "dexie-react-hooks"
 import type { ReferralSuccessData } from "./ReferralSuccessModal"
 import { ReferralSuccessModal } from "./ReferralSuccessModal"
 
@@ -125,17 +126,23 @@ export function CreateReferralModal({
   const [loading, setLoading] = useState<boolean>(false)
   const [errorMsg, setErrorMsg] = useState<string>("")
 
-  const userFacilityId = useMemo(() => {
+  const sessionUser = useLiveQuery(() => db.userSession.get("current_user"))
+
+  const currentUser = useMemo(() => {
+    if (sessionUser) return sessionUser
     try {
       const userStr =
         typeof window !== "undefined" ? localStorage.getItem("user") : null
-      if (userStr) {
-        const u = JSON.parse(userStr)
-        return u.facility_id || u.facility?.facility_id || ""
-      }
+      if (userStr) return JSON.parse(userStr)
     } catch {}
-    return ""
-  }, [])
+    return null
+  }, [sessionUser])
+
+  const userFacilityId = useMemo(() => {
+    return currentUser?.facility_id || currentUser?.facility?.facility_id || ""
+  }, [currentUser])
+
+  const isSysAdmin = currentUser?.role === "SystemAdmin"
 
   useEffect(() => {
     if (!open) {
@@ -146,15 +153,43 @@ export function CreateReferralModal({
     const loadModalData = async () => {
       setErrorMsg("")
       try {
-        const activeMothers = await motherRepository.getActiveMothers()
-        setMothers(activeMothers)
+        const facilityIdToQuery = isSysAdmin ? undefined : userFacilityId
+        const activeMothers = await motherRepository.getActiveMothers(
+          facilityIdToQuery || undefined
+        )
+
+        const scopedMothers = isSysAdmin
+          ? activeMothers
+          : activeMothers.filter((m) => {
+              if (!userFacilityId) return true
+              const isDirect = m.facility_id === userFacilityId
+              const isUserFacility = m.user?.facility_id === userFacilityId
+              const isInFacilityIds =
+                Array.isArray(m.facility_ids) &&
+                m.facility_ids.includes(userFacilityId)
+              const isInEnrollments =
+                Array.isArray(m.facilityEnrollments) &&
+                m.facilityEnrollments.some(
+                  (e: any) =>
+                    e.facility_id === userFacilityId &&
+                    (e.status === "Active" || !e.status)
+                )
+              return (
+                isDirect ||
+                isUserFacility ||
+                isInFacilityIds ||
+                isInEnrollments
+              )
+            })
+
+        setMothers(scopedMothers)
       } catch (err) {
         console.warn("Failed to load active mothers for referral modal:", err)
       }
     }
 
     loadModalData()
-  }, [open])
+  }, [open, userFacilityId, isSysAdmin])
 
   const selectedMother = useMemo(() => {
     return (
@@ -334,6 +369,37 @@ Thank you. 💛`
       return
     }
 
+    if (!isSysAdmin && userFacilityId && selectedMother) {
+      const isDirect = selectedMother.facility_id === userFacilityId
+      const isUserFacility = selectedMother.user?.facility_id === userFacilityId
+      const isInFacilityIds =
+        Array.isArray(selectedMother.facility_ids) &&
+        selectedMother.facility_ids.includes(userFacilityId)
+      const isInEnrollments =
+        Array.isArray(selectedMother.facilityEnrollments) &&
+        selectedMother.facilityEnrollments.some(
+          (e: any) =>
+            e.facility_id === userFacilityId &&
+            (e.status === "Active" || !e.status)
+        )
+      const isAssigned =
+        selectedMother.assigned_worker_id === currentUser?.user_id ||
+        selectedMother.created_by_id === currentUser?.user_id
+
+      if (
+        !isDirect &&
+        !isUserFacility &&
+        !isInFacilityIds &&
+        !isInEnrollments &&
+        !isAssigned
+      ) {
+        setErrorMsg(
+          "Access denied: You can only refer patients registered or actively enrolled in your facility."
+        )
+        return
+      }
+    }
+
     if (!destinationFacility.trim()) {
       setErrorMsg("Please enter the destination facility.")
       return
@@ -344,7 +410,16 @@ Thank you. 💛`
       return
     }
 
-    let currentFacilityId = userFacilityId
+    const currentFacilityId =
+      userFacilityId ||
+      selectedMother?.facility_id ||
+      selectedMother?.user?.facility_id
+
+    if (!currentFacilityId && !isSysAdmin) {
+      setErrorMsg("Your facility could not be determined. Please re-login.")
+      return
+    }
+
     let pregIdToUse = selectedPregnancyId
 
     setLoading(true)

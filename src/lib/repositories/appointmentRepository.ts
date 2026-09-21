@@ -262,7 +262,15 @@ export const appointmentRepository = {
           await db.appointments.put(syncedAppt)
           return syncedAppt
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (
+          err.response?.status >= 400 &&
+          err.response?.status < 500 &&
+          err.response?.status !== 408 &&
+          err.response?.status !== 429
+        ) {
+          throw err
+        }
         console.warn(
           "[appointmentRepository] Online createAppointment failed, falling back to offline outbox:",
           err

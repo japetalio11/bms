@@ -21,6 +21,10 @@ import {
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { calculateOfflineTEWSRisk } from "@/lib/riskUtils"
+import {
+  validatePrenatalVitals,
+  CLINICAL_LIMITS,
+} from "@/lib/clinicalValidation"
 import { mothersApi } from "../api"
 
 export interface LogVitalsModalProps {
@@ -53,6 +57,7 @@ export function LogVitalsModal({
 
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({})
 
   const pregnancies = motherData?.pregnancies || []
 
@@ -108,6 +113,8 @@ export function LogVitalsModal({
 
   React.useEffect(() => {
     if (open) {
+      setError(null)
+      setFieldErrors({})
       const existingVisits = motherData?.prenatalVisits || []
       setVisitNumber(existingVisits.length + 1)
 
@@ -143,6 +150,7 @@ export function LogVitalsModal({
 
   const handleSubmit = async () => {
     setError(null)
+    setFieldErrors({})
 
     if (!pregnancyId) {
       setError("Please select or specify an active pregnancy record.")
@@ -162,10 +170,23 @@ export function LogVitalsModal({
       return
     }
 
-    const sys = Number(bpSystolic)
-    const dia = Number(bpDiastolic)
-    if (dia >= sys) {
-      setError("Diastolic BP cannot be equal to or higher than Systolic BP.")
+    // Validate clinical parameters
+    const vitalsValidation = validatePrenatalVitals({
+      trimester,
+      visit_number: visitNumber,
+      age_of_gestation_weeks: gestationWeeks,
+      weight_kg: weightKg,
+      temperature_celsius: temperatureCelsius,
+      pulse_rate_bpm: pulseRateBpm,
+      bp_systolic: bpSystolic,
+      bp_diastolic: bpDiastolic,
+      fundic_height_cm: fundicHeightCm || undefined,
+      fetal_heart_tone_bpm: fetalHeartToneBpm || undefined,
+    })
+
+    if (!vitalsValidation.isValid) {
+      setFieldErrors(vitalsValidation.errorMap)
+      setError(vitalsValidation.errors.join(" "))
       return
     }
 
@@ -359,7 +380,10 @@ export function LogVitalsModal({
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="bpSystolic"
-                className="text-xs font-semibold text-foreground"
+                className={cn(
+                  "text-xs font-semibold",
+                  fieldErrors.bp_systolic ? "text-destructive" : "text-foreground"
+                )}
               >
                 BP Systolic *
               </Label>
@@ -367,21 +391,43 @@ export function LogVitalsModal({
                 <Input
                   id="bpSystolic"
                   type="number"
+                  min={CLINICAL_LIMITS.bp_systolic.min}
+                  max={CLINICAL_LIMITS.bp_systolic.max}
                   placeholder="120"
                   value={bpSystolic}
-                  onChange={(e) => setBpSystolic(e.target.value)}
-                  className="!h-9 border-border bg-card pr-14 text-xs font-medium text-card-foreground focus-visible:ring-1"
+                  onChange={(e) => {
+                    setBpSystolic(e.target.value)
+                    if (fieldErrors.bp_systolic) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.bp_systolic
+                        return next
+                      })
+                    }
+                  }}
+                  className={cn(
+                    "!h-9 border-border bg-card pr-14 text-xs font-medium text-card-foreground focus-visible:ring-1",
+                    fieldErrors.bp_systolic && "border-destructive/80 focus-visible:ring-destructive"
+                  )}
                 />
                 <span className="pointer-events-none absolute top-2.5 right-3 text-[10px] font-medium text-muted-foreground/80">
                   mmHg
                 </span>
               </div>
+              {fieldErrors.bp_systolic && (
+                <span className="text-[10px] text-destructive leading-tight">
+                  {fieldErrors.bp_systolic}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="bpDiastolic"
-                className="text-xs font-semibold text-foreground"
+                className={cn(
+                  "text-xs font-semibold",
+                  fieldErrors.bp_diastolic ? "text-destructive" : "text-foreground"
+                )}
               >
                 BP Diastolic *
               </Label>
@@ -389,21 +435,43 @@ export function LogVitalsModal({
                 <Input
                   id="bpDiastolic"
                   type="number"
+                  min={CLINICAL_LIMITS.bp_diastolic.min}
+                  max={CLINICAL_LIMITS.bp_diastolic.max}
                   placeholder="80"
                   value={bpDiastolic}
-                  onChange={(e) => setBpDiastolic(e.target.value)}
-                  className="!h-9 border-border bg-card pr-14 text-xs font-medium text-card-foreground focus-visible:ring-1"
+                  onChange={(e) => {
+                    setBpDiastolic(e.target.value)
+                    if (fieldErrors.bp_diastolic) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.bp_diastolic
+                        return next
+                      })
+                    }
+                  }}
+                  className={cn(
+                    "!h-9 border-border bg-card pr-14 text-xs font-medium text-card-foreground focus-visible:ring-1",
+                    fieldErrors.bp_diastolic && "border-destructive/80 focus-visible:ring-destructive"
+                  )}
                 />
                 <span className="pointer-events-none absolute top-2.5 right-3 text-[10px] font-medium text-muted-foreground/80">
                   mmHg
                 </span>
               </div>
+              {fieldErrors.bp_diastolic && (
+                <span className="text-[10px] text-destructive leading-tight">
+                  {fieldErrors.bp_diastolic}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="weightKg"
-                className="text-xs font-semibold text-foreground"
+                className={cn(
+                  "text-xs font-semibold",
+                  fieldErrors.weight_kg ? "text-destructive" : "text-foreground"
+                )}
               >
                 Weight *
               </Label>
@@ -412,21 +480,43 @@ export function LogVitalsModal({
                   id="weightKg"
                   type="number"
                   step="0.1"
+                  min={CLINICAL_LIMITS.weight_kg.min}
+                  max={CLINICAL_LIMITS.weight_kg.max}
                   placeholder="55.0"
                   value={weightKg}
-                  onChange={(e) => setWeightKg(e.target.value)}
-                  className="!h-9 border-border bg-card pr-10 text-xs font-medium text-card-foreground focus-visible:ring-1"
+                  onChange={(e) => {
+                    setWeightKg(e.target.value)
+                    if (fieldErrors.weight_kg) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.weight_kg
+                        return next
+                      })
+                    }
+                  }}
+                  className={cn(
+                    "!h-9 border-border bg-card pr-10 text-xs font-medium text-card-foreground focus-visible:ring-1",
+                    fieldErrors.weight_kg && "border-destructive/80 focus-visible:ring-destructive"
+                  )}
                 />
                 <span className="pointer-events-none absolute top-2.5 right-3 text-[10px] font-medium text-muted-foreground/80">
                   kg
                 </span>
               </div>
+              {fieldErrors.weight_kg && (
+                <span className="text-[10px] text-destructive leading-tight">
+                  {fieldErrors.weight_kg}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="pulseRateBpm"
-                className="text-xs font-semibold text-foreground"
+                className={cn(
+                  "text-xs font-semibold",
+                  fieldErrors.pulse_rate_bpm ? "text-destructive" : "text-foreground"
+                )}
               >
                 Pulse Rate *
               </Label>
@@ -434,15 +524,34 @@ export function LogVitalsModal({
                 <Input
                   id="pulseRateBpm"
                   type="number"
+                  min={CLINICAL_LIMITS.pulse_rate_bpm.min}
+                  max={CLINICAL_LIMITS.pulse_rate_bpm.max}
                   placeholder="75"
                   value={pulseRateBpm}
-                  onChange={(e) => setPulseRateBpm(e.target.value)}
-                  className="!h-9 border-border bg-card pr-12 text-xs font-medium text-card-foreground focus-visible:ring-1"
+                  onChange={(e) => {
+                    setPulseRateBpm(e.target.value)
+                    if (fieldErrors.pulse_rate_bpm) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.pulse_rate_bpm
+                        return next
+                      })
+                    }
+                  }}
+                  className={cn(
+                    "!h-9 border-border bg-card pr-12 text-xs font-medium text-card-foreground focus-visible:ring-1",
+                    fieldErrors.pulse_rate_bpm && "border-destructive/80 focus-visible:ring-destructive"
+                  )}
                 />
                 <span className="pointer-events-none absolute top-2.5 right-3 text-[10px] font-medium text-muted-foreground/80">
                   BPM
                 </span>
               </div>
+              {fieldErrors.pulse_rate_bpm && (
+                <span className="text-[10px] text-destructive leading-tight">
+                  {fieldErrors.pulse_rate_bpm}
+                </span>
+              )}
             </div>
           </div>
 
@@ -450,7 +559,10 @@ export function LogVitalsModal({
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="tempCelsius"
-                className="text-xs font-semibold text-foreground"
+                className={cn(
+                  "text-xs font-semibold",
+                  fieldErrors.temperature_celsius ? "text-destructive" : "text-foreground"
+                )}
               >
                 Temperature *
               </Label>
@@ -459,21 +571,43 @@ export function LogVitalsModal({
                   id="tempCelsius"
                   type="number"
                   step="0.1"
+                  min={CLINICAL_LIMITS.temperature_celsius.min}
+                  max={CLINICAL_LIMITS.temperature_celsius.max}
                   placeholder="36.5"
                   value={temperatureCelsius}
-                  onChange={(e) => setTemperatureCelsius(e.target.value)}
-                  className="!h-9 border-border bg-card pr-8 text-xs font-medium text-card-foreground focus-visible:ring-1"
+                  onChange={(e) => {
+                    setTemperatureCelsius(e.target.value)
+                    if (fieldErrors.temperature_celsius) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.temperature_celsius
+                        return next
+                      })
+                    }
+                  }}
+                  className={cn(
+                    "!h-9 border-border bg-card pr-8 text-xs font-medium text-card-foreground focus-visible:ring-1",
+                    fieldErrors.temperature_celsius && "border-destructive/80 focus-visible:ring-destructive"
+                  )}
                 />
                 <span className="pointer-events-none absolute top-2.5 right-2.5 text-[10px] font-medium text-muted-foreground/80">
                   °C
                 </span>
               </div>
+              {fieldErrors.temperature_celsius && (
+                <span className="text-[10px] text-destructive leading-tight">
+                  {fieldErrors.temperature_celsius}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="fundicHeight"
-                className="text-xs font-semibold text-foreground"
+                className={cn(
+                  "text-xs font-semibold",
+                  fieldErrors.fundic_height_cm ? "text-destructive" : "text-foreground"
+                )}
               >
                 Fundal Height
               </Label>
@@ -482,21 +616,43 @@ export function LogVitalsModal({
                   id="fundicHeight"
                   type="number"
                   step="0.5"
+                  min={CLINICAL_LIMITS.fundic_height_cm.min}
+                  max={CLINICAL_LIMITS.fundic_height_cm.max}
                   placeholder="24.0"
                   value={fundicHeightCm}
-                  onChange={(e) => setFundicHeightCm(e.target.value)}
-                  className="!h-9 border-border bg-card pr-9 text-xs font-medium text-card-foreground focus-visible:ring-1"
+                  onChange={(e) => {
+                    setFundicHeightCm(e.target.value)
+                    if (fieldErrors.fundic_height_cm) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.fundic_height_cm
+                        return next
+                      })
+                    }
+                  }}
+                  className={cn(
+                    "!h-9 border-border bg-card pr-9 text-xs font-medium text-card-foreground focus-visible:ring-1",
+                    fieldErrors.fundic_height_cm && "border-destructive/80 focus-visible:ring-destructive"
+                  )}
                 />
                 <span className="pointer-events-none absolute top-2.5 right-2.5 text-[10px] font-medium text-muted-foreground/80">
                   cm
                 </span>
               </div>
+              {fieldErrors.fundic_height_cm && (
+                <span className="text-[10px] text-destructive leading-tight">
+                  {fieldErrors.fundic_height_cm}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="fetalHeartTone"
-                className="text-xs font-semibold text-foreground"
+                className={cn(
+                  "text-xs font-semibold",
+                  fieldErrors.fetal_heart_tone_bpm ? "text-destructive" : "text-foreground"
+                )}
               >
                 Fetal Heart Tone
               </Label>
@@ -504,15 +660,34 @@ export function LogVitalsModal({
                 <Input
                   id="fetalHeartTone"
                   type="number"
+                  min={CLINICAL_LIMITS.fetal_heart_tone_bpm.min}
+                  max={CLINICAL_LIMITS.fetal_heart_tone_bpm.max}
                   placeholder="140"
                   value={fetalHeartToneBpm}
-                  onChange={(e) => setFetalHeartToneBpm(e.target.value)}
-                  className="!h-9 border-border bg-card pr-11 text-xs font-medium text-card-foreground focus-visible:ring-1"
+                  onChange={(e) => {
+                    setFetalHeartToneBpm(e.target.value)
+                    if (fieldErrors.fetal_heart_tone_bpm) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.fetal_heart_tone_bpm
+                        return next
+                      })
+                    }
+                  }}
+                  className={cn(
+                    "!h-9 border-border bg-card pr-11 text-xs font-medium text-card-foreground focus-visible:ring-1",
+                    fieldErrors.fetal_heart_tone_bpm && "border-destructive/80 focus-visible:ring-destructive"
+                  )}
                 />
                 <span className="pointer-events-none absolute top-2.5 right-2.5 text-[10px] font-medium text-muted-foreground/80">
                   BPM
                 </span>
               </div>
+              {fieldErrors.fetal_heart_tone_bpm && (
+                <span className="text-[10px] text-destructive leading-tight">
+                  {fieldErrors.fetal_heart_tone_bpm}
+                </span>
+              )}
             </div>
           </div>
         </div>

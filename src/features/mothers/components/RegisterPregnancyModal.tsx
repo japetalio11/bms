@@ -20,6 +20,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { validatePregnancyData } from "@/lib/clinicalValidation"
 import { mothersApi } from "../api"
 
 export interface RegisterPregnancyModalProps {
@@ -65,6 +66,18 @@ export function RegisterPregnancyModal({
 
     if (!lmpDate) {
       setError("Please select a Last Menstrual Period (LMP) date.")
+      return
+    }
+
+    const pregVal = validatePregnancyData({
+      lmp_date: lmpDate.toISOString(),
+      gravida: Number(gravida),
+      parity: Number(parity),
+      pregnancy_status: pregnancyStatus,
+    })
+
+    if (!pregVal.isValid) {
+      setError(pregVal.errors.join(" "))
       return
     }
 

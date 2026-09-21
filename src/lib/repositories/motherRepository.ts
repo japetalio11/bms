@@ -10,9 +10,31 @@ import { apiClient } from "@/lib/apiClient"
 import { syncEngine } from "@/lib/sync/syncEngine"
 
 import { extractRiskLevel, calculateOfflineTEWSRisk } from "@/lib/riskUtils"
+import {
+  validatePrenatalVitals,
+  validatePregnancyData,
+  validateSupplementData,
+  validateLabData,
+} from "@/lib/clinicalValidation"
 
 export const motherRepository = {
   async getActiveMothers(facilityId?: string): Promise<LocalMother[]> {
+    let currentUser: any = null
+    try {
+      currentUser = await db.userSession.get("current_user")
+      if (!currentUser && typeof window !== "undefined") {
+        const stored = localStorage.getItem("user")
+        if (stored) currentUser = JSON.parse(stored)
+      }
+    } catch {}
+
+    const isSysAdmin = currentUser?.role === "SystemAdmin"
+    const effectiveFacilityId =
+      facilityId ||
+      (!isSysAdmin
+        ? currentUser?.facility_id || currentUser?.facility?.facility_id
+        : undefined)
+
     let localMothers: LocalMother[] = []
     let allPregnancies: LocalPregnancy[] = []
     let allVisits: LocalPrenatalVisit[] = []
@@ -27,8 +49,8 @@ export const motherRepository = {
 
     if (syncEngine.isNetworkOnline()) {
       try {
-        const endpoint = facilityId
-          ? `/api/v1/mother/active/${facilityId}`
+        const endpoint = effectiveFacilityId
+          ? `/api/v1/mother/active/${effectiveFacilityId}`
           : "/api/v1/mother/active"
         const response = await apiClient.get(endpoint)
         const remoteList =
@@ -115,7 +137,7 @@ export const motherRepository = {
                 assignedWorker: m.assignedWorker || m.assigned_worker,
                 assigned_worker: m.assignedWorker || m.assigned_worker,
                 creator: m.creator,
-                facility_id: m.facility_id || m.user?.facility_id || facilityId,
+                facility_id: m.facility_id || m.user?.facility_id || effectiveFacilityId,
                 facility_ids: facilityIds,
                 facilityEnrollments: enrollments,
                 sync_status: "synced" as const,
@@ -127,10 +149,17 @@ export const motherRepository = {
           const staleMothers = localMothers.filter((m) => {
             if (m.sync_status !== "synced") return false
             if (remoteIds.has(m.id)) return false
-            if (facilityId) {
+            if (effectiveFacilityId) {
               const matchesThisFacility =
-                m.facility_id === facilityId ||
-                m.facility_ids?.includes(facilityId)
+                m.facility_id === effectiveFacilityId ||
+                m.user?.facility_id === effectiveFacilityId ||
+                m.facility_ids?.includes(effectiveFacilityId) ||
+                (Array.isArray(m.facilityEnrollments) &&
+                  m.facilityEnrollments.some(
+                    (e: any) =>
+                      e.facility_id === effectiveFacilityId &&
+                      (e.status === "Active" || !e.status)
+                  ))
               return matchesThisFacility
             }
             return true
@@ -312,30 +341,21 @@ export const motherRepository = {
     }
 
     let result = deduplicated
-    if (facilityId) {
+    if (effectiveFacilityId) {
       result = deduplicated.filter(
         (m) =>
-          !m.facility_id ||
-          m.facility_id === facilityId ||
+          m.facility_id === effectiveFacilityId ||
+          m.user?.facility_id === effectiveFacilityId ||
           (Array.isArray(m.facility_ids) &&
-            m.facility_ids.includes(facilityId)) ||
+            m.facility_ids.includes(effectiveFacilityId)) ||
           (Array.isArray(m.facilityEnrollments) &&
             m.facilityEnrollments.some(
               (e: any) =>
-                e.facility_id === facilityId &&
+                e.facility_id === effectiveFacilityId &&
                 (e.status === "Active" || !e.status)
             ))
       )
     }
-
-    let currentUser: any = null
-    try {
-      currentUser = await db.userSession.get("current_user")
-      if (!currentUser && typeof window !== "undefined") {
-        const stored = localStorage.getItem("user")
-        if (stored) currentUser = JSON.parse(stored)
-      }
-    } catch {}
 
     const isHealthcareStaff =
       currentUser?.role &&
@@ -771,7 +791,15 @@ export const motherRepository = {
         }
         await db.mothers.put(syncedMother)
         return syncedMother
-      } catch (err) {
+      } catch (err: any) {
+        if (
+          err.response?.status >= 400 &&
+          err.response?.status < 500 &&
+          err.response?.status !== 408 &&
+          err.response?.status !== 429
+        ) {
+          throw err
+        }
         console.warn(
           "[motherRepository] Online registerMother failed, falling back to offline outbox:",
           err
@@ -1113,6 +1141,31 @@ export const motherRepository = {
   },
 
   async registerPrenatalVisit(payload: any): Promise<LocalPrenatalVisit> {
+    const vitalsValidation = validatePrenatalVitals({
+      trimester: payload.trimester,
+      visit_number: payload.visit_number,
+      age_of_gestation_weeks: payload.age_of_gestation_weeks,
+      weight_kg: payload.weight_kg,
+      temperature_celsius: payload.temperature_celsius,
+      pulse_rate_bpm: payload.pulse_rate_bpm,
+      bp_systolic: payload.bp_systolic,
+      bp_diastolic: payload.bp_diastolic,
+      fundic_height_cm: payload.fundic_height_cm,
+      fetal_heart_tone_bpm: payload.fetal_heart_tone_bpm,
+    })
+
+    if (!vitalsValidation.isValid) {
+      const err: any = new Error(vitalsValidation.errors.join(" "))
+      err.response = {
+        data: {
+          error: "Invalid medical data provided",
+          details: vitalsValidation.errors,
+        },
+        status: 400,
+      }
+      throw err
+    }
+
     let motherId =
       payload.mother_id || payload.motherId || payload.targetId || ""
     let pregnancyId = payload.pregnancy_id || payload.pregnancyId || ""
@@ -1277,7 +1330,15 @@ export const motherRepository = {
         }
 
         return syncedVisit
-      } catch (err) {
+      } catch (err: any) {
+        if (
+          err.response?.status >= 400 &&
+          err.response?.status < 500 &&
+          err.response?.status !== 408 &&
+          err.response?.status !== 429
+        ) {
+          throw err
+        }
         console.warn(
           "[motherRepository] Online registerPrenatalVisit failed, falling back to offline outbox:",
           err
@@ -1562,7 +1623,15 @@ export const motherRepository = {
         }
         await db.labRecords.put(syncedLab)
         return syncedLab
-      } catch (err) {
+      } catch (err: any) {
+        if (
+          err.response?.status >= 400 &&
+          err.response?.status < 500 &&
+          err.response?.status !== 408 &&
+          err.response?.status !== 429
+        ) {
+          throw err
+        }
         console.warn(
           "[motherRepository] Online registerLabRecord failed, falling back to offline outbox:",
           err
@@ -1699,7 +1768,15 @@ export const motherRepository = {
         }
         await db.pregnancies.put(syncedPreg)
         return syncedPreg
-      } catch (err) {
+      } catch (err: any) {
+        if (
+          err.response?.status >= 400 &&
+          err.response?.status < 500 &&
+          err.response?.status !== 408 &&
+          err.response?.status !== 429
+        ) {
+          throw err
+        }
         console.warn(
           "[motherRepository] Online registerPregnancy failed, falling back to offline outbox:",
           err
@@ -1961,7 +2038,15 @@ export const motherRepository = {
         }
         await db.supplements.put(syncedSupp)
         return syncedSupp
-      } catch (err) {
+      } catch (err: any) {
+        if (
+          err.response?.status >= 400 &&
+          err.response?.status < 500 &&
+          err.response?.status !== 408 &&
+          err.response?.status !== 429
+        ) {
+          throw err
+        }
         console.warn(
           "[motherRepository] Online registerSupplement failed, falling back to offline outbox:",
           err

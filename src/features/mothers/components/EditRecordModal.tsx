@@ -20,6 +20,13 @@ import { Calendar } from "@/components/ui/calendar"
 import { Calendar as CalendarIcon, Upload, Check, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import {
+  validatePrenatalVitals,
+  validatePregnancyData,
+  validateSupplementData,
+  validateLabData,
+  CLINICAL_LIMITS,
+} from "@/lib/clinicalValidation"
 import { mothersApi } from "../api"
 
 export interface EditRecordModalProps {
@@ -131,6 +138,21 @@ export function EditRecordModal({
       }
 
       if (type === "pregnancy") {
+        if (dateVal) payload.lmp_date = dateVal.toISOString()
+        if (payload.gravida !== undefined) payload.gravida = Number(payload.gravida)
+        if (payload.parity !== undefined) payload.parity = Number(payload.parity)
+
+        const pregVal = validatePregnancyData({
+          lmp_date: payload.lmp_date,
+          gravida: payload.gravida,
+          parity: payload.parity,
+        })
+        if (!pregVal.isValid) {
+          setError(pregVal.errors.join(" "))
+          setLoading(false)
+          return
+        }
+
         let pregId = data.pregnancy_id || data.id || data._id
         if (pregId && pregId.startsWith("temp-")) {
           const allPregs = await db.pregnancies.toArray()
@@ -150,13 +172,44 @@ export function EditRecordModal({
           }
         }
         endpoint = `/api/v1/pregnancy/update/${pregId}`
-        if (dateVal) payload.lmp_date = dateVal.toISOString()
-        if (payload.gravida) payload.gravida = Number(payload.gravida)
-        if (payload.parity) payload.parity = Number(payload.parity)
         await db.pregnancies
           .update(pregId, { ...payload, updated_at: Date.now() })
           .catch(() => {})
       } else if (type === "visitation") {
+        if (dateVal) payload.visit_date = dateVal.toISOString()
+        if (payload.pulse_rate_bpm !== undefined && payload.pulse_rate_bpm !== "")
+          payload.pulse_rate_bpm = Number(payload.pulse_rate_bpm)
+        if (payload.bp_systolic !== undefined && payload.bp_systolic !== "")
+          payload.bp_systolic = Number(payload.bp_systolic)
+        if (payload.bp_diastolic !== undefined && payload.bp_diastolic !== "")
+          payload.bp_diastolic = Number(payload.bp_diastolic)
+        if (payload.weight_kg !== undefined && payload.weight_kg !== "")
+          payload.weight_kg = Number(payload.weight_kg)
+        if (payload.temperature_celsius !== undefined && payload.temperature_celsius !== "")
+          payload.temperature_celsius = Number(payload.temperature_celsius)
+        if (payload.fundic_height_cm !== undefined && payload.fundic_height_cm !== "")
+          payload.fundic_height_cm = Number(payload.fundic_height_cm)
+        if (payload.fetal_heart_tone_bpm !== undefined && payload.fetal_heart_tone_bpm !== "")
+          payload.fetal_heart_tone_bpm = Number(payload.fetal_heart_tone_bpm)
+
+        const vitalsVal = validatePrenatalVitals({
+          trimester: payload.trimester,
+          visit_number: payload.visit_number,
+          age_of_gestation_weeks: payload.age_of_gestation_weeks,
+          weight_kg: payload.weight_kg,
+          temperature_celsius: payload.temperature_celsius,
+          pulse_rate_bpm: payload.pulse_rate_bpm,
+          bp_systolic: payload.bp_systolic,
+          bp_diastolic: payload.bp_diastolic,
+          fundic_height_cm: payload.fundic_height_cm || undefined,
+          fetal_heart_tone_bpm: payload.fetal_heart_tone_bpm || undefined,
+        })
+        if (!vitalsVal.isValid) {
+          setError(vitalsVal.errors.join(" "))
+          setLoading(false)
+          return
+        }
+
         let visitId = data.visit_id || data.id || data._id
         if (visitId && visitId.startsWith("temp-")) {
           const allVisits = await db.prenatalVisits.toArray()
@@ -179,20 +232,6 @@ export function EditRecordModal({
           payload.pregnancy_id = data.pregnancy_id
         }
         endpoint = `/api/v1/prenatal-visit/update/${visitId}`
-        if (dateVal) payload.visit_date = dateVal.toISOString()
-        if (payload.pulse_rate_bpm)
-          payload.pulse_rate_bpm = Number(payload.pulse_rate_bpm)
-        if (payload.bp_systolic)
-          payload.bp_systolic = Number(payload.bp_systolic)
-        if (payload.bp_diastolic)
-          payload.bp_diastolic = Number(payload.bp_diastolic)
-        if (payload.weight_kg) payload.weight_kg = Number(payload.weight_kg)
-        if (payload.temperature_celsius)
-          payload.temperature_celsius = Number(payload.temperature_celsius)
-        if (payload.fundic_height_cm)
-          payload.fundic_height_cm = Number(payload.fundic_height_cm)
-        if (payload.fetal_heart_tone_bpm)
-          payload.fetal_heart_tone_bpm = Number(payload.fetal_heart_tone_bpm)
         await db.prenatalVisits
           .update(visitId, { ...payload, updated_at: Date.now() })
           .catch(() => {})
@@ -220,6 +259,18 @@ export function EditRecordModal({
           .update(apptId, { ...payload, updated_at: Date.now() })
           .catch(() => {})
       } else if (type === "laboratory") {
+        if (dateVal) payload.date_of_screening = dateVal.toISOString()
+        const labVal = validateLabData({
+          screening_type: payload.screening_type,
+          result: payload.result,
+          date_of_screening: payload.date_of_screening,
+        })
+        if (!labVal.isValid) {
+          setError(labVal.errors.join(" "))
+          setLoading(false)
+          return
+        }
+
         let screenId = data.screening_id || data.id || data._id
         if (screenId && screenId.startsWith("temp-")) {
           const allLabs = await db.labRecords.toArray()
@@ -241,11 +292,25 @@ export function EditRecordModal({
         if (data.pregnancy_id && !payload.pregnancy_id)
           payload.pregnancy_id = data.pregnancy_id
         endpoint = `/api/v1/lab-screening/update/${screenId}`
-        if (dateVal) payload.date_of_screening = dateVal.toISOString()
         await db.labRecords
           .update(screenId, { ...payload, updated_at: Date.now() })
           .catch(() => {})
       } else if (type === "prescription") {
+        if (dateVal) payload.date_given = dateVal.toISOString()
+        if (payload.tablets_given_count !== undefined && payload.tablets_given_count !== "")
+          payload.tablets_given_count = Number(payload.tablets_given_count)
+
+        const suppVal = validateSupplementData({
+          supplement_type: payload.supplement_type,
+          date_given: payload.date_given,
+          tablets_given_count: payload.tablets_given_count,
+        })
+        if (!suppVal.isValid) {
+          setError(suppVal.errors.join(" "))
+          setLoading(false)
+          return
+        }
+
         let suppId = data.supplement_id || data.id || data._id
         if (suppId && suppId.startsWith("temp-")) {
           const allSupps = await db.supplements.toArray()
@@ -268,9 +333,6 @@ export function EditRecordModal({
           payload.pregnancy_id = data.pregnancy_id
         endpoint = `/api/v1/supplement/update`
         payload.supplement_id = suppId
-        if (dateVal) payload.date_given = dateVal.toISOString()
-        if (payload.tablets_given_count)
-          payload.tablets_given_count = Number(payload.tablets_given_count)
         await db.supplements
           .update(suppId, { ...payload, updated_at: Date.now() })
           .catch(() => {})

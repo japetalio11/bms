@@ -95,7 +95,6 @@ export const referralRepository = {
           }
 
           localList = await db.referrals.toArray()
-          return localList
         }
       } catch (apiErr) {
         console.warn(
@@ -103,6 +102,27 @@ export const referralRepository = {
           apiErr
         )
       }
+    }
+
+    let currentUser: any = null
+    try {
+      currentUser = await db.userSession.get("current_user")
+      if (!currentUser && typeof window !== "undefined") {
+        const stored = localStorage.getItem("user")
+        if (stored) currentUser = JSON.parse(stored)
+      }
+    } catch {}
+
+    const isSysAdmin = currentUser?.role === "SystemAdmin"
+    const currentFacilityId =
+      currentUser?.facility_id || currentUser?.facility?.facility_id
+
+    if (!isSysAdmin && currentFacilityId) {
+      return localList.filter(
+        (r) =>
+          r.from_facility_id === currentFacilityId ||
+          r.to_facility_id === currentFacilityId
+      )
     }
 
     return localList
