@@ -9,6 +9,7 @@ import {
   PlusCircle,
   MoreVertical,
   Activity,
+  AlertTriangle,
   CheckCircle2,
   Clock,
   ChevronDown,
@@ -56,7 +57,12 @@ import { toast } from "sonner"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { appointmentApi } from "../api"
 import { db } from "@/lib/db/bmsDatabase"
-import { extractRiskLevel } from "@/lib/riskUtils"
+import {
+  extractRiskLevel,
+  getRiskVariant,
+  getRiskLabel,
+  getRiskBadgeClasses,
+} from "@/lib/riskUtils"
 
 export function AppointmentListPage() {
   const [activeTab, setActiveTab] = useState("all")
@@ -186,10 +192,19 @@ export function AppointmentListPage() {
       matchedMother?.name ||
       "Unknown Mother"
 
+    const currentPregnancy =
+      matchedMother?.pregnancies?.[0] || matchedMother?.pregnancy
+    const visits = [
+      ...(matchedMother?.prenatalVisits || []),
+      ...(currentPregnancy?.prenatalVisits || []),
+      ...(Array.isArray(matchedMother?.pregnancies)
+        ? matchedMother.pregnancies.flatMap((p: any) => p.prenatalVisits || [])
+        : []),
+    ]
     const risk = extractRiskLevel(
       matchedMother || item,
       matchedMother?.pregnancies,
-      matchedMother?.prenatalVisits
+      visits
     )
 
     let dateStr = "N/A"
@@ -289,8 +304,9 @@ export function AppointmentListPage() {
     }
 
     if (selectedRiskFilters.length > 0) {
-      const match = selectedRiskFilters.some((r) =>
-        appointment.risk.toLowerCase().includes(r.toLowerCase())
+      const appVariant = getRiskVariant(appointment.risk)
+      const match = selectedRiskFilters.some(
+        (r) => appVariant === getRiskVariant(r)
       )
       if (!match) return false
     }
@@ -730,10 +746,18 @@ export function AppointmentListPage() {
                               {appointment.name}
                             </h3>
                             <Badge
-                              className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${appointment.risk.toLowerCase().includes("high") ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}
+                              className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${getRiskBadgeClasses(appointment.risk).badge}`}
                             >
-                              <Activity className="h-3 w-3" />
-                              {appointment.risk}
+                              {getRiskVariant(appointment.risk) === "high" ? (
+                                <Activity className="h-3 w-3" />
+                              ) : getRiskVariant(appointment.risk) === "moderate" ? (
+                                <AlertTriangle className="h-3 w-3" />
+                              ) : getRiskVariant(appointment.risk) === "low" ? (
+                                <CheckCircle2 className="h-3 w-3" />
+                              ) : (
+                                <Activity className="h-3 w-3 opacity-60" />
+                              )}
+                              {getRiskLabel(appointment.risk)}
                             </Badge>
                           </div>
 
@@ -891,10 +915,18 @@ export function AppointmentListPage() {
                                 </TableCell>
                                 <TableCell>
                                   <Badge
-                                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${appointment.risk.toLowerCase().includes("high") ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"}`}
+                                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${getRiskBadgeClasses(appointment.risk).badge}`}
                                   >
-                                    <Activity className="h-3 w-3" />
-                                    {appointment.risk}
+                                    {getRiskVariant(appointment.risk) === "high" ? (
+                                      <Activity className="h-3 w-3" />
+                                    ) : getRiskVariant(appointment.risk) === "moderate" ? (
+                                      <AlertTriangle className="h-3 w-3" />
+                                    ) : getRiskVariant(appointment.risk) === "low" ? (
+                                      <CheckCircle2 className="h-3 w-3" />
+                                    ) : (
+                                      <Activity className="h-3 w-3 opacity-60" />
+                                    )}
+                                    {getRiskLabel(appointment.risk)}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>

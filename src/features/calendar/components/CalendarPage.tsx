@@ -26,7 +26,7 @@ import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
 import { toast } from "sonner"
 import { appointmentApi } from "@/features/appointments/api"
 import { mothersApi } from "@/features/mothers/api"
-import { extractRiskLevel } from "@/lib/riskUtils"
+import { extractRiskLevel, getRiskVariant } from "@/lib/riskUtils"
 
 import "react-big-calendar/lib/css/react-big-calendar.css"
 
@@ -223,10 +223,20 @@ export function CalendarPage() {
         matchedMother?.name ||
         "Unknown Mother"
 
+      const currentPregnancy =
+        matchedMother?.pregnancies?.[0] || matchedMother?.pregnancy
+      const visits = [
+        ...(matchedMother?.prenatalVisits || []),
+        ...(currentPregnancy?.prenatalVisits || []),
+        ...(Array.isArray(matchedMother?.pregnancies)
+          ? matchedMother.pregnancies.flatMap((p: any) => p.prenatalVisits || [])
+          : []),
+      ]
+
       const risk = extractRiskLevel(
         matchedMother || item,
         matchedMother?.pregnancies,
-        matchedMother?.prenatalVisits
+        visits
       )
       let status = item.status || "Pending"
       const lowerStatus = status.toLowerCase()
@@ -312,10 +322,9 @@ export function CalendarPage() {
         if (!match) return false
       }
       if (selectedRiskFilters.length > 0) {
-        const match = selectedRiskFilters.some((r) =>
-          String(ev.risk || "")
-            .toLowerCase()
-            .includes(r.toLowerCase())
+        const evVariant = getRiskVariant(ev.risk)
+        const match = selectedRiskFilters.some(
+          (r) => evVariant === getRiskVariant(r)
         )
         if (!match) return false
       }

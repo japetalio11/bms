@@ -2,6 +2,7 @@ import * as React from "react"
 import {
   Calendar as CalendarIcon,
   Activity,
+  AlertTriangle,
   CheckCircle2,
   Clock,
 } from "lucide-react"
@@ -11,6 +12,11 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card"
 import { useIsMobile } from "@/hooks/use-mobile"
+import {
+  getRiskVariant,
+  getRiskLabel,
+  getRiskBadgeClasses,
+} from "@/lib/riskUtils"
 
 export function CustomEvent({ event, onClick }: any) {
   const isMobile = useIsMobile()
@@ -32,6 +38,10 @@ export function CustomEvent({ event, onClick }: any) {
     )
   }
 
+  const riskVariant = getRiskVariant(event.risk)
+  const riskLabel = getRiskLabel(event.risk)
+  const riskClasses = getRiskBadgeClasses(event.risk)
+
   return (
     <HoverCard openDelay={200} closeDelay={100}>
       <HoverCardTrigger asChild>
@@ -52,12 +62,22 @@ export function CustomEvent({ event, onClick }: any) {
             </span>
             {event.risk && (
               <div
-                className={`flex items-center gap-1 ${event.risk === "High Risk" ? "text-red-500" : "text-[#22C55E]"} ${isMobile ? "mt-1 text-xs" : "mt-0.5 text-[9px]"}`}
+                className={`flex items-center gap-1 ${riskClasses.text} ${isMobile ? "mt-1 text-xs" : "mt-0.5 text-[9px]"}`}
               >
-                <Activity
-                  className={`${isMobile ? "h-3.5 w-3.5" : "h-2.5 w-2.5"} shrink-0`}
-                />
-                <span className="truncate">{event.risk}</span>
+                {riskVariant === "high" ? (
+                  <Activity
+                    className={`${isMobile ? "h-3.5 w-3.5" : "h-2.5 w-2.5"} shrink-0`}
+                  />
+                ) : riskVariant === "moderate" ? (
+                  <AlertTriangle
+                    className={`${isMobile ? "h-3.5 w-3.5" : "h-2.5 w-2.5"} shrink-0`}
+                  />
+                ) : (
+                  <CheckCircle2
+                    className={`${isMobile ? "h-3.5 w-3.5" : "h-2.5 w-2.5"} shrink-0`}
+                  />
+                )}
+                <span className="truncate">{riskLabel}</span>
               </div>
             )}
           </div>
@@ -102,9 +122,9 @@ export function CustomEvent({ event, onClick }: any) {
               Risk Level
             </div>
             <div
-              className={`text-right text-xs font-medium ${event.risk === "High Risk" ? "text-red-500" : "text-[#22C55E]"}`}
+              className={`text-right text-xs font-medium ${riskClasses.text}`}
             >
-              {event.risk || "Low Risk"}
+              {riskLabel}
             </div>
           </div>
         </div>

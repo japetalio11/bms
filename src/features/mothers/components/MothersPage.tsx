@@ -21,7 +21,12 @@ import {
   UserCheck,
   UserX,
 } from "lucide-react"
-import { extractRiskLevel } from "@/lib/riskUtils"
+import {
+  extractRiskLevel,
+  getRiskVariant,
+  getRiskLabel,
+  getRiskBadgeClasses,
+} from "@/lib/riskUtils"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -33,6 +38,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,8 +48,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
 import {
   Popover,
   PopoverContent,
@@ -54,14 +59,21 @@ import { RegisterMotherModal } from "./RegisterMotherModal"
 import { ConnectMotherModal } from "./ConnectMotherModal"
 import { ExportMaternalDataModal } from "./ExportMaternalDataModal"
 import { AssignStaffModal } from "./AssignStaffModal"
-import { formatDate } from "@/lib/utils"
 import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
 import { toast } from "sonner"
-import { mothersApi } from "../api"
+import { mothersApi } from "@/features/mothers/api/mothersApi"
+import { formatDate } from "@/lib/utils"
 
 export function MothersPage() {
   const navigate = useNavigate()
+  const [motherList, setMotherList] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedRiskFilters, setSelectedRiskFilters] = useState<string[]>([])
+  const [selectedBarangayFilters, setSelectedBarangayFilters] = useState<
+    string[]
+  >([])
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
   const [connectModalOpen, setConnectModalOpen] = useState(false)
   const [exportModalOpen, setExportModalOpen] = useState(false)
@@ -69,13 +81,6 @@ export function MothersPage() {
   const [assignModalMother, setAssignModalMother] = useState<any>(null)
   const [motherToDelete, setMotherToDelete] = useState<any>(null)
   const [isDeletingMother, setIsDeletingMother] = useState(false)
-  const [motherList, setMotherList] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedRiskFilters, setSelectedRiskFilters] = useState<string[]>([])
-  const [selectedBarangayFilters, setSelectedBarangayFilters] = useState<
-    string[]
-  >([])
 
   const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null
   const currentUser = userStr ? JSON.parse(userStr) : null
@@ -86,14 +91,11 @@ export function MothersPage() {
 
   const fetchMothers = async () => {
     setLoading(true)
-    const userStr = localStorage.getItem("user")
-    const user = userStr ? JSON.parse(userStr) : null
-
     try {
-      const mothers = await mothersApi.getActiveMothers(user?.facility_id)
-      setMotherList(mothers)
+      const data = await mothersApi.getActiveMothers(currentUser?.facility_id)
+      setMotherList(data)
     } catch (err) {
-      setMotherList([])
+      console.error("Failed to fetch mothers:", err)
     } finally {
       setLoading(false)
     }
@@ -133,8 +135,14 @@ export function MothersPage() {
         m.name ||
         "Unknown"
       const currentPregnancy = m.pregnancies?.[0] || m.pregnancy
-      const latestVisit = currentPregnancy?.prenatalVisits?.[0]
-      const risk = extractRiskLevel(m, m.pregnancies, m.prenatalVisits)
+      const visits = [
+        ...(m.prenatalVisits || []),
+        ...(currentPregnancy?.prenatalVisits || []),
+        ...(Array.isArray(m.pregnancies)
+          ? m.pregnancies.flatMap((p: any) => p.prenatalVisits || [])
+          : []),
+      ]
+      const risk = extractRiskLevel(m, m.pregnancies, visits)
 
       const lmpRaw = currentPregnancy?.lmp_date || currentPregnancy?.lmp
       const calculatedGA = lmpRaw
@@ -178,11 +186,12 @@ export function MothersPage() {
         if (!matchName && !matchStation) return false
       }
 
+      const mVariant = getRiskVariant(m.risk)
+
       if (activeTab === "high-risk") {
-        if (!m.risk || !m.risk.toLowerCase().includes("high")) return false
+        if (mVariant !== "high") return false
       } else if (activeTab === "triage") {
-        if (m.risk !== null && m.risk !== undefined && m.risk !== "N/A")
-          return false
+        if (mVariant !== "none") return false
       } else if (activeTab === "postpartum") {
         const status =
           m.rawMother.pregnancies?.[0]?.pregnancy_status?.toLowerCase()
@@ -190,9 +199,8 @@ export function MothersPage() {
       }
 
       if (selectedRiskFilters.length > 0) {
-        if (!m.risk) return false
-        const match = selectedRiskFilters.some((rf) =>
-          m.risk.toLowerCase().includes(rf.toLowerCase())
+        const match = selectedRiskFilters.some(
+          (rf) => mVariant === getRiskVariant(rf)
         )
         if (!match) return false
       }
@@ -208,38 +216,26 @@ export function MothersPage() {
     })
 
   const getRiskBadge = (risk?: string | null) => {
-    if (!risk || risk === "N/A" || risk.trim() === "") {
-      return (
-        <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-none">
-          <Activity className="h-3 w-3 opacity-60" />
-          No Risk Assessed
-        </Badge>
-      )
-    }
+    const variant = getRiskVariant(risk)
+    const label = getRiskLabel(risk)
+    const classes = getRiskBadgeClasses(risk)
 
-    const lowerRisk = risk.toLowerCase()
-    if (lowerRisk.includes("high")) {
-      return (
-        <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-500 shadow-none">
+    return (
+      <Badge
+        className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${classes.badge}`}
+      >
+        {variant === "high" ? (
           <Activity className="h-3 w-3" />
-          High Risk
-        </Badge>
-      )
-    } else if (lowerRisk.includes("mod")) {
-      return (
-        <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500 shadow-none">
+        ) : variant === "moderate" ? (
           <AlertTriangle className="h-3 w-3" />
-          Moderate
-        </Badge>
-      )
-    } else {
-      return (
-        <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-green-500/10 px-1.5 py-0.5 text-[10px] font-medium text-green-500 shadow-none">
+        ) : variant === "low" ? (
           <CheckCircle2 className="h-3 w-3" />
-          Low Risk
-        </Badge>
-      )
-    }
+        ) : (
+          <Activity className="h-3 w-3 opacity-60" />
+        )}
+        {label}
+      </Badge>
+    )
   }
 
   return (

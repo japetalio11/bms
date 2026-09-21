@@ -1,6 +1,8 @@
 import React, { useMemo } from "react"
 import {
   Activity,
+  AlertTriangle,
+  CheckCircle2,
   Calendar,
   Droplet,
   Phone,
@@ -17,7 +19,12 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/utils"
-import { extractRiskLevel } from "@/lib/riskUtils"
+import {
+  extractRiskLevel,
+  getRiskVariant,
+  getRiskLabel,
+  getRiskBadgeClasses,
+} from "@/lib/riskUtils"
 import { useLiveQuery } from "dexie-react-hooks"
 import { db } from "@/lib/db/bmsDatabase"
 
@@ -155,36 +162,24 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
     )
 
     const getRiskBadge = (riskStr?: string | null) => {
-      if (!riskStr || riskStr === "N/A" || riskStr.trim() === "") {
-        return (
-          <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-none">
-            <Activity className="h-3 w-3 opacity-60" />
-            No Risk Assessed
-          </Badge>
-        )
-      }
-
-      const lower = riskStr.toLowerCase()
-      let displayText = riskStr
-      let bgClass = "bg-green-500/10 text-green-500"
-
-      if (lower.includes("high")) {
-        displayText = "High Risk"
-        bgClass = "bg-red-500/10 text-red-500"
-      } else if (lower.includes("mod")) {
-        displayText = "Moderate Risk"
-        bgClass = "bg-yellow-500/10 text-yellow-500"
-      } else if (lower.includes("low")) {
-        displayText = "Low Risk"
-        bgClass = "bg-green-500/10 text-green-500"
-      }
+      const variant = getRiskVariant(riskStr)
+      const label = getRiskLabel(riskStr)
+      const classes = getRiskBadgeClasses(riskStr)
 
       return (
         <Badge
-          className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${bgClass}`}
+          className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${classes.badge}`}
         >
-          <Activity className="h-3 w-3" />
-          {displayText}
+          {variant === "high" ? (
+            <Activity className="h-3 w-3" />
+          ) : variant === "moderate" ? (
+            <AlertTriangle className="h-3 w-3" />
+          ) : variant === "low" ? (
+            <CheckCircle2 className="h-3 w-3" />
+          ) : (
+            <Activity className="h-3 w-3 opacity-60" />
+          )}
+          {label}
         </Badge>
       )
     }

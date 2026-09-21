@@ -4,11 +4,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   RefreshCw,
   MoreVertical,
-  ChevronDown,
-  ChevronsLeft,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsRight,
   PlusCircle,
   Download,
   Plus,
@@ -45,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { ReferralSidepeek } from "./ReferralSidepeek"
@@ -363,26 +359,28 @@ export function ReferralsPage() {
             </div>
           )}
 
-          <div className="flex flex-col items-start justify-between gap-4 xl:flex-row xl:items-center">
+          <div className="flex flex-col items-start justify-between gap-3 xl:flex-row xl:items-center">
             <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto">
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search referrals..."
-                className="h-8 w-full border-border bg-card px-2 text-xs font-normal text-card-foreground sm:w-[250px]"
+                className="h-8.5 flex-1 min-w-[170px] border-border bg-card px-2.5 text-xs font-normal text-card-foreground sm:w-[250px] sm:flex-initial"
               />
 
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
-                    className="hidden h-8 gap-2 border-dashed border-border bg-card px-2 text-xs font-medium text-card-foreground hover:bg-accent md:flex"
+                    className="flex h-8.5 gap-1.5 border-dashed border-border bg-card px-2.5 text-xs font-medium text-card-foreground hover:bg-accent"
                   >
                     <PlusCircle className="h-3.5 w-3.5" />
-                    Risk Level{" "}
-                    {selectedRiskFilters.length > 0
-                      ? `(${selectedRiskFilters.length})`
-                      : ""}
+                    <span>Risk Level</span>
+                    {selectedRiskFilters.length > 0 && (
+                      <Badge variant="secondary" className="h-4 px-1 text-[10px] font-bold">
+                        {selectedRiskFilters.length}
+                      </Badge>
+                    )}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
@@ -429,11 +427,11 @@ export function ReferralsPage() {
               </Popover>
             </div>
 
-            <div className="flex w-full items-center gap-2 xl:w-auto">
+            <div className="flex w-full items-center justify-end gap-2 xl:w-auto">
               <Button
                 variant="outline"
                 onClick={() => setIsExportOpen(true)}
-                className="h-8 gap-2 border-border bg-card px-2 text-xs font-medium text-card-foreground hover:bg-accent"
+                className="h-8.5 gap-1.5 border-border bg-card px-2.5 text-xs font-medium text-card-foreground hover:bg-accent"
               >
                 <Download className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Export</span>
@@ -441,7 +439,7 @@ export function ReferralsPage() {
               <Button
                 variant="outline"
                 onClick={loadReferrals}
-                className="h-8 gap-2 border-border bg-card px-2 text-xs font-medium text-card-foreground hover:bg-accent"
+                className="h-8.5 gap-1.5 border-border bg-card px-2.5 text-xs font-medium text-card-foreground hover:bg-accent"
               >
                 <RefreshCw
                   className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
@@ -450,10 +448,10 @@ export function ReferralsPage() {
               </Button>
               <Button
                 onClick={() => setIsCreateOpen(true)}
-                className="h-8 gap-1.5 bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                className="h-8.5 flex-1 sm:flex-initial gap-1.5 bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90 shadow-2xs"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Create Referral
+                <span>Create Referral</span>
               </Button>
             </div>
           </div>
