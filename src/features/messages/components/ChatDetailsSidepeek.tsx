@@ -12,8 +12,8 @@ import {
 import { useLiveQuery } from "dexie-react-hooks"
 import { db } from "@/lib/db/bmsDatabase"
 import { format, parseISO } from "date-fns"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { resolveFileUrl } from "@/lib/apiClient"
+import { MediaPreviewModal, type MediaItem } from "./MediaPreviewModal"
 
 interface ChatDetailsProps {
   activeChatId: string | null
@@ -23,7 +23,8 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
   const [openPhotos, setOpenPhotos] = React.useState(true)
   const [openFiles, setOpenFiles] = React.useState(true)
   const [openLinks, setOpenLinks] = React.useState(true)
-  const [previewImage, setPreviewImage] = React.useState<string | null>(null)
+  const [previewMediaIndex, setPreviewMediaIndex] = React.useState<number | null>(null)
+  const [customMediaItem, setCustomMediaItem] = React.useState<MediaItem | null>(null)
 
   const sessionUser = useLiveQuery(() => db.userSession.get("current_user"))
   const currentUser = React.useMemo(() => {
@@ -128,6 +129,23 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
       return isImgType || isImgUrl
     })
   }, [messages])
+
+  const mediaItems: MediaItem[] = React.useMemo(() => {
+    return photosAndVideos.map((media) => {
+      let timeFormatted = ""
+      try {
+        if (media.message_date) {
+          timeFormatted = format(parseISO(media.message_date), "MMM d, yyyy • h:mm a")
+        }
+      } catch {}
+      return {
+        url: media.message_content,
+        title: media.file_name || "Photo Attachment",
+        fileName: media.file_name,
+        timestamp: timeFormatted,
+      }
+    })
+  }, [photosAndVideos])
 
   const sharedFiles = React.useMemo(() => {
     const filesFromMessages = messages
@@ -236,14 +254,16 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
             <div className="px-6 pb-6">
               {photosAndVideos.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2">
-                  {photosAndVideos.map((media) => (
+                  {photosAndVideos.map((media, index) => (
                     <button
                       key={media.id}
                       type="button"
-                      onClick={() =>
-                        setPreviewImage(resolveFileUrl(media.message_content))
-                      }
-                      className="group relative block aspect-square cursor-pointer overflow-hidden rounded-md border border-border bg-muted p-0 text-left"
+                      onClick={() => {
+                        setCustomMediaItem(null)
+                        setPreviewMediaIndex(index)
+                      }}
+                      className="group relative block aspect-square cursor-pointer overflow-hidden rounded-md border border-border bg-muted p-0 text-left transition-transform hover:scale-[1.02]"
+                      title="Click to view full image"
                     >
                       <img
                         src={resolveFileUrl(media.message_content)}
@@ -291,19 +311,32 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
                     key={file.id}
                     className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3"
                   >
-                    <div className="flex min-w-0 items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (file.url && file.url !== "#") {
+                          setCustomMediaItem({
+                            url: file.url,
+                            title: file.name,
+                            fileName: file.name,
+                            timestamp: file.date ? formatDateStr(file.date) : undefined,
+                          })
+                        }
+                      }}
+                      className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+                    >
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-primary/10 text-primary">
                         <FileText className="h-4 w-4" />
                       </div>
                       <div className="flex min-w-0 flex-col gap-0.5">
-                        <span className="truncate text-xs font-medium text-card-foreground">
+                        <span className="truncate text-xs font-medium text-card-foreground hover:underline">
                           {file.name}
                         </span>
                         <span className="truncate text-[10px] text-muted-foreground">
                           {file.size} • {formatDateStr(file.date)}
                         </span>
                       </div>
-                    </div>
+                    </button>
                     {file.url && file.url !== "#" && (
                       <a
                         href={file.url}
@@ -311,6 +344,7 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
                         target="_blank"
                         rel="noreferrer"
                         className="shrink-0 p-1 text-muted-foreground hover:text-foreground"
+                        title="Download file"
                       >
                         <Download className="h-4 w-4" />
                       </a>
@@ -374,23 +408,15 @@ export function ChatDetailsSidepeek({ activeChatId }: ChatDetailsProps) {
         </div>
       </div>
 
-      <Dialog
-        open={!!previewImage}
-        onOpenChange={(open) => !open && setPreviewImage(null)}
-      >
-        <DialogContent className="max-w-3xl overflow-hidden border-border bg-black/90 p-2">
-          <DialogTitle className="sr-only">Image Preview</DialogTitle>
-          {previewImage && (
-            <div className="flex flex-col items-center justify-center p-2">
-              <img
-                src={resolveFileUrl(previewImage)}
-                alt="Enlarged preview"
-                className="max-h-[80vh] w-auto max-w-full rounded-md object-contain"
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <MediaPreviewModal
+        open={previewMediaIndex !== null || customMediaItem !== null}
+        onClose={() => {
+          setPreviewMediaIndex(null)
+          setCustomMediaItem(null)
+        }}
+        initialIndex={previewMediaIndex ?? 0}
+        items={customMediaItem ? [customMediaItem] : mediaItems}
+      />
     </div>
   )
 }

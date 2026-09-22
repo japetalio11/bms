@@ -22,8 +22,8 @@ import { db } from "@/lib/db/bmsDatabase"
 import { format, parseISO } from "date-fns"
 import { messageRepository } from "@/lib/repositories/messageRepository"
 import { useNetworkStatus } from "@/hooks/useNetworkStatus"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { resolveFileUrl } from "@/lib/apiClient"
+import { MediaPreviewModal, type MediaItem } from "./MediaPreviewModal"
 
 interface ChatAreaProps {
   activeChatId: string | null
@@ -34,7 +34,7 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
   const navigate = useNavigate()
   const [message, setMessage] = React.useState("")
   const [isSending, setIsSending] = React.useState(false)
-  const [previewImage, setPreviewImage] = React.useState<string | null>(null)
+  const [previewMediaIndex, setPreviewMediaIndex] = React.useState<number | null>(null)
   const { isOnline } = useNetworkStatus()
   const isOffline = !isOnline
 
@@ -257,6 +257,54 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
     }
   }
 
+  const mediaList: MediaItem[] = React.useMemo(() => {
+    return chatMessages
+      .filter((msg) => {
+        const isImg =
+          msg.message_type === "image" ||
+          (typeof msg.message_content === "string" &&
+            (msg.message_content.startsWith("data:image/") ||
+              /\.(jpg|jpeg|png|webp|gif|svg|bmp)$/i.test(msg.message_content)))
+        const isPdf =
+          msg.message_type === "file" ||
+          (typeof msg.message_content === "string" &&
+            (msg.message_content.startsWith("data:application/pdf") ||
+              /\.pdf$/i.test(msg.message_content)))
+        return isImg || isPdf
+      })
+      .map((msg) => {
+        const sender =
+          msg.sender_id === currentUserId
+            ? "You"
+            : activeContact?.name || "Contact"
+        let timeFormatted = ""
+        try {
+          if (msg.message_date) {
+            timeFormatted = format(parseISO(msg.message_date), "MMM d, yyyy • h:mm a")
+          }
+        } catch {}
+
+        return {
+          url: msg.message_content,
+          title: msg.file_name || "Attachment",
+          fileName: msg.file_name,
+          senderName: sender,
+          timestamp: timeFormatted,
+        }
+      })
+  }, [chatMessages, currentUserId, activeContact])
+
+  const handleOpenMedia = (msgContent: string) => {
+    const idx = mediaList.findIndex((item) => item.url === msgContent)
+    if (idx !== -1) {
+      setPreviewMediaIndex(idx)
+    } else if (mediaList.length > 0) {
+      setPreviewMediaIndex(0)
+    } else {
+      setPreviewMediaIndex(null)
+    }
+  }
+
   if (!activeChatId) {
     return (
       <div className="flex h-full flex-1 flex-col items-center justify-center border-r border-border bg-background text-muted-foreground">
@@ -364,26 +412,35 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
                 {isImage ? (
                   <button
                     type="button"
-                    onClick={() =>
-                      setPreviewImage(resolveFileUrl(msg.message_content))
-                    }
-                    className="group block cursor-pointer overflow-hidden rounded-lg border-0 bg-transparent p-0 text-left"
+                    onClick={() => handleOpenMedia(msg.message_content)}
+                    className="group block cursor-pointer overflow-hidden rounded-lg border-0 bg-transparent p-0 text-left transition-transform hover:scale-[1.01]"
+                    title="Click to view full image"
                   >
                     <img
                       src={resolveFileUrl(msg.message_content)}
                       alt="Shared Attachment"
-                      className="max-h-[260px] max-w-[260px] rounded-lg object-cover transition-opacity group-hover:opacity-90"
+                      className="max-h-[280px] max-w-[280px] rounded-lg object-cover transition-opacity group-hover:opacity-95"
                     />
                   </button>
                 ) : isFile ? (
                   <div className="flex items-center gap-3 p-1">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted/60">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenMedia(msg.message_content)}
+                      className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded bg-muted/60 transition-colors hover:bg-muted/80"
+                      title="Preview file"
+                    >
                       <FileText className="h-4 w-4" />
-                    </div>
+                    </button>
                     <div className="flex min-w-0 flex-col">
-                      <span className="max-w-[180px] truncate text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenMedia(msg.message_content)}
+                        className="max-w-[180px] truncate text-left text-xs font-semibold hover:underline"
+                        title="Preview file"
+                      >
                         {msg.file_name || "Document.pdf"}
-                      </span>
+                      </button>
                       <span className="text-[10px] opacity-75">
                         {msg.file_size || "File Attachment"}
                       </span>
@@ -394,6 +451,7 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ml-2 shrink-0 rounded p-1.5 hover:bg-muted/80"
+                      title="Download file"
                     >
                       <Download className="h-4 w-4" />
                     </a>
@@ -500,23 +558,12 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
         )}
       </div>
 
-      <Dialog
-        open={!!previewImage}
-        onOpenChange={(open) => !open && setPreviewImage(null)}
-      >
-        <DialogContent className="max-w-3xl overflow-hidden border-border bg-black/90 p-2">
-          <DialogTitle className="sr-only">Image Preview</DialogTitle>
-          {previewImage && (
-            <div className="flex flex-col items-center justify-center p-2">
-              <img
-                src={resolveFileUrl(previewImage)}
-                alt="Enlarged preview"
-                className="max-h-[80vh] w-auto max-w-full rounded-md object-contain"
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <MediaPreviewModal
+        open={previewMediaIndex !== null}
+        onClose={() => setPreviewMediaIndex(null)}
+        initialIndex={previewMediaIndex ?? 0}
+        items={mediaList}
+      />
     </div>
   )
 }
