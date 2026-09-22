@@ -51,6 +51,22 @@ apiClient.interceptors.response.use(
       console.warn("[apiClient] Browser network interface is offline.")
       syncEngine.setNetworkOnline(false)
     }
+
+    if (error.response && error.response.status === 401) {
+      const requestUrl = error.config?.url || ""
+      const isAuthEndpoint =
+        requestUrl.includes("/api/v1/auth/login") ||
+        requestUrl.includes("/api/v1/auth/reset-password") ||
+        requestUrl.includes("/api/v1/facility/public-register")
+
+      if (!isAuthEndpoint && typeof window !== "undefined") {
+        console.warn("[apiClient] 401 Unauthorized received. Session expired or revoked.")
+        localStorage.removeItem("token")
+        localStorage.removeItem("user")
+        window.dispatchEvent(new CustomEvent("bms:unauthorized"))
+      }
+    }
+
     return Promise.reject(error)
   }
 )
