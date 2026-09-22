@@ -479,4 +479,76 @@ export const userRepository = {
       limit: params?.limit ?? 10,
     }
   },
+
+  async uploadStaffPhoto(userId: string, file: File): Promise<string> {
+    const { motherRepository } = await import("@/lib/repositories/motherRepository")
+    const { url } = await motherRepository.uploadFile(file)
+    if (url) {
+      await this.updateStaffProfilePhoto(userId, url)
+    }
+    return url
+  },
+
+  async updateStaffProfilePhoto(
+    userId: string,
+    profileUrl: string
+  ): Promise<boolean> {
+    try {
+      const currentList = await this.getLocalCachedStaff()
+      const updatedList = currentList.map((u) =>
+        u.id === userId || u.user_id === userId
+          ? { ...u, profile_url: profileUrl, updated_at: Date.now() }
+          : u
+      )
+      await db.userSession.put({
+        id: "facility_staff_cache",
+        data: updatedList,
+        updated_at: Date.now(),
+      })
+
+      const currentUser = await db.userSession.get("current_user")
+      if (
+        currentUser &&
+        (currentUser.id === userId || currentUser.user_id === userId)
+      ) {
+        await db.userSession.put({
+          ...currentUser,
+          profile_url: profileUrl,
+          updated_at: Date.now(),
+        })
+      }
+    } catch (err) {
+      console.warn(
+        "[userRepository] Failed to update local cache with new staff profile photo:",
+        err
+      )
+    }
+
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        await apiClient.put(`/api/v1/user/${userId}/profile-photo`, {
+          profile_url: profileUrl,
+        })
+        return true
+      } catch (err: any) {
+        if (err.response?.status >= 400 && err.response?.status < 500) {
+          throw err
+        }
+        console.warn(
+          "[userRepository] Online staff photo update failed, queuing offline mutation:",
+          err
+        )
+      }
+    }
+
+    await syncEngine.enqueueMutation({
+      entity_type: "custom_request",
+      action: "UPDATE",
+      endpoint: `/api/v1/user/${userId}/profile-photo`,
+      method: "PUT",
+      payload: { profile_url: profileUrl },
+    })
+
+    return true
+  },
 }
