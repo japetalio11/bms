@@ -20,8 +20,8 @@ export const mothersApi = {
     return await motherRepository.registerMother(payload)
   },
 
-  async updateMother(motherId: string, payload: any) {
-    return await motherRepository.updateMother(motherId, payload)
+  async updateMother(motherId: string, payload: any, blobIds?: string[]) {
+    return await motherRepository.updateMother(motherId, payload, blobIds)
   },
 
   async deleteMother(motherId: string) {
@@ -29,9 +29,13 @@ export const mothersApi = {
   },
 
   async uploadAvatar(file: File, motherId?: string) {
-    const { url } = await motherRepository.uploadFile(file)
+    const { url, blobId } = await motherRepository.uploadFile(file)
     if (motherId && url) {
-      await motherRepository.updateMother(motherId, { photo_url: url, profile_url: url })
+      await motherRepository.updateMother(
+        motherId,
+        { photo_url: url, profile_url: url },
+        blobId ? [blobId] : undefined
+      )
     }
     return url
   },
@@ -69,8 +73,8 @@ export const mothersApi = {
   },
 
   async uploadLabFile(file: File) {
-    const { url } = await motherRepository.uploadFile(file)
-    return { url, fileUrl: url, file_url: url }
+    const { url, blobId } = await motherRepository.uploadFile(file)
+    return { url, fileUrl: url, file_url: url, blobId }
   },
 
   async registerLabRecord(payload: any) {

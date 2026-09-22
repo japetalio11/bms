@@ -158,6 +158,18 @@ export const referralRepository = {
       }
 
       result = result.filter((r: any) => {
+        // 1. If referral belongs to or touches the staff's facility
+        if (
+          currentFacilityId &&
+          (r.from_facility_id === currentFacilityId ||
+            r.to_facility_id === currentFacilityId ||
+            r.fromFacility?.facility_id === currentFacilityId ||
+            r.toFacility?.facility_id === currentFacilityId)
+        ) {
+          return true
+        }
+
+        // 2. If staff is creator / user
         if (
           r.created_by_id === currentUserId ||
           r.user_id === currentUserId ||
@@ -194,6 +206,7 @@ export const referralRepository = {
 
   async createReferral(payload: {
     pregnancy_id: string
+    mother_id?: string
     from_facility_id: string
     to_facility_id?: string
     external_facility_name?: string
@@ -203,25 +216,65 @@ export const referralRepository = {
     const tempId = `temp-ref-${Date.now()}`
     const nowIso = new Date().toISOString()
 
+    let currentUser: any = null
+    try {
+      currentUser = await db.userSession.get("current_user")
+      if (!currentUser && typeof window !== "undefined") {
+        const stored = localStorage.getItem("user")
+        if (stored) currentUser = JSON.parse(stored)
+      }
+    } catch {}
+    const currentUserId = currentUser?.user_id || currentUser?.id || ""
+
+    let targetMother: any = null
+    let targetMotherId = payload.mother_id || ""
+    if (!targetMotherId && payload.pregnancy_id) {
+      try {
+        const preg = await db.pregnancies.get(payload.pregnancy_id)
+        if (preg && preg.mother_id) {
+          targetMotherId = preg.mother_id
+        }
+      } catch {}
+    }
+    if (targetMotherId) {
+      try {
+        targetMother = await db.mothers.get(targetMotherId)
+      } catch {}
+    }
+
     const localItem: LocalReferral = {
       id: tempId,
       referral_id: tempId,
       pregnancy_id: payload.pregnancy_id,
+      mother_id: targetMotherId || undefined,
       from_facility_id: payload.from_facility_id,
       to_facility_id: payload.to_facility_id || undefined,
       external_facility_name: payload.external_facility_name || undefined,
       reason: payload.reason,
-      motherName: payload.mother_name || undefined,
+      motherName:
+        payload.mother_name ||
+        (targetMother
+          ? `${targetMother.first_name || ""} ${targetMother.last_name || ""}`.trim()
+          : undefined),
       date_referred: nowIso,
       status: "pending",
       is_completed: false,
+      created_by_id: currentUserId,
+      user_id: currentUserId,
+      pregnancy: targetMother
+        ? ({
+            pregnancy_id: payload.pregnancy_id,
+            mother_id: targetMotherId,
+            mother: targetMother,
+          } as any)
+        : undefined,
       sync_status: syncEngine.isNetworkOnline() ? "synced" : "pending_create",
       updated_at: Date.now(),
     }
 
     if (syncEngine.isNetworkOnline()) {
       try {
-        const { mother_name, ...apiPayload } = payload
+        const { mother_name, mother_id, ...apiPayload } = payload
         const response = await apiClient.post(
           "/api/v1/referral/register",
           apiPayload
@@ -255,12 +308,14 @@ export const referralRepository = {
     localItem.sync_status = "pending_create"
     await db.referrals.put(localItem)
 
+    const { mother_name, mother_id, ...apiPayload } = payload
+
     await syncEngine.enqueueMutation({
-      entity_type: "custom_request",
+      entity_type: "referral",
       action: "CREATE",
       endpoint: "/api/v1/referral/register",
       method: "POST",
-      payload,
+      payload: apiPayload,
       temp_id: tempId,
     })
 

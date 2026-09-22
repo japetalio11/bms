@@ -281,6 +281,28 @@ class SyncEngine {
                 })
                 .catch(() => {})
             }
+            if (item.entity_type === "user") {
+              try {
+                const cached = await db.userSession.get("facility_staff_cache")
+                if (cached && Array.isArray(cached.data)) {
+                  const updated = cached.data.map((u: any) => {
+                    if (u.id === item.temp_id || u.user_id === item.temp_id) {
+                      return {
+                        ...u,
+                        sync_status: "error",
+                        last_error: errMsg,
+                      }
+                    }
+                    return u
+                  })
+                  await db.userSession.put({
+                    id: "facility_staff_cache",
+                    data: updated,
+                    updated_at: Date.now(),
+                  })
+                }
+              } catch {}
+            }
           }
         } else if (item.id) {
           await db.offlineQueue.update(item.id, {
@@ -293,6 +315,11 @@ class SyncEngine {
           break
         }
       }
+    }
+
+    const remainingCount = await db.offlineQueue.count()
+    if (remainingCount === 0) {
+      this.lastError = null
     }
 
     this.isSyncing = false
@@ -434,8 +461,15 @@ class SyncEngine {
             uploadRes.data?.fileUrl ||
             uploadRes.data?.result
           if (uploadedUrl && typeof payload === "object") {
-            if (payload.photo_url === blobId) payload.photo_url = uploadedUrl
-            if (payload.file_url === blobId) payload.file_url = uploadedUrl
+            if (payload.photo_url === blobId || (typeof payload.photo_url === "string" && payload.photo_url.startsWith("data:"))) {
+              payload.photo_url = uploadedUrl
+            }
+            if (payload.profile_url === blobId || (typeof payload.profile_url === "string" && payload.profile_url.startsWith("data:"))) {
+              payload.profile_url = uploadedUrl
+            }
+            if (payload.file_url === blobId || (typeof payload.file_url === "string" && payload.file_url.startsWith("data:"))) {
+              payload.file_url = uploadedUrl
+            }
           }
           await db.blobs.delete(blobId)
         }
@@ -532,6 +566,56 @@ class SyncEngine {
           )
         }
       }
+
+      if (
+        item.entity_type === "user" &&
+        item.action === "CREATE" &&
+        item.temp_id &&
+        isDuplicateError
+      ) {
+        console.warn(
+          `[SyncEngine] Staff duplicate detected on backend for ${item.temp_id} ("${errDetail}"). Attempting automatic reconciliation...`
+        )
+        try {
+          const res = await apiClient.get("/api/v1/user/facility")
+          const remoteList: any[] =
+            res.data?.result ||
+            res.data?.data ||
+            (Array.isArray(res.data) ? res.data : [])
+
+          const email = (payload?.email || "").toLowerCase().trim()
+          const phone = (payload?.phone_number || payload?.phone || "").trim()
+          const fname = (payload?.first_name || "").toLowerCase().trim()
+          const lname = (payload?.last_name || "").toLowerCase().trim()
+
+          const matched = remoteList.find((u: any) => {
+            const uEmail = (u.email || "").toLowerCase().trim()
+            const uPhone = (u.phone_number || "").trim()
+            const uFname = (u.first_name || "").toLowerCase().trim()
+            const uLname = (u.last_name || "").toLowerCase().trim()
+
+            if (email && uEmail && email === uEmail) return true
+            if (phone && uPhone && phone === uPhone) return true
+            return fname && lname && fname === uFname && lname === uLname
+          })
+
+          if (matched) {
+            const canonicalId = matched.user_id || matched.id || matched._id
+            await this.reconcileTempId(
+              "user",
+              item.temp_id,
+              canonicalId,
+              { user: matched }
+            )
+            return
+          }
+        } catch (fetchErr) {
+          console.warn(
+            "[SyncEngine] Failed to auto-reconcile duplicate staff member:",
+            fetchErr
+          )
+        }
+      }
       throw err
     }
 
@@ -591,13 +675,26 @@ class SyncEngine {
 
           const existingLocal = await db.mothers.get(tempId)
           if (existingLocal) {
+            const respMother = responseData?.result?.mother || responseData?.mother || {}
+            const respUser = responseData?.result?.user || responseData?.user || {}
+            const preservedPhoto =
+              respMother.photo_url ||
+              respUser.profile_url ||
+              existingLocal.photo_url ||
+              existingLocal.profile_url ||
+              existingLocal.user?.profile_url ||
+              ""
+
             await db.mothers.delete(tempId)
             await db.mothers.put({
               ...existingLocal,
-              ...(responseData?.result?.mother || responseData?.mother || {}),
+              ...respMother,
+              photo_url: preservedPhoto,
+              profile_url: preservedPhoto,
               user: {
                 ...(existingLocal.user || {}),
-                ...(responseData?.result?.user || responseData?.user || {}),
+                ...respUser,
+                profile_url: preservedPhoto,
                 _id: canonicalUserId,
                 user_id: canonicalUserId,
               },
@@ -807,12 +904,12 @@ class SyncEngine {
                 responseData?.result ||
                 responseData?.data ||
                 responseData
-              const userEmail = userObj?.email
+              const userEmail = (userObj?.email || "").toLowerCase().trim()
               const updated = cached.data
                 .filter((u: any) => {
                   if (
                     userEmail &&
-                    u.email === userEmail &&
+                    (u.email || "").toLowerCase().trim() === userEmail &&
                     u.id !== tempId &&
                     u.id !== canonicalId
                   ) {
@@ -824,11 +921,14 @@ class SyncEngine {
                   if (
                     u.id === tempId ||
                     u.user_id === tempId ||
-                    (userEmail && u.email === userEmail)
+                    (userEmail && (u.email || "").toLowerCase().trim() === userEmail)
                   ) {
+                    const mergedObj = typeof userObj === "object" ? userObj : {}
                     return {
                       ...u,
-                      ...(typeof userObj === "object" ? userObj : {}),
+                      ...mergedObj,
+                      email: mergedObj.email || u.email || "",
+                      phone_number: mergedObj.phone_number || u.phone_number || "",
                       id: canonicalId,
                       user_id: canonicalId,
                       status: "Active",
