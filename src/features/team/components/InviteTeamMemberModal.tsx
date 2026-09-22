@@ -15,8 +15,10 @@ import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react"
 
 import { userRepository } from "@/lib/repositories/userRepository"
+import { useAuth } from "@/features/auth/hooks/useAuth"
 
 export function InviteTeamMemberModal({ children, onInviteSuccess }: { children: React.ReactNode, onInviteSuccess?: () => void }) {
+  const { user: authUser } = useAuth()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -28,6 +30,21 @@ export function InviteTeamMemberModal({ children, onInviteSuccess }: { children:
     role: "",
     password: ""
   })
+
+  const isSuperOrAdmin = authUser?.role === "Admin" || authUser?.role === "SystemAdmin"
+
+  const availableRoles = React.useMemo(() => {
+    const roles = [
+      { value: "Doctor", label: "Doctor" },
+      { value: "Nurse", label: "Nurse" },
+      { value: "Midwife", label: "Midwife" },
+      { value: "HealthWorker", label: "Health Worker" },
+    ]
+    if (isSuperOrAdmin) {
+      roles.push({ value: "Admin", label: "Administrator" })
+    }
+    return roles
+  }, [isSuperOrAdmin])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }))
@@ -44,6 +61,11 @@ export function InviteTeamMemberModal({ children, onInviteSuccess }: { children:
   const handleInvite = async () => {
     if (!formData.first_name || !formData.last_name || !formData.email || !formData.role) {
       toast.error("Please fill in all required fields.")
+      return
+    }
+
+    if (!availableRoles.some(r => r.value === formData.role)) {
+      toast.error("You are not authorized to create a staff member with this role.")
       return
     }
 
@@ -148,11 +170,11 @@ export function InviteTeamMemberModal({ children, onInviteSuccess }: { children:
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent position="popper" side="bottom" className="bg-popover border-border text-popover-foreground">
-                  <SelectItem value="Doctor" className="text-xs">Doctor</SelectItem>
-                  <SelectItem value="Nurse" className="text-xs">Nurse</SelectItem>
-                  <SelectItem value="Midwife" className="text-xs">Midwife</SelectItem>
-                  <SelectItem value="HealthWorker" className="text-xs">Health Worker</SelectItem>
-                  <SelectItem value="Admin" className="text-xs">Administrator</SelectItem>
+                  {availableRoles.map((r) => (
+                    <SelectItem key={r.value} value={r.value} className="text-xs">
+                      {r.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

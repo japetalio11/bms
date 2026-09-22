@@ -40,12 +40,16 @@ import rhuLogo from "@/assets/pili-rhu-logo.jpg"
 import { apiClient } from "@/lib/apiClient"
 import { useAuth } from "@/features/auth/hooks/useAuth"
 import { lockPinSession } from "@/lib/security/pinSessionStore"
+import { db } from "@/lib/db/bmsDatabase"
+import { useLiveQuery } from "dexie-react-hooks"
 
 export function AppSidebar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { setOpenMobile } = useSidebar()
   const { user: authUser, logout } = useAuth()
+
+  const liveCurrentUser = useLiveQuery(() => db.userSession.get("current_user"))
 
   const [user, setUser] = useState<any>(authUser || null)
   const [facilityName, setFacilityName] = useState<string>(
@@ -92,8 +96,18 @@ export function AppSidebar() {
       if (e.detail?.facility_profile_url) setFacilityLogo(e.detail.facility_profile_url)
     }
 
+    const handleUserUpdated = (e: any) => {
+      if (e.detail) {
+        setUser((prev: any) => ({ ...prev, ...e.detail }))
+      }
+    }
+
     window.addEventListener("bms:facility-updated", handleFacilityUpdated)
-    return () => window.removeEventListener("bms:facility-updated", handleFacilityUpdated)
+    window.addEventListener("bms:user-updated", handleUserUpdated)
+    return () => {
+      window.removeEventListener("bms:facility-updated", handleFacilityUpdated)
+      window.removeEventListener("bms:user-updated", handleUserUpdated)
+    }
   }, [authUser])
 
   const handleNavigate = (path: string) => {
@@ -109,16 +123,18 @@ export function AppSidebar() {
     navigate("/login")
   }
 
+  const effectiveUser = liveCurrentUser || user || authUser
+
   const userName =
-    [user?.first_name, user?.middle_name, user?.last_name]
+    [effectiveUser?.first_name, effectiveUser?.middle_name, effectiveUser?.last_name]
       .filter(Boolean)
       .join(" ") ||
-    user?.name ||
+    effectiveUser?.name ||
     "Healthcare Staff"
 
-  const userEmail = user?.email || "staff@bms.gov.ph"
-  const userRole = user?.role || "Specialized Service"
-  const profileUrl = user?.profile_url || ""
+  const userEmail = effectiveUser?.email || "staff@bms.gov.ph"
+  const userRole = effectiveUser?.role || "Specialized Service"
+  const profileUrl = effectiveUser?.profile_url || ""
 
   return (
     <Sidebar collapsible="icon">

@@ -35,7 +35,7 @@ export function RegisterSupplementModal({
 }: RegisterSupplementModalProps) {
   const [pregnancyId, setPregnancyId] = React.useState<string>("")
   const [visitId, setVisitId] = React.useState<string>("")
-  const [supplementType, setSupplementType] = React.useState<string>("Iron + Folic Acid")
+  const [supplementName, setSupplementName] = React.useState<string>("Iron + Folic Acid")
   const [tabletsCount, setTabletsCount] = React.useState<number>(30)
   const [dateGiven, setDateGiven] = React.useState<Date>(new Date())
 
@@ -77,13 +77,13 @@ export function RegisterSupplementModal({
       return
     }
 
-    if (!supplementType || !tabletsCount || !dateGiven) {
-      setError("Please fill in supplement type, tablets count, and date given.")
+    if (!supplementName || !tabletsCount || !dateGiven) {
+      setError("Please fill in supplement name, tablets count, and date given.")
       return
     }
 
     const suppVal = validateSupplementData({
-      supplement_type: supplementType,
+      supplement_type: supplementName,
       date_given: dateGiven.toISOString(),
       tablets_given_count: Number(tabletsCount),
     })
@@ -94,8 +94,6 @@ export function RegisterSupplementModal({
     }
 
     setLoading(true)
-    const token = localStorage.getItem("token")
-    const baseUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
       const motherId = motherData?.mother_id || motherData?.user_id || motherData?._id || motherData?.id || ""
@@ -104,7 +102,8 @@ export function RegisterSupplementModal({
         mother_id: motherId,
         pregnancy_id: pregnancyId,
         visit_id: (visitId && visitId !== "baseline") ? visitId : undefined,
-        supplement_type: supplementType,
+        supplement_type: supplementName.trim(),
+        supplement_name: supplementName.trim(),
         tablets_given_count: Number(tabletsCount),
         date_given: dateGiven.toISOString(),
       }
@@ -188,19 +187,28 @@ export function RegisterSupplementModal({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label className="text-xs font-medium text-foreground">Supplement / Medication Type *</Label>
-          <Select value={supplementType} onValueChange={setSupplementType}>
-            <SelectTrigger className="!h-9 bg-card border-border text-xs text-card-foreground">
-              <SelectValue placeholder="Select Supplement" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Iron + Folic Acid">Iron + Folic Acid</SelectItem>
-              <SelectItem value="Calcium Carbonate">Calcium Carbonate</SelectItem>
-              <SelectItem value="Deworming Tablet (Albendazole)">Deworming Tablet (Albendazole)</SelectItem>
-              <SelectItem value="Multivitamins">Multivitamins</SelectItem>
-              <SelectItem value="Vitamin A">Vitamin A</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label htmlFor="supplementName" className="text-xs font-medium text-foreground">
+            Supplement / Medication Name *
+          </Label>
+          <Input
+            id="supplementName"
+            list="common-supplement-names"
+            placeholder="e.g. Iron + Folic Acid, Calcium Carbonate, Ferrous Sulfate"
+            value={supplementName}
+            onChange={(e) => setSupplementName(e.target.value)}
+            className="!h-9 bg-card border-border text-xs text-card-foreground"
+          />
+          <datalist id="common-supplement-names">
+            <option value="Iron + Folic Acid" />
+            <option value="Calcium Carbonate" />
+            <option value="Deworming Tablet (Albendazole)" />
+            <option value="Multivitamins" />
+            <option value="Vitamin A" />
+            <option value="Ferrous Sulfate" />
+            <option value="Folic Acid" />
+            <option value="Zinc Sulfate" />
+            <option value="Ascorbic Acid (Vitamin C)" />
+          </datalist>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

@@ -24,11 +24,13 @@ import {
   Loader2,
   RefreshCw,
   Clock,
+  Pencil,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { UploadStaffAvatarModal } from "./UploadStaffAvatarModal"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import {
@@ -151,6 +153,7 @@ export function StaffProfilePage() {
   const [isConfirmStatusModalOpen, setIsConfirmStatusModalOpen] =
     useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false)
 
   const [activities, setActivities] = useState<StaffActivityItem[]>([])
   const [activitySearch, setActivitySearch] = useState("")
@@ -540,12 +543,24 @@ export function StaffProfilePage() {
 
         <div className="relative flex flex-col gap-6 rounded-xl border border-border bg-card p-5 shadow-sm lg:flex-row">
           <div className="flex items-center gap-4 border-b border-border pb-6 lg:col-span-4 lg:border-r lg:border-b-0 lg:pr-6 lg:pb-0">
-            <Avatar className="h-16 w-16 border border-border shadow-sm">
-              <AvatarImage src={staff.profile_url || ""} />
-              <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative group">
+              <Avatar className="h-16 w-16 border border-border shadow-sm">
+                <AvatarImage src={staff.profile_url || ""} />
+                <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              {(isSelf || isPrivilegedAdmin) && (
+                <button
+                  type="button"
+                  onClick={() => setIsAvatarModalOpen(true)}
+                  className="absolute -right-1 -bottom-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs transition-transform hover:scale-110"
+                  title="Update Profile Picture"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
+            </div>
             <div className="mt-1 flex flex-col gap-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-xl leading-tight font-semibold text-card-foreground">
@@ -1230,6 +1245,16 @@ export function StaffProfilePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <UploadStaffAvatarModal
+        open={isAvatarModalOpen}
+        onOpenChange={setIsAvatarModalOpen}
+        staffData={staff}
+        onSuccess={() => {
+          fetchStaffDetails()
+          fetchActivities(1, debouncedSearch, true)
+        }}
+      />
     </div>
   )
 }

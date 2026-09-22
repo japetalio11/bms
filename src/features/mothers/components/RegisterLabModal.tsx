@@ -41,7 +41,7 @@ export function RegisterLabModal({
   const [pregnancyId, setPregnancyId] = React.useState<string>("")
   const [visitId, setVisitId] = React.useState<string>("")
   const [screeningType, setScreeningType] = React.useState<string>(
-    "CBC (Complete Blood Count)"
+    "General Screening"
   )
   const [result, setResult] = React.useState<string>("")
   const [fileUrl, setFileUrl] = React.useState<string>("")
@@ -137,14 +137,14 @@ export function RegisterLabModal({
       return
     }
 
-    if (!screeningType || !result || !screeningDate) {
-      setError("Please fill in screening type, result, and screening date.")
+    if (!screeningType || !screeningDate) {
+      setError("Please fill in screening type and screening date.")
       return
     }
 
     const labVal = validateLabData({
       screening_type: screeningType,
-      result: result,
+      result: result || undefined,
       date_of_screening: screeningDate.toISOString(),
     })
 
@@ -168,7 +168,7 @@ export function RegisterLabModal({
         pregnancy_id: pregnancyId,
         visit_id: (visitId && visitId !== "baseline") ? visitId : undefined,
         screening_type: screeningType,
-        result: result,
+        result: result.trim() || "Pending",
         file_url: fileUrl || undefined,
         date_of_screening: screeningDate.toISOString(),
         remarks: remarks || undefined,
@@ -290,6 +290,7 @@ export function RegisterLabModal({
               className="!h-9 border-border bg-card text-xs text-card-foreground"
             />
             <datalist id="common-screening-types">
+              <option value="General Screening" />
               <option value="CBC (Complete Blood Count)" />
               <option value="Blood Typing (ABO/Rh)" />
               <option value="Urinalysis" />
@@ -339,7 +340,7 @@ export function RegisterLabModal({
             htmlFor="labResult"
             className="text-xs font-medium text-foreground"
           >
-            Screening Result *
+            Screening Result (Optional)
           </Label>
           <Input
             id="labResult"
