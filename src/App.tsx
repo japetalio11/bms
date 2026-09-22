@@ -1,5 +1,6 @@
-import { lazy, Suspense } from "react"
+import { Suspense } from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { lazyWithRetry } from "@/lib/lazyWithRetry"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/features/auth/context/AuthContext"
 import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute"
@@ -9,21 +10,21 @@ import { DashboardLayout } from "@/features/dashboard/components/DashboardLayout
 import { UnifiedPageLoader } from "@/components/ui/unified-page-loader"
 import { PinUnlockModal } from "@/features/auth/components/PinUnlockModal"
 
-const DashboardPage = lazy(() => import("@/features/dashboard/components/DashboardPage").then(m => ({ default: m.DashboardPage })))
-const AppointmentListPage = lazy(() => import("@/features/appointments/components/AppointmentListPage").then(m => ({ default: m.AppointmentListPage })))
-const CalendarPage = lazy(() => import("@/features/calendar/components/CalendarPage").then(m => ({ default: m.CalendarPage })))
-const TeamManagementPage = lazy(() => import("@/features/team/components/TeamManagementPage").then(m => ({ default: m.TeamManagementPage })))
-const StaffProfilePage = lazy(() => import("@/features/team/components/StaffProfilePage").then(m => ({ default: m.StaffProfilePage })))
-const SettingsPage = lazy(() => import("@/features/settings/components/SettingsPage").then(m => ({ default: m.SettingsPage })))
-const AnalyticsPage = lazy(() => import("@/features/analytics/components/AnalyticsPage").then(m => ({ default: m.AnalyticsPage })))
-const MothersPage = lazy(() => import("@/features/mothers/components/MothersPage").then(m => ({ default: m.MothersPage })))
-const MotherProfilePage = lazy(() => import("@/features/mothers/components/MotherProfilePage").then(m => ({ default: m.MotherProfilePage })))
-const ReferralsPage = lazy(() => import("@/features/referrals/components/ReferralsPage").then(m => ({ default: m.ReferralsPage })))
-const MessagesPage = lazy(() => import("@/features/messages/components/MessagesPage").then(m => ({ default: m.MessagesPage })))
-const EhrPage = lazy(() => import("@/features/ehr/components/EhrPage").then(m => ({ default: m.EhrPage })))
-const TestSmsPage = lazy(() => import("@/pages/TestSmsPage").then(m => ({ default: m.TestSmsPage })))
-const PublicReferralPage = lazy(() => import("@/features/referrals/components/PublicReferralPage").then(m => ({ default: m.PublicReferralPage })))
-const PublicSharedJourneyPage = lazy(() => import("@/features/mothers/components/PublicSharedJourneyPage").then(m => ({ default: m.PublicSharedJourneyPage })))
+const DashboardPage = lazyWithRetry(() => import("@/features/dashboard/components/DashboardPage"), "DashboardPage")
+const AppointmentListPage = lazyWithRetry(() => import("@/features/appointments/components/AppointmentListPage"), "AppointmentListPage")
+const CalendarPage = lazyWithRetry(() => import("@/features/calendar/components/CalendarPage"), "CalendarPage")
+const TeamManagementPage = lazyWithRetry(() => import("@/features/team/components/TeamManagementPage"), "TeamManagementPage")
+const StaffProfilePage = lazyWithRetry(() => import("@/features/team/components/StaffProfilePage"), "StaffProfilePage")
+const SettingsPage = lazyWithRetry(() => import("@/features/settings/components/SettingsPage"), "SettingsPage")
+const AnalyticsPage = lazyWithRetry(() => import("@/features/analytics/components/AnalyticsPage"), "AnalyticsPage")
+const MothersPage = lazyWithRetry(() => import("@/features/mothers/components/MothersPage"), "MothersPage")
+const MotherProfilePage = lazyWithRetry(() => import("@/features/mothers/components/MotherProfilePage"), "MotherProfilePage")
+const ReferralsPage = lazyWithRetry(() => import("@/features/referrals/components/ReferralsPage"), "ReferralsPage")
+const MessagesPage = lazyWithRetry(() => import("@/features/messages/components/MessagesPage"), "MessagesPage")
+const EhrPage = lazyWithRetry(() => import("@/features/ehr/components/EhrPage"), "EhrPage")
+const TestSmsPage = lazyWithRetry(() => import("@/pages/TestSmsPage"), "TestSmsPage")
+const PublicReferralPage = lazyWithRetry(() => import("@/features/referrals/components/PublicReferralPage"), "PublicReferralPage")
+const PublicSharedJourneyPage = lazyWithRetry(() => import("@/features/mothers/components/PublicSharedJourneyPage"), "PublicSharedJourneyPage")
 
 export function App() {
   return (
