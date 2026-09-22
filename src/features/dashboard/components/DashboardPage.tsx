@@ -79,12 +79,22 @@ export function DashboardPage() {
 
   const enrichedAppointments =
     useLiveQuery(async () => {
-      const [apps, mothers] = await Promise.all([
+      const [apps, mothers, sessionUser] = await Promise.all([
         db.appointments.toArray(),
         db.mothers.toArray(),
+        db.userSession.get("current_user").catch(() => null),
       ])
 
+      const isSysOrAdmin =
+        sessionUser?.role === "SystemAdmin" ||
+        sessionUser?.role === "Admin" ||
+        sessionUser?.role === "Administrator" ||
+        sessionUser?.role === "FacilityAdmin"
+      const sessionUserId = sessionUser?.user_id || sessionUser?.id
+
       const motherNameMap = new Map<string, string>()
+      const assignedMotherIds = new Set<string>()
+
       for (const m of mothers) {
         const name =
           `${m.first_name || m.user?.first_name || ""} ${m.last_name || m.user?.last_name || ""}`.trim()
@@ -94,9 +104,34 @@ export function DashboardPage() {
           if (m.user_id) motherNameMap.set(m.user_id, name)
           if (m._id) motherNameMap.set(m._id, name)
         }
+        const workerId =
+          m.assigned_worker_id ||
+          m.assignedWorker?.user_id ||
+          m.assigned_worker?.user_id ||
+          m.created_by_id ||
+          m.creator?.user_id
+        if (workerId === sessionUserId) {
+          if (m.id) assignedMotherIds.add(m.id)
+          if (m.mother_id) assignedMotherIds.add(m.mother_id)
+          if (m.user_id) assignedMotherIds.add(m.user_id)
+          if (m._id) assignedMotherIds.add(m._id)
+        }
       }
 
-      return apps.map((app) => {
+      const filteredApps = apps.filter((app) => {
+        if (isSysOrAdmin || !sessionUserId) return true
+        if (
+          app.user_id === sessionUserId ||
+          app.assigned_worker_id === sessionUserId ||
+          app.created_by_id === sessionUserId
+        ) {
+          return true
+        }
+        const targetId = app.mother_id || app.user_id
+        return targetId && assignedMotherIds.has(targetId)
+      })
+
+      return filteredApps.map((app) => {
         const targetId = app.mother_id || app.user_id
         let motherName = (targetId && motherNameMap.get(targetId)) || ""
 

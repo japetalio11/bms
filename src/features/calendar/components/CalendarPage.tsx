@@ -198,9 +198,45 @@ export function CalendarPage() {
 
   const [viewDate, setViewDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
+  const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null
+  const currentUser = userStr ? JSON.parse(userStr) : null
+  const isAdmin =
+    currentUser?.role === "SystemAdmin" ||
+    currentUser?.role === "Admin" ||
+    currentUser?.role === "Administrator" ||
+    currentUser?.role === "FacilityAdmin"
+  const currentUserId = currentUser?.user_id || currentUser?.id
 
   const events: AppEvent[] = useMemo(() => {
-    const list: AppEvent[] = rawAppointments.map((item: any) => {
+    const list: AppEvent[] = rawAppointments
+      .filter((item: any) => {
+        if (isAdmin || !currentUserId) return true
+
+        const targetKey =
+          item.mother_id || item.user_id || item.motherId || item.userId
+        const matchedMother = targetKey ? mothersMap.get(targetKey) : null
+
+        const isDirectWorker =
+          item.user_id === currentUserId ||
+          item.userId === currentUserId ||
+          item.assigned_worker_id === currentUserId ||
+          item.created_by_id === currentUserId
+
+        if (isDirectWorker) return true
+
+        if (matchedMother) {
+          const assignedWorkerId =
+            matchedMother.assigned_worker_id ||
+            matchedMother.assignedWorker?.user_id ||
+            matchedMother.assigned_worker?.user_id ||
+            matchedMother.created_by_id ||
+            matchedMother.creator?.user_id
+          return assignedWorkerId === currentUserId
+        }
+
+        return false
+      })
+      .map((item: any) => {
       const targetKey =
         item.mother_id || item.user_id || item.motherId || item.userId
       const matchedMother = targetKey ? mothersMap.get(targetKey) : null

@@ -177,6 +177,7 @@ export const appointmentRepository = {
       }
     }
 
+    let result = localList
     if (facilityId) {
       const filtered = localList.filter(
         (a) =>
@@ -184,10 +185,59 @@ export const appointmentRepository = {
           a.facility_id === facilityId ||
           a.facilityId === facilityId
       )
-      return filtered.length > 0 ? filtered : localList
+      result = filtered.length > 0 ? filtered : localList
     }
 
-    return localList
+    let currentUser: any = null
+    try {
+      currentUser = await db.userSession.get("current_user")
+      if (!currentUser && typeof window !== "undefined") {
+        const stored = localStorage.getItem("user")
+        if (stored) currentUser = JSON.parse(stored)
+      }
+    } catch {}
+
+    const isHealthcareStaff =
+      currentUser?.role &&
+      !["SystemAdmin", "Admin", "Administrator", "FacilityAdmin", "Mother"].includes(
+        currentUser.role
+      )
+    const currentUserId = currentUser?.user_id || currentUser?.id
+
+    if (isHealthcareStaff && currentUserId) {
+      const allMothers = await db.mothers.toArray().catch(() => [])
+      const assignedMotherIds = new Set<string>()
+
+      for (const m of allMothers) {
+        const workerId =
+          m.assigned_worker_id ||
+          m.assignedWorker?.user_id ||
+          m.assigned_worker?.user_id ||
+          m.created_by_id ||
+          m.creator?.user_id
+        if (workerId === currentUserId) {
+          if (m.id) assignedMotherIds.add(m.id)
+          if (m.mother_id) assignedMotherIds.add(m.mother_id)
+          if (m.user_id) assignedMotherIds.add(m.user_id)
+          if (m._id) assignedMotherIds.add(m._id)
+        }
+      }
+
+      result = result.filter((a: any) => {
+        if (
+          a.user_id === currentUserId ||
+          a.assigned_worker_id === currentUserId ||
+          a.created_by_id === currentUserId
+        ) {
+          return true
+        }
+        const targetMotherKey =
+          a.mother_id || a.motherId || a.user_id || a.userId
+        return targetMotherKey && assignedMotherIds.has(targetMotherKey)
+      })
+    }
+
+    return result
   },
 
   async createAppointment(payload: any): Promise<LocalAppointment> {
