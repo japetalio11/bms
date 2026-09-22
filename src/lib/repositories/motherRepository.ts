@@ -378,7 +378,13 @@ export const motherRepository = {
 
     const isHealthcareStaff =
       currentUser?.role &&
-      !["SystemAdmin", "Admin", "Mother"].includes(currentUser.role)
+      ![
+        "SystemAdmin",
+        "Admin",
+        "Administrator",
+        "FacilityAdmin",
+        "Mother",
+      ].includes(currentUser.role)
     const currentUserId = currentUser?.user_id || currentUser?.id
 
     if (isHealthcareStaff && currentUserId) {
@@ -762,17 +768,64 @@ export const motherRepository = {
   },
 
   async registerMother(payload: any): Promise<LocalMother> {
+    let currentUser: any = null
+    try {
+      currentUser = await db.userSession.get("current_user")
+      if (!currentUser && typeof window !== "undefined") {
+        const stored = localStorage.getItem("user")
+        if (stored) currentUser = JSON.parse(stored)
+      }
+    } catch {}
+
     const firstName = payload.first_name || payload.firstName || ""
     const lastName = payload.last_name || payload.lastName || ""
     const middleName = payload.middle_name || payload.middleName || ""
     const phoneNumber = payload.phone_number || payload.phoneNumber || ""
     const address = payload.address || ""
+    const currentUserId = currentUser?.user_id || currentUser?.id
+    const isHealthcareStaff =
+      currentUser?.role &&
+      ![
+        "SystemAdmin",
+        "Admin",
+        "Administrator",
+        "FacilityAdmin",
+        "Mother",
+      ].includes(currentUser.role)
+
+    const facilityId =
+      payload.facility_id ||
+      payload.facilityId ||
+      currentUser?.facility_id ||
+      currentUser?.facility?.facility_id ||
+      ""
+
+    const assignedWorkerId =
+      payload.assigned_worker_id ||
+      payload.assignedWorkerId ||
+      (isHealthcareStaff && currentUserId ? currentUserId : undefined)
+
+    const creatorId = currentUserId || undefined
+
+    const facilityIds = facilityId ? [facilityId] : []
+    const facilityEnrollments = facilityId
+      ? [{ facility_id: facilityId, status: "Active" }]
+      : []
+
+    const fullName =
+      [firstName, middleName, lastName].filter(Boolean).join(" ") || "Unknown"
+
+    const sanitizedPayload = {
+      ...payload,
+      facility_id: facilityId || null,
+      ...(assignedWorkerId ? { assigned_worker_id: assignedWorkerId } : {}),
+    }
 
     if (syncEngine.isNetworkOnline()) {
       try {
         const response = await apiClient.post(
           "/api/v1/mother/register",
-          payload
+          sanitizedPayload
         )
         const m =
           response.data?.mother ||
@@ -791,10 +844,17 @@ export const motherRepository = {
           first_name: firstName,
           last_name: lastName,
           middle_name: middleName,
+          name: fullName,
           phone_number: phoneNumber,
           address: address,
-          facility_id:
-            payload.facility_id || payload.facilityId || m.facility_id || "",
+          facility_id: m.facility_id || facilityId,
+          facility_ids: m.facility_ids || facilityIds,
+          facilityEnrollments: m.facilityEnrollments || facilityEnrollments,
+          assigned_worker_id: m.assigned_worker_id || assignedWorkerId,
+          created_by_id: m.created_by_id || creatorId,
+          assignedWorker: m.assignedWorker || (assignedWorkerId === currentUserId ? currentUser : undefined),
+          assigned_worker: m.assignedWorker || (assignedWorkerId === currentUserId ? currentUser : undefined),
+          creator: m.creator || (creatorId === currentUserId ? currentUser : undefined),
           user: {
             ...(m.user || {}),
             _id: canonicalUserId,
@@ -804,6 +864,8 @@ export const motherRepository = {
             middle_name: middleName,
             phone_number: phoneNumber,
             address: address,
+            facility_id: m.facility_id || facilityId,
+            role: "Mother",
           },
           sync_status: "synced",
           updated_at: Date.now(),
@@ -837,9 +899,17 @@ export const motherRepository = {
       first_name: firstName,
       last_name: lastName,
       middle_name: middleName,
+      name: fullName,
       phone_number: phoneNumber,
       address: address,
-      facility_id: payload.facility_id || payload.facilityId || "",
+      facility_id: facilityId,
+      facility_ids: facilityIds,
+      facilityEnrollments: facilityEnrollments,
+      assigned_worker_id: assignedWorkerId,
+      created_by_id: creatorId,
+      assignedWorker: assignedWorkerId === currentUserId ? currentUser : undefined,
+      assigned_worker: assignedWorkerId === currentUserId ? currentUser : undefined,
+      creator: creatorId === currentUserId ? currentUser : undefined,
       user: {
         _id: tempId,
         user_id: tempId,
@@ -848,6 +918,8 @@ export const motherRepository = {
         middle_name: middleName,
         phone_number: phoneNumber,
         address: address,
+        facility_id: facilityId,
+        role: "Mother",
       },
       sync_status: "pending_create",
       updated_at: Date.now(),
@@ -860,7 +932,7 @@ export const motherRepository = {
       action: "CREATE",
       endpoint: "/api/v1/mother/register",
       method: "POST",
-      payload,
+      payload: sanitizedPayload,
       temp_id: tempId,
     })
 
