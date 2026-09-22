@@ -507,15 +507,28 @@ export const userRepository = {
       })
 
       const currentUser = await db.userSession.get("current_user")
-      if (
-        currentUser &&
-        (currentUser.id === userId || currentUser.user_id === userId)
-      ) {
-        await db.userSession.put({
-          ...currentUser,
+      let storedUser: any = null
+      try {
+        const raw = localStorage.getItem("user")
+        if (raw) storedUser = JSON.parse(raw)
+      } catch {}
+
+      const isCurrent =
+        (currentUser && (currentUser.id === userId || currentUser.user_id === userId)) ||
+        (storedUser && (storedUser.id === userId || storedUser.user_id === userId))
+
+      if (isCurrent) {
+        const updatedCurrentUser = {
+          ...(currentUser || storedUser || {}),
           profile_url: profileUrl,
           updated_at: Date.now(),
-        })
+        }
+        await db.userSession.put(updatedCurrentUser)
+        localStorage.setItem("user", JSON.stringify(updatedCurrentUser))
+        window.dispatchEvent(new CustomEvent("bms:auth-change"))
+        window.dispatchEvent(
+          new CustomEvent("bms:user-updated", { detail: updatedCurrentUser })
+        )
       }
     } catch (err) {
       console.warn(
