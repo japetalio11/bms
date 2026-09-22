@@ -92,7 +92,11 @@ export function MothersPage() {
   const fetchMothers = async () => {
     setLoading(true)
     try {
-      const data = await mothersApi.getActiveMothers(currentUser?.facility_id)
+      const facilityId =
+        currentUser?.facility_id ||
+        currentUser?.facility?.facility_id ||
+        undefined
+      const data = await mothersApi.getActiveMothers(facilityId)
       setMotherList(data)
     } catch (err) {
       console.error("Failed to fetch mothers:", err)
@@ -103,6 +107,15 @@ export function MothersPage() {
 
   useEffect(() => {
     fetchMothers()
+
+    const handleReconcile = () => {
+      fetchMothers()
+    }
+
+    window.addEventListener("bms:temp-id-reconciled", handleReconcile)
+    return () => {
+      window.removeEventListener("bms:temp-id-reconciled", handleReconcile)
+    }
   }, [])
 
   const calculateEDD = (lmpDateStr?: string | Date) => {

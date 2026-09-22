@@ -306,6 +306,71 @@ export const motherRepository = {
       }
     }
 
+    const currentUserId = currentUser?.user_id || currentUser?.id
+
+    // Auto-repair / backfill any local pending mothers in Dexie so existing offline records are always valid
+    for (const m of localMothers) {
+      const isTempOrPending =
+        m.sync_status === "pending_create" ||
+        String(m.id || "").startsWith("temp-") ||
+        String(m.mother_id || "").startsWith("temp-")
+
+      if (isTempOrPending) {
+        let needsUpdate = false
+        const updates: any = {}
+
+        if (!m.created_by_id && currentUserId) {
+          updates.created_by_id = currentUserId
+          m.created_by_id = currentUserId
+          needsUpdate = true
+        }
+        if (!m.assigned_worker_id && currentUserId) {
+          updates.assigned_worker_id = currentUserId
+          m.assigned_worker_id = currentUserId
+          needsUpdate = true
+        }
+        if (!m.facility_id && effectiveFacilityId) {
+          updates.facility_id = effectiveFacilityId
+          m.facility_id = effectiveFacilityId
+          needsUpdate = true
+        }
+        if (!m.facility_ids || m.facility_ids.length === 0) {
+          const fid = m.facility_id || effectiveFacilityId
+          if (fid) {
+            updates.facility_ids = [fid]
+            m.facility_ids = [fid]
+            needsUpdate = true
+          }
+        }
+        if (!m.facilityEnrollments || m.facilityEnrollments.length === 0) {
+          const fid = m.facility_id || effectiveFacilityId
+          if (fid) {
+            updates.facilityEnrollments = [{ facility_id: fid, status: "Active" }]
+            m.facilityEnrollments = [{ facility_id: fid, status: "Active" }]
+            needsUpdate = true
+          }
+        }
+        if (!m.name) {
+          const fn = [
+            m.first_name || m.user?.first_name,
+            m.middle_name || m.user?.middle_name,
+            m.last_name || m.user?.last_name,
+          ]
+            .filter(Boolean)
+            .join(" ")
+          if (fn) {
+            updates.name = fn
+            m.name = fn
+            needsUpdate = true
+          }
+        }
+
+        if (needsUpdate && m.id) {
+          db.mothers.update(m.id, updates).catch(() => {})
+        }
+      }
+    }
+
     const seen = new Set<string>()
     const deduplicated: LocalMother[] = []
 
@@ -313,15 +378,18 @@ export const motherRepository = {
       const motherId = mother.mother_id || mother._id || mother.id
       const userId = mother.user_id || mother.user?.user_id
 
+      const hasMid = Boolean(motherId && String(motherId).trim() !== "")
+      const hasUid = Boolean(userId && String(userId).trim() !== "")
+
       if (
-        (motherId && seen.has(`mid:${motherId}`)) ||
-        (userId && seen.has(`uid:${userId}`))
+        (hasMid && seen.has(`mid:${motherId}`)) ||
+        (hasUid && seen.has(`uid:${userId}`))
       ) {
         continue
       }
 
-      if (motherId) seen.add(`mid:${motherId}`)
-      if (userId) seen.add(`uid:${userId}`)
+      if (hasMid) seen.add(`mid:${motherId}`)
+      if (hasUid) seen.add(`uid:${userId}`)
 
       const pregs = mother.pregnancies?.length
         ? mother.pregnancies
@@ -361,19 +429,38 @@ export const motherRepository = {
 
     let result = deduplicated
     if (effectiveFacilityId) {
-      result = deduplicated.filter(
-        (m) =>
-          m.facility_id === effectiveFacilityId ||
-          m.user?.facility_id === effectiveFacilityId ||
-          (Array.isArray(m.facility_ids) &&
-            m.facility_ids.includes(effectiveFacilityId)) ||
-          (Array.isArray(m.facilityEnrollments) &&
-            m.facilityEnrollments.some(
-              (e: any) =>
-                e.facility_id === effectiveFacilityId &&
-                (e.status === "Active" || !e.status)
-            ))
-      )
+      const effFidStr = String(effectiveFacilityId).trim()
+      result = deduplicated.filter((m) => {
+        const isPending =
+          m.sync_status === "pending_create" ||
+          String(m.id || "").startsWith("temp-") ||
+          String(m.mother_id || "").startsWith("temp-")
+
+        if (isPending) {
+          if (!m.facility_id || String(m.facility_id).trim() === effFidStr) {
+            return true
+          }
+        }
+
+        const matchFacId =
+          m.facility_id && String(m.facility_id).trim() === effFidStr
+        const matchUserFacId =
+          m.user?.facility_id && String(m.user.facility_id).trim() === effFidStr
+        const matchFacIds =
+          Array.isArray(m.facility_ids) &&
+          m.facility_ids.some((fid) => String(fid).trim() === effFidStr)
+        const matchEnrollments =
+          Array.isArray(m.facilityEnrollments) &&
+          m.facilityEnrollments.some(
+            (e: any) =>
+              String(e.facility_id).trim() === effFidStr &&
+              (e.status === "Active" || !e.status)
+          )
+
+        return Boolean(
+          matchFacId || matchUserFacId || matchFacIds || matchEnrollments
+        )
+      })
     }
 
     const isHealthcareStaff =
@@ -385,16 +472,39 @@ export const motherRepository = {
         "FacilityAdmin",
         "Mother",
       ].includes(currentUser.role)
-    const currentUserId = currentUser?.user_id || currentUser?.id
 
     if (isHealthcareStaff && currentUserId) {
-      result = result.filter(
-        (m) =>
-          m.assigned_worker_id === currentUserId ||
-          m.created_by_id === currentUserId ||
-          m.assignedWorker?.user_id === currentUserId ||
-          m.creator?.user_id === currentUserId
-      )
+      const uidStr = String(currentUserId).trim()
+      result = result.filter((m) => {
+        if (
+          m.sync_status === "pending_create" ||
+          String(m.id || "").startsWith("temp-") ||
+          String(m.mother_id || "").startsWith("temp-")
+        ) {
+          return true
+        }
+
+        const matchWorker =
+          m.assigned_worker_id && String(m.assigned_worker_id).trim() === uidStr
+        const matchCreator =
+          m.created_by_id && String(m.created_by_id).trim() === uidStr
+        const matchAssignedWorker =
+          m.assignedWorker?.user_id &&
+          String(m.assignedWorker.user_id).trim() === uidStr
+        const matchAssignedWorkerLegacy =
+          m.assigned_worker?.user_id &&
+          String(m.assigned_worker.user_id).trim() === uidStr
+        const matchCreatorObj =
+          m.creator?.user_id && String(m.creator.user_id).trim() === uidStr
+
+        return Boolean(
+          matchWorker ||
+            matchCreator ||
+            matchAssignedWorker ||
+            matchAssignedWorkerLegacy ||
+            matchCreatorObj
+        )
+      })
     }
 
     return result
