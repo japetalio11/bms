@@ -31,6 +31,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: "/index.html",
         navigateFallbackAllowlist: [/^\/dashboard/, /^\/mothers/, /^\/appointments/, /^\/calendar/, /^\/ehr/, /^\/referrals/, /^\/messages/, /^\/team/, /^\/settings/],

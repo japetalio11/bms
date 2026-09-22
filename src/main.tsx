@@ -6,6 +6,17 @@ import { initStoragePersistence } from "@/lib/db/storagePersist"
 import { syncEngine } from "@/lib/sync/syncEngine"
 import { db } from "@/lib/db/bmsDatabase"
 
+// Handle stale deployment chunks gracefully by reloading once
+window.addEventListener("vite:preloadError", (event) => {
+  event.preventDefault?.()
+  const reloadKey = `bms_chunk_reload_${window.location.pathname}`
+  if (!sessionStorage.getItem(reloadKey)) {
+    sessionStorage.setItem(reloadKey, "true")
+    console.warn("[BMS] New deployment detected. Reloading page to load latest assets...")
+    window.location.reload()
+  }
+})
+
 ;(window as any).clearMotherCache = async (reload = true) => {
   try {
     await Promise.all([
