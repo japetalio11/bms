@@ -83,6 +83,7 @@ export function UploadAvatarModal({
 
     try {
       let fileUrl = ""
+      let blobId: string | undefined = undefined
       try {
         const uploadRes = await mothersApi.uploadLabFile(selectedFile)
         if (typeof uploadRes === "string") {
@@ -94,6 +95,7 @@ export function UploadAvatarModal({
             (uploadRes as any).fileUrl ||
             (uploadRes as any).result ||
             ""
+          blobId = (uploadRes as any).blobId
         }
       } catch (uploadErr) {
         fileUrl = await new Promise<string>((resolve) => {
@@ -107,37 +109,14 @@ export function UploadAvatarModal({
         throw new Error("Failed to process image file.")
       }
 
-      try {
-        await mothersApi.updateMother(targetId, {
+      await mothersApi.updateMother(
+        targetId,
+        {
           profile_url: fileUrl,
           photo_url: fileUrl,
-        })
-      } catch {
-        const { db } = await import("@/lib/db/bmsDatabase")
-        let local: any = await db.mothers.get(targetId)
-        if (!local) {
-          const all = await db.mothers.toArray()
-          local =
-            all.find(
-              (m: any) =>
-                m.id === targetId ||
-                m._id === targetId ||
-                m.mother_id === targetId ||
-                m.user_id === targetId
-            ) || null
-        }
-        if (local) {
-          await db.mothers.update(local.id, {
-            photo_url: fileUrl,
-            profile_url: fileUrl,
-            user: {
-              ...(local.user || {}),
-              profile_url: fileUrl,
-              photo_url: fileUrl,
-            },
-          })
-        }
-      }
+        },
+        blobId ? [blobId] : undefined
+      )
 
       setSuccess(true)
       toast.success("Profile picture updated successfully!", {

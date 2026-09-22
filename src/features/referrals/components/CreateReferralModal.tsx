@@ -445,6 +445,7 @@ Thank you. 💛`
 
       const createdReferral = await referralRepository.createReferral({
         pregnancy_id: pregIdToUse,
+        mother_id: selectedMotherId,
         from_facility_id: currentFacilityId || "default",
         external_facility_name: destinationFacility.trim(),
         reason: formattedReferralMessage,

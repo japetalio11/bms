@@ -77,7 +77,20 @@ export const motherRepository = {
               const lastName = m.last_name || m.user?.last_name || ""
               const middleName = m.middle_name || m.user?.middle_name || ""
               const phoneNumber = m.phone_number || m.user?.phone_number || ""
-              const photoUrl = m.photo_url || m.user?.profile_url || ""
+              const localMatch = localMothers.find(
+                (lm) =>
+                  lm.id === motherId ||
+                  lm._id === motherId ||
+                  lm.mother_id === motherId
+              )
+              const photoUrl =
+                m.photo_url ||
+                m.user?.profile_url ||
+                m.user?.photo_url ||
+                localMatch?.photo_url ||
+                localMatch?.profile_url ||
+                localMatch?.user?.profile_url ||
+                ""
               const userId = m.user_id || m.user?.user_id
 
               if (Array.isArray(m.pregnancies)) {
@@ -132,6 +145,7 @@ export const motherRepository = {
                 middle_name: middleName,
                 phone_number: phoneNumber,
                 photo_url: photoUrl,
+                profile_url: photoUrl,
                 assigned_worker_id: m.assigned_worker_id || m.assignedWorker?.user_id,
                 created_by_id: m.created_by_id || m.creator?.user_id,
                 assignedWorker: m.assignedWorker || m.assigned_worker,
@@ -225,10 +239,33 @@ export const motherRepository = {
                 console.log(
                   `[motherRepository] Auto-reconciling pending temp mother ${pending.id} -> ${canonicalId}`
                 )
+                // If the remote record did not return a photo but local pending record has one, preserve it on matchedRemote
+                if (!matchedRemote.photo_url && (pending.photo_url || pending.profile_url || pending.user?.profile_url)) {
+                  const localPhoto = pending.photo_url || pending.profile_url || pending.user?.profile_url || ""
+                  matchedRemote.photo_url = localPhoto
+                  matchedRemote.profile_url = localPhoto
+                  if (matchedRemote.user) {
+                    matchedRemote.user.profile_url = localPhoto
+                  }
+                }
+
                 await db.mothers.delete(pending.id).catch(() => {})
-                await syncEngine
-                  .cancelPendingMutation(pending.id)
-                  .catch(() => {})
+                
+                // Only cancel the CREATE mutation if pending; rewrite any other pending mutations
+                const allQueue = await db.offlineQueue.toArray()
+                for (const q of allQueue) {
+                  if (q.temp_id === pending.id && q.action === "CREATE" && q.id) {
+                    await db.offlineQueue.delete(q.id).catch(() => {})
+                  } else if (q.id && (q.temp_id === pending.id || (q.endpoint && q.endpoint.includes(pending.id)))) {
+                    const newEp = q.endpoint.replaceAll(pending.id, canonicalId)
+                    let newPayload = q.payload
+                    if (newPayload) {
+                      newPayload = JSON.parse(JSON.stringify(newPayload).replaceAll(pending.id, canonicalId))
+                    }
+                    await db.offlineQueue.update(q.id, { endpoint: newEp, payload: newPayload, temp_id: canonicalId })
+                  }
+                }
+
                 await db.pregnancies
                   .where("mother_id")
                   .equals(pending.id)
@@ -1049,7 +1086,7 @@ export const motherRepository = {
     return newMother
   },
 
-  async updateMother(motherId: string, payload: any) {
+  async updateMother(motherId: string, payload: any, blobIds?: string[]) {
     let local: any = await db.mothers.get(motherId)
     if (!local) {
       const all = await db.mothers.toArray()
@@ -1115,6 +1152,7 @@ export const motherRepository = {
       method: "PUT",
       payload,
       temp_id: motherId.startsWith("temp-") ? motherId : undefined,
+      blob_ids: blobIds,
     })
 
     return { success: true }
