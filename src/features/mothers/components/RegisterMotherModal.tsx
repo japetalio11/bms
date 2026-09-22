@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 
 import { apiClient } from "@/lib/apiClient"
 import { mothersApi } from "../api"
+import { toast } from "sonner"
 
 export function RegisterMotherModal({ 
   children,
@@ -83,7 +84,8 @@ export function RegisterMotherModal({
     setLoading(true)
     setError(null)
 
-    const user = currentUser
+    const effectiveFacilityId =
+      currentUser?.facility_id || currentUser?.facility?.facility_id || null
 
     try {
       await mothersApi.registerMother({
@@ -97,11 +99,21 @@ export function RegisterMotherModal({
         civil_status: civilStatus,
         blood_type: bloodType,
         family_serial_no: familySerialNo,
-        facility_id: user?.facility_id || null,
+        facility_id: effectiveFacilityId,
         assigned_worker_id: assignedWorkerId || undefined,
         password,
       })
 
+      toast.success("Mother registered successfully!")
+      setFirstName("")
+      setLastName("")
+      setMiddleName("")
+      setPhone("")
+      setEmail("")
+      setAddress("")
+      setFamilySerialNo("")
+      setDob(undefined)
+      setStep(1)
       onSuccess?.()
       onOpenChange?.(false)
     } catch (err: any) {
