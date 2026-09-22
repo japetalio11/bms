@@ -38,15 +38,16 @@ import {
 import headerIcon from "@/assets/icon.svg"
 import rhuLogo from "@/assets/pili-rhu-logo.jpg"
 import { apiClient } from "@/lib/apiClient"
-import { db } from "@/lib/db/bmsDatabase"
-import { lockPinSession, clearPinConfig } from "@/lib/security/pinSessionStore"
+import { useAuth } from "@/features/auth/hooks/useAuth"
+import { lockPinSession } from "@/lib/security/pinSessionStore"
 
 export function AppSidebar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { setOpenMobile } = useSidebar()
+  const { user: authUser, logout } = useAuth()
 
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<any>(authUser || null)
   const [facilityName, setFacilityName] = useState<string>(
     "Rural Health Unit 1"
   )
@@ -64,30 +65,25 @@ export function AppSidebar() {
   }
 
   useEffect(() => {
-    const userStr = localStorage.getItem("user")
-    if (userStr) {
-      try {
-        const parsed = JSON.parse(userStr)
-        setUser(parsed)
+    const currentUser = authUser || (localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")!) : null)
+    if (currentUser) {
+      setUser(currentUser)
 
-        if (parsed.facility_profile_url) {
-          setFacilityLogo(parsed.facility_profile_url)
-        } else if (parsed.facility?.facility_profile_url) {
-          setFacilityLogo(parsed.facility.facility_profile_url)
-        }
+      if (currentUser.facility_profile_url) {
+        setFacilityLogo(currentUser.facility_profile_url)
+      } else if (currentUser.facility?.facility_profile_url) {
+        setFacilityLogo(currentUser.facility.facility_profile_url)
+      }
 
-        if (parsed.facility_name) {
-          setFacilityName(parsed.facility_name)
-        } else if (parsed.facility?.facility_name) {
-          setFacilityName(parsed.facility.facility_name)
-        }
+      if (currentUser.facility_name) {
+        setFacilityName(currentUser.facility_name)
+      } else if (currentUser.facility?.facility_name) {
+        setFacilityName(currentUser.facility.facility_name)
+      }
 
-        const facId = parsed.facility_id || parsed.facility?.facility_id
-        if (facId) {
-          loadFacilityInfo(facId)
-        }
-      } catch (err) {
-        console.error("Failed to parse user from localStorage", err)
+      const facId = currentUser.facility_id || currentUser.facility?.facility_id
+      if (facId) {
+        loadFacilityInfo(facId)
       }
     }
 
@@ -98,7 +94,7 @@ export function AppSidebar() {
 
     window.addEventListener("bms:facility-updated", handleFacilityUpdated)
     return () => window.removeEventListener("bms:facility-updated", handleFacilityUpdated)
-  }, [])
+  }, [authUser])
 
   const handleNavigate = (path: string) => {
     setOpenMobile(false)
@@ -108,26 +104,9 @@ export function AppSidebar() {
   }
 
   const handleLogout = async () => {
-    try {
-      const pendingCount = await db.offlineQueue.count()
-      if (pendingCount > 0) {
-        const confirmLogout = window.confirm(
-          `You have ${pendingCount} unsynced offline change(s) in your queue. Logging out now will clear the local patient cache on this device. Do you wish to proceed?`
-        )
-        if (!confirmLogout) return
-      }
-      await db.clearClinicalCache(false)
-    } catch (err) {
-      console.warn("Error cleaning up offline database on logout:", err)
-    } finally {
-      clearPinConfig()
-      localStorage.removeItem("user")
-      localStorage.removeItem("token")
-      localStorage.clear()
-      sessionStorage.clear()
-      setOpenMobile(false)
-      navigate("/")
-    }
+    setOpenMobile(false)
+    await logout()
+    navigate("/login")
   }
 
   const userName =

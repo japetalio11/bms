@@ -1,6 +1,9 @@
 import { lazy, Suspense } from "react"
-import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/features/auth/context/AuthContext"
+import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute"
+import { PublicOnlyRoute } from "@/features/auth/components/PublicOnlyRoute"
 import { AuthForm } from "@/components/auth-form"
 import { DashboardLayout } from "@/features/dashboard/components/DashboardLayout"
 import { UnifiedPageLoader } from "@/components/ui/unified-page-loader"
@@ -25,51 +28,62 @@ const PublicSharedJourneyPage = lazy(() => import("@/features/mothers/components
 export function App() {
   return (
     <ThemeProvider>
-      <PinUnlockModal />
-      <BrowserRouter>
-        <Suspense fallback={<UnifiedPageLoader />}>
-          <Routes>
-            <Route path="/referral/:id" element={<PublicReferralPage />} />
+      <AuthProvider>
+        <PinUnlockModal />
+        <BrowserRouter>
+          <Suspense fallback={<UnifiedPageLoader />}>
+            <Routes>
+              {/* Public open patient endpoints */}
+              <Route path="/referral/:id" element={<PublicReferralPage />} />
+              <Route path="/shared-journey/:token" element={<PublicSharedJourneyPage />} />
+              <Route path="/m/:token" element={<PublicSharedJourneyPage />} />
 
-            <Route path="/shared-journey/:token" element={<PublicSharedJourneyPage />} />
-            <Route path="/m/:token" element={<PublicSharedJourneyPage />} />
+              {/* Developer / test utilities */}
+              <Route path="/test-sms" element={<TestSmsPage />} />
+              <Route path="/test sms" element={<TestSmsPage />} />
+              <Route path="/test%20sms" element={<TestSmsPage />} />
+              <Route path="/sms-test" element={<TestSmsPage />} />
 
-            <Route path="/" element={<AuthForm />} />
-            <Route path="/login" element={<AuthForm />} />
-            <Route path="/register" element={<AuthForm />} />
-            <Route path="/sign-in" element={<AuthForm />} />
-            <Route path="/sign-up" element={<AuthForm />} />
-            <Route path="/forgot-password" element={<AuthForm />} />
-            <Route path="/terms" element={<AuthForm />} />
-            <Route path="/test-sms" element={<TestSmsPage />} />
-            <Route path="/test sms" element={<TestSmsPage />} />
-            <Route path="/test%20sms" element={<TestSmsPage />} />
-            <Route path="/sms-test" element={<TestSmsPage />} />
+              {/* Public-only / Guest auth routes */}
+              <Route element={<PublicOnlyRoute />}>
+                <Route path="/" element={<AuthForm />} />
+                <Route path="/login" element={<AuthForm />} />
+                <Route path="/register" element={<AuthForm />} />
+                <Route path="/sign-in" element={<AuthForm />} />
+                <Route path="/sign-up" element={<AuthForm />} />
+                <Route path="/forgot-password" element={<AuthForm />} />
+                <Route path="/terms" element={<AuthForm />} />
+              </Route>
 
-            <Route path="/dashboard" element={<DashboardLayout />}>
-              <Route index element={<DashboardPage />} />
+              {/* Protected staff dashboard routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/dashboard" element={<DashboardLayout />}>
+                  <Route index element={<DashboardPage />} />
 
-              <Route path="mothers" element={<MothersPage />} />
-              <Route path="mothers/:id" element={<MotherProfilePage />} />
-              <Route path="appointments" element={<AppointmentListPage />} />
-              <Route path="calendar" element={<CalendarPage />} />
-              <Route path="ehr" element={<EhrPage />} />
-              <Route path="referrals" element={<ReferralsPage />} />
-              <Route path="messages" element={<MessagesPage />} />
-              <Route path="team" element={<TeamManagementPage />} />
-              <Route path="team/:id" element={<StaffProfilePage />} />
-              <Route path="settings" element={<SettingsPage />} />
+                  <Route path="mothers" element={<MothersPage />} />
+                  <Route path="mothers/:id" element={<MotherProfilePage />} />
+                  <Route path="appointments" element={<AppointmentListPage />} />
+                  <Route path="calendar" element={<CalendarPage />} />
+                  <Route path="ehr" element={<EhrPage />} />
+                  <Route path="referrals" element={<ReferralsPage />} />
+                  <Route path="messages" element={<MessagesPage />} />
+                  <Route path="team" element={<TeamManagementPage />} />
+                  <Route path="team/:id" element={<StaffProfilePage />} />
+                  <Route path="settings" element={<SettingsPage />} />
 
-              <Route path="analytics" element={<AnalyticsPage />} />
-              <Route path="feedback" element={<div className="flex-1 w-full h-full bg-white dark:bg-black" />} />
-            </Route>
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
+                  <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path="feedback" element={<div className="flex-1 w-full h-full bg-white dark:bg-black" />} />
+                </Route>
+              </Route>
+
+              {/* Catch-all fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </AuthProvider>
     </ThemeProvider>
   )
 }
 
 export default App
-
-

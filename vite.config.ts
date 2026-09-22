@@ -34,6 +34,7 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: "/index.html",
         navigateFallbackAllowlist: [/^\/dashboard/, /^\/mothers/, /^\/appointments/, /^\/calendar/, /^\/ehr/, /^\/referrals/, /^\/messages/, /^\/team/, /^\/settings/],
+        navigateFallbackDenylist: [/^\/api\/.*/, /^https?:\/\/.*\/api\/.*/, /.*googleapis\.com.*/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         runtimeCaching: [
           {
@@ -43,18 +44,25 @@ export default defineConfig({
               cacheName: "google-fonts-cache",
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {
                 statuses: [0, 200],
               },
             },
           },
+          {
+            urlPattern: /^https?:\/\/.*\/api\/.*/i,
+            handler: "NetworkOnly",
+          },
+          {
+            urlPattern: /^https:\/\/.*\.googleapis\.com\/.*/i,
+            handler: "NetworkOnly",
+          },
         ],
       },
       devOptions: {
-        enabled: true,
-        type: "module",
+        enabled: false,
       },
     }),
   ],

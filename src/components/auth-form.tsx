@@ -10,6 +10,7 @@ import { db } from "@/lib/db/bmsDatabase"
 import { TermsOfServiceModal } from "@/components/TermsOfServiceModal"
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal"
 import { usePhoneAuth } from "@/hooks/usePhoneAuth"
+import { useAuth } from "@/features/auth/hooks/useAuth"
 
 declare global {
   interface Window {
@@ -51,6 +52,7 @@ interface FacilityItem {
 export function AuthForm() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { login: authLogin } = useAuth()
 
   const isRegisterPath = location.pathname.includes("register") || location.pathname.includes("sign-up")
   const isForgotPath = location.pathname.includes("forgot-password")
@@ -317,12 +319,11 @@ export function AuthForm() {
         throw new Error(data.error || "Failed to reset password")
       }
 
-      if (data.token) {
-        localStorage.setItem("token", data.token)
-      }
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user))
+      if (data.token && data.user) {
+        await authLogin(data.token, data.user)
         await db.userSession.put({ id: "current_user", ...data.user, token: data.token })
+      } else if (data.token) {
+        localStorage.setItem("token", data.token)
       }
 
       setOtpMessage("Password reset successful! Redirecting to dashboard...")
@@ -413,12 +414,11 @@ export function AuthForm() {
         throw new Error(data.error || "Registration failed")
       }
 
-      if (data.token) {
-        localStorage.setItem("token", data.token)
-      }
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user))
+      if (data.token && data.user) {
+        await authLogin(data.token, data.user)
         await db.userSession.put({ id: "current_user", ...data.user, token: data.token })
+      } else if (data.token) {
+        localStorage.setItem("token", data.token)
       }
 
       navigate("/dashboard")
@@ -484,12 +484,8 @@ export function AuthForm() {
                 throw new Error(data.message || data.error || "Google authentication failed")
               }
 
-              if (data.token) {
-                localStorage.setItem("token", data.token)
-              }
-
-              if (data.user) {
-                localStorage.setItem("user", JSON.stringify(data.user))
+              if (data.token && data.user) {
+                await authLogin(data.token, data.user)
                 await db.userSession.put({
                   id: "current_user",
                   ...data.user,
@@ -497,6 +493,8 @@ export function AuthForm() {
                   cachedEmail: data.user.email?.toLowerCase().trim(),
                   cachedUser: data.user,
                 })
+              } else if (data.token) {
+                localStorage.setItem("token", data.token)
               }
 
               navigate("/dashboard")
@@ -542,12 +540,8 @@ export function AuthForm() {
             throw new Error(data.error || "Authentication failed")
           }
 
-          if (data.token) {
-            localStorage.setItem("token", data.token)
-          }
-
-          if (data.user) {
-            localStorage.setItem("user", JSON.stringify(data.user))
+          if (data.token && data.user) {
+            await authLogin(data.token, data.user)
             await db.userSession.put({
               id: "current_user",
               ...data.user,
@@ -556,6 +550,8 @@ export function AuthForm() {
               cachedPassword: password,
               cachedUser: data.user,
             })
+          } else if (data.token) {
+            localStorage.setItem("token", data.token)
           }
 
           navigate("/dashboard")
@@ -586,8 +582,7 @@ export function AuthForm() {
         if (matchesIdentifier && matchesPassword) {
           const token = cachedSession.token || "offline-session-token"
           const user = cachedSession.cachedUser || cachedSession
-          localStorage.setItem("token", token)
-          localStorage.setItem("user", JSON.stringify(user))
+          await authLogin(token, user)
           navigate("/dashboard")
           return
         }
