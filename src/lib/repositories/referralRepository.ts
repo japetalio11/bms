@@ -116,16 +116,80 @@ export const referralRepository = {
     const isSysAdmin = currentUser?.role === "SystemAdmin"
     const currentFacilityId =
       currentUser?.facility_id || currentUser?.facility?.facility_id
+    const currentUserId = currentUser?.user_id || currentUser?.id
+
+    let result = localList
 
     if (!isSysAdmin && currentFacilityId) {
-      return localList.filter(
+      result = result.filter(
         (r) =>
           r.from_facility_id === currentFacilityId ||
           r.to_facility_id === currentFacilityId
       )
     }
 
-    return localList
+    const isHealthcareStaff =
+      currentUser?.role &&
+      ![
+        "SystemAdmin",
+        "Admin",
+        "Administrator",
+        "FacilityAdmin",
+        "Mother",
+      ].includes(currentUser.role)
+
+    if (isHealthcareStaff && currentUserId) {
+      const allMothers = await db.mothers.toArray().catch(() => [])
+      const assignedMotherIds = new Set<string>()
+
+      for (const m of allMothers) {
+        const workerId =
+          m.assigned_worker_id ||
+          m.assignedWorker?.user_id ||
+          m.assigned_worker?.user_id ||
+          m.created_by_id ||
+          m.creator?.user_id
+        if (workerId === currentUserId) {
+          if (m.id) assignedMotherIds.add(m.id)
+          if (m.mother_id) assignedMotherIds.add(m.mother_id)
+          if (m.user_id) assignedMotherIds.add(m.user_id)
+          if (m._id) assignedMotherIds.add(m._id)
+        }
+      }
+
+      result = result.filter((r: any) => {
+        if (
+          r.created_by_id === currentUserId ||
+          r.user_id === currentUserId ||
+          r.assigned_worker_id === currentUserId
+        ) {
+          return true
+        }
+
+        const mother = r.pregnancy?.mother
+        if (mother) {
+          const workerId =
+            mother.assigned_worker_id ||
+            mother.assignedWorker?.user_id ||
+            mother.assigned_worker?.user_id ||
+            mother.created_by_id ||
+            mother.creator?.user_id ||
+            mother.user_id
+          if (workerId === currentUserId) return true
+
+          const motherKey =
+            mother.mother_id || mother.id || mother._id || mother.user_id
+          if (motherKey && assignedMotherIds.has(motherKey)) return true
+        }
+
+        if (r.mother_id && assignedMotherIds.has(r.mother_id)) return true
+        if (r.motherId && assignedMotherIds.has(r.motherId)) return true
+
+        return false
+      })
+    }
+
+    return result
   },
 
   async createReferral(payload: {
