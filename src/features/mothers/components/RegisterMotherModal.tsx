@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 import { apiClient } from "@/lib/apiClient"
 import { mothersApi } from "../api"
 import { toast } from "sonner"
+import { userRepository } from "@/lib/repositories/userRepository"
 
 export function RegisterMotherModal({ 
   children,
@@ -43,37 +44,70 @@ export function RegisterMotherModal({
   const [familySerialNo, setFamilySerialNo] = React.useState("")
   const [civilStatus, setCivilStatus] = React.useState("Single")
   const [bloodType, setBloodType] = React.useState("O+")
-  const [assignedWorkerId, setAssignedWorkerId] = React.useState<string>("")
-  const [facilityStaff, setFacilityStaff] = React.useState<any[]>([])
-  const [password] = React.useState("Mother@123")
-  const [loading, setLoading] = React.useState(false)
-  const [error, setError] = React.useState<string | null>(null)
 
   const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null
   const currentUser = userStr ? JSON.parse(userStr) : null
+  const currentUserId = currentUser?.user_id || currentUser?.id || ""
   const isAdmin =
     currentUser?.role === "SystemAdmin" ||
     currentUser?.role === "Admin" ||
     currentUser?.role === "FacilityAdmin"
 
+  const [assignedWorkerId, setAssignedWorkerId] = React.useState<string>(currentUserId)
+  const [facilityStaff, setFacilityStaff] = React.useState<any[]>([])
+  const [password] = React.useState("Mother@123")
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
   React.useEffect(() => {
     if (!open) {
       setTimeout(() => setStep(1), 300)
       setError(null)
-      setAssignedWorkerId("")
-    } else if (isAdmin) {
-      apiClient
-        .get("/api/v1/user/facility")
-        .then((res) => {
-          const list = res.data?.result || res.data?.data || []
-          const staff = Array.isArray(list)
-            ? list.filter((u: any) => u.role !== "Mother")
-            : []
-          setFacilityStaff(staff)
-        })
-        .catch(() => {})
+      setAssignedWorkerId(currentUserId)
+    } else {
+      setAssignedWorkerId(currentUserId)
+      if (isAdmin) {
+        userRepository
+          .getFacilityStaff()
+          .then((staff) => {
+            const list = Array.isArray(staff)
+              ? staff.filter((u: any) => u.role !== "Mother" && u.role !== "MOTHER")
+              : []
+            setFacilityStaff(list)
+          })
+          .catch(() => {
+            apiClient
+              .get("/api/v1/user/facility")
+              .then((res) => {
+                const list = res.data?.result || res.data?.data || []
+                const staff = Array.isArray(list)
+                  ? list.filter((u: any) => u.role !== "Mother" && u.role !== "MOTHER")
+                  : []
+                setFacilityStaff(staff)
+              })
+              .catch(() => {})
+          })
+      }
     }
-  }, [open, isAdmin])
+  }, [open, isAdmin, currentUserId])
+
+  const staffOptions = React.useMemo(() => {
+    const list = [...facilityStaff]
+    if (
+      currentUser &&
+      currentUserId &&
+      !list.some((s) => (s.user_id || s.id) === currentUserId)
+    ) {
+      list.unshift({
+        user_id: currentUserId,
+        id: currentUserId,
+        first_name: currentUser.first_name || "Current",
+        last_name: currentUser.last_name || "User",
+        role: currentUser.role || "Staff",
+      })
+    }
+    return list
+  }, [facilityStaff, currentUser, currentUserId])
 
   const handleRegister = async () => {
     if (!firstName || !lastName || !address || !dob) {
@@ -265,7 +299,7 @@ export function RegisterMotherModal({
             {isAdmin ? (
               <div className="flex flex-col gap-2">
                 <Label className="text-xs font-medium text-foreground">
-                  Assigned Staff / Care Provider <span className="text-muted-foreground font-normal">(Optional)</span>
+                  Assigned Staff / Care Provider
                 </Label>
                 <Select
                   value={assignedWorkerId || "none"}
@@ -276,11 +310,16 @@ export function RegisterMotherModal({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">-- Leave Unassigned --</SelectItem>
-                    {facilityStaff.map((staff) => (
-                      <SelectItem key={staff.user_id} value={staff.user_id}>
-                        {staff.first_name} {staff.last_name} ({staff.role})
-                      </SelectItem>
-                    ))}
+                    {staffOptions.map((staff) => {
+                      const sid = staff.user_id || staff.id
+                      const isMe = sid === currentUserId
+                      return (
+                        <SelectItem key={sid} value={sid}>
+                          {staff.first_name} {staff.last_name} ({staff.role})
+                          {isMe ? " (You - Default)" : ""}
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
               </div>
