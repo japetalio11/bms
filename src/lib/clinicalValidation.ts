@@ -316,10 +316,6 @@ export function validateLabData(data: {
     addError("screening_type", "Screening test type is required.")
   }
 
-  if (!data.result || !String(data.result).trim()) {
-    addError("result", "Lab result / interpretation is required.")
-  }
-
   if (!data.date_of_screening) {
     addError("date_of_screening", "Date of screening is required.")
   } else {
