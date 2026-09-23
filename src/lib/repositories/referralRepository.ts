@@ -66,6 +66,7 @@ export const referralRepository = {
 
           const toDelete = localList.filter((r) => {
             const isPendingInOutbox =
+              r.sync_status !== "synced" ||
               (r.id && pendingTempIds.has(r.id)) ||
               (r.referral_id && pendingTempIds.has(r.referral_id))
             if (isPendingInOutbox) return false
@@ -85,11 +86,6 @@ export const referralRepository = {
                 .catch(() => {})
           }
 
-          const pendingItems = localList.filter(
-            (r) =>
-              (r.id && pendingTempIds.has(r.id)) ||
-              (r.referral_id && pendingTempIds.has(r.referral_id))
-          )
           if (formattedRemote.length > 0) {
             await db.referrals.bulkPut(formattedRemote)
           }
@@ -309,13 +305,17 @@ export const referralRepository = {
     await db.referrals.put(localItem)
 
     const { mother_name, mother_id, ...apiPayload } = payload
+    const outboxPayload = {
+      ...apiPayload,
+      mother_id: targetMotherId || mother_id || undefined,
+    }
 
     await syncEngine.enqueueMutation({
       entity_type: "referral",
       action: "CREATE",
       endpoint: "/api/v1/referral/register",
       method: "POST",
-      payload: apiPayload,
+      payload: outboxPayload,
       temp_id: tempId,
     })
 

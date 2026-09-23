@@ -47,6 +47,7 @@ import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
 import { toast } from "sonner"
 
+import { useLiveQuery } from "dexie-react-hooks"
 import {
   ehrRepository,
   type EhrDocument,
@@ -54,8 +55,15 @@ import {
 export type { EhrDocument }
 
 export function EhrPage() {
-  const [documents, setDocuments] = useState<EhrDocument[]>([])
+  const userStr = typeof window !== "undefined" ? localStorage.getItem("user") : null
+  const user = userStr ? JSON.parse(userStr) : null
+  const facilityId = user?.facility_id || user?.facilityId
+
+  const liveDocs = useLiveQuery(() => ehrRepository.getLocalDocuments(facilityId), [facilityId])
+  const [remoteDocs, setRemoteDocs] = useState<EhrDocument[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  const documents = liveDocs !== undefined ? liveDocs : remoteDocs
 
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
@@ -73,21 +81,20 @@ export function EhrPage() {
 
   const fetchDocuments = async () => {
     setIsLoading(true)
-    const userStr = localStorage.getItem("user")
-    const user = userStr ? JSON.parse(userStr) : null
-    const facilityId = user?.facility_id || user?.facilityId
-    const docs = await ehrRepository.getAllDocuments(facilityId)
-    setDocuments(docs || [])
-    setIsLoading(false)
+    try {
+      const docs = await ehrRepository.getAllDocuments(facilityId)
+      setRemoteDocs(docs || [])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   React.useEffect(() => {
     fetchDocuments()
-  }, [])
+  }, [facilityId])
 
   const handleAddDocument = async (newDoc: EhrDocument) => {
     await ehrRepository.createDocument(newDoc)
-    await fetchDocuments()
   }
 
   const handleDeleteDocument = (doc: EhrDocument) => {
@@ -101,7 +108,6 @@ export function EhrPage() {
       await ehrRepository.deleteDocument(docToDelete.id)
       toast.success("EHR record removed successfully")
       setDocToDelete(null)
-      await fetchDocuments()
     } catch (err) {
       console.error("Failed to delete EHR document:", err)
       toast.error("Failed to remove EHR document. Please try again.")

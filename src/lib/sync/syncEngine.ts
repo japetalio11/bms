@@ -61,6 +61,7 @@ class SyncEngine {
       this.isOnlineState = online
       this.notify()
       if (online) {
+        this.syncEhrDocuments().catch(() => {})
         const settings = settingsStore.getSettings()
         if (settings.autoSyncOnReconnect) {
           this.processQueue()
@@ -253,61 +254,59 @@ class SyncEngine {
               errMsg.toLowerCase().includes("validation")))
         const isMaxRetries = (item.retry_count || 0) >= 5
 
-        if (isTooLarge || isUnrecoverableAuth || isUnrecoverableClient || isMaxRetries) {
-          console.warn(
-            `[SyncEngine] Discarding unresolvable item #${item.id} (${item.entity_type}) after status ${status || "validation / too large / max retries"}: ${errMsg}`
-          )
-          if (item.id) {
-            await db.offlineQueue.delete(item.id)
+        const tableMap: Record<string, any> = {
+          mother: db.mothers,
+          pregnancy: db.pregnancies,
+          prenatal_visit: db.prenatalVisits,
+          appointment: db.appointments,
+          lab_record: db.labRecords,
+          supplement: db.supplements,
+          referral: db.referrals,
+          custom_request: db.referrals,
+          message: db.messages,
+          ehr_doc: db.ehrDocuments,
+          ehr_document: db.ehrDocuments,
+        }
+
+        const targetEntityId = item.temp_id || (item.endpoint ? item.endpoint.split("/").pop() : undefined)
+        if (targetEntityId) {
+          const table = tableMap[item.entity_type]
+          if (table) {
+            await table
+              .update(targetEntityId, {
+                sync_status: "error",
+                last_error: errMsg,
+              })
+              .catch(() => {})
           }
-          if (item.temp_id) {
-            const tableMap: Record<string, any> = {
-              mother: db.mothers,
-              pregnancy: db.pregnancies,
-              prenatal_visit: db.prenatalVisits,
-              appointment: db.appointments,
-              lab_record: db.labRecords,
-              supplement: db.supplements,
-              referral: db.referrals,
-              message: db.messages,
-              ehr_document: db.ehrDocuments,
-            }
-            const table = tableMap[item.entity_type]
-            if (table) {
-              await table
-                .update(item.temp_id, {
-                  sync_status: "error",
-                  last_error: errMsg,
-                })
-                .catch(() => {})
-            }
-            if (item.entity_type === "user") {
-              try {
-                const cached = await db.userSession.get("facility_staff_cache")
-                if (cached && Array.isArray(cached.data)) {
-                  const updated = cached.data.map((u: any) => {
-                    if (u.id === item.temp_id || u.user_id === item.temp_id) {
-                      return {
-                        ...u,
-                        sync_status: "error",
-                        last_error: errMsg,
-                      }
+          if (item.entity_type === "user") {
+            try {
+              const cached = await db.userSession.get("facility_staff_cache")
+              if (cached && Array.isArray(cached.data)) {
+                const updated = cached.data.map((u: any) => {
+                  if (u.id === targetEntityId || u.user_id === targetEntityId) {
+                    return {
+                      ...u,
+                      sync_status: "error",
+                      last_error: errMsg,
                     }
-                    return u
-                  })
-                  await db.userSession.put({
-                    id: "facility_staff_cache",
-                    data: updated,
-                    updated_at: Date.now(),
-                  })
-                }
-              } catch {}
-            }
+                  }
+                  return u
+                })
+                await db.userSession.put({
+                  id: "facility_staff_cache",
+                  data: updated,
+                  updated_at: Date.now(),
+                })
+              }
+            } catch {}
           }
-        } else if (item.id) {
+        }
+
+        if (item.id) {
           await db.offlineQueue.update(item.id, {
             retry_count: (item.retry_count || 0) + 1,
-            last_error: this.lastError || undefined,
+            last_error: errMsg,
           })
         }
 
@@ -317,9 +316,12 @@ class SyncEngine {
       }
     }
 
-    const remainingCount = await db.offlineQueue.count()
-    if (remainingCount === 0) {
+    const remainingQueue = await db.offlineQueue.toArray()
+    const errorItems = remainingQueue.filter((q) => q.last_error || (q.retry_count || 0) >= 5)
+    if (remainingQueue.length === 0) {
       this.lastError = null
+    } else if (errorItems.length > 0) {
+      this.lastError = errorItems[0].last_error || "Some offline mutations encountered errors."
     }
 
     this.isSyncing = false
@@ -396,21 +398,32 @@ class SyncEngine {
     }
 
     // 2. Resolve pregnancy_id
-    if (resolved.pregnancy_id && String(resolved.pregnancy_id).startsWith("temp-")) {
-      try {
-        const p = await db.pregnancies.get(resolved.pregnancy_id)
-        if (p && p.pregnancy_id && !String(p.pregnancy_id).startsWith("temp-")) {
-          resolved.pregnancy_id = p.pregnancy_id
-        } else if (resolved.mother_id && !String(resolved.mother_id).startsWith("temp-")) {
-          const matchingPreg = await db.pregnancies
-            .where("mother_id")
-            .equals(resolved.mother_id)
-            .first()
-          if (matchingPreg && matchingPreg.pregnancy_id && !String(matchingPreg.pregnancy_id).startsWith("temp-")) {
-            resolved.pregnancy_id = matchingPreg.pregnancy_id
+    if (resolved.pregnancy_id) {
+      const pIdStr = String(resolved.pregnancy_id)
+      if (pIdStr.startsWith("temp-") || pIdStr.startsWith("preg-")) {
+        try {
+          const p = await db.pregnancies.get(resolved.pregnancy_id)
+          if (p && p.pregnancy_id && !String(p.pregnancy_id).startsWith("temp-") && !String(p.pregnancy_id).startsWith("preg-")) {
+            resolved.pregnancy_id = p.pregnancy_id
+          } else if (resolved.mother_id) {
+            const mIdStr = String(resolved.mother_id)
+            const allPregs = await db.pregnancies.toArray()
+            const matchingPreg = allPregs.find((preg) => {
+              const pMid = preg.mother_id || (preg as any).motherId
+              const pregId = preg.pregnancy_id || preg.id
+              return (
+                (pMid === mIdStr || (pMid && mIdStr && (pMid.includes(mIdStr) || mIdStr.includes(pMid)))) &&
+                pregId &&
+                !String(pregId).startsWith("temp-") &&
+                !String(pregId).startsWith("preg-")
+              )
+            })
+            if (matchingPreg && (matchingPreg.pregnancy_id || matchingPreg.id)) {
+              resolved.pregnancy_id = matchingPreg.pregnancy_id || matchingPreg.id
+            }
           }
-        }
-      } catch {}
+        } catch {}
+      }
     }
 
     // 3. Resolve visit_id
@@ -632,6 +645,75 @@ class SyncEngine {
         )
       }
     }
+
+    try {
+      if (item.entity_type === "mother") {
+        const targetId = item.temp_id || (item.endpoint ? item.endpoint.split("/").pop() : undefined)
+        if (targetId) {
+          const local = (await db.mothers.get(targetId)) || (await db.mothers.where("mother_id").equals(targetId).first())
+          if (local) {
+            const respMother = responseData?.result?.mother || responseData?.result || responseData?.mother || {}
+            const respUser = responseData?.result?.user || responseData?.user || respMother.user || {}
+            const resolvedPhoto = respUser.profile_url || respMother.photo_url || payload?.photo_url || payload?.profile_url || local.photo_url
+            await db.mothers.update(local.id, {
+              ...respMother,
+              photo_url: resolvedPhoto,
+              profile_url: resolvedPhoto,
+              user: {
+                ...(local.user || {}),
+                ...respUser,
+                profile_url: resolvedPhoto,
+              },
+              sync_status: "synced",
+              last_error: undefined,
+              updated_at: Date.now(),
+            })
+          }
+        }
+      } else if (item.entity_type === "ehr_doc") {
+        const targetId = item.temp_id || (item.endpoint ? item.endpoint.split("/").pop() : undefined)
+        if (targetId) {
+          const docId = responseData?.data?.document_id || responseData?.document_id || responseData?.id || targetId
+          const local = await db.ehrDocuments.get(targetId)
+          if (local) {
+            if (targetId !== docId) {
+              await db.ehrDocuments.delete(targetId)
+            }
+            await db.ehrDocuments.put({
+              ...local,
+              ...(responseData?.data || responseData || {}),
+              id: docId,
+              document_id: docId,
+              sync_status: "synced",
+              last_error: undefined,
+              updated_at: Date.now(),
+            })
+          }
+        }
+      } else if (item.entity_type === "referral" || item.entity_type === "custom_request") {
+        const targetId = item.temp_id || (item.endpoint ? item.endpoint.split("/").pop() : undefined)
+        if (targetId) {
+          const refId = responseData?.data?.referral_id || responseData?.referral?.referral_id || responseData?.referral_id || targetId
+          const local = (await db.referrals.get(targetId)) || (await db.referrals.where("referral_id").equals(targetId).first())
+          if (local) {
+            if (targetId !== refId) {
+              await db.referrals.delete(targetId)
+            }
+            await db.referrals.put({
+              ...local,
+              ...(responseData?.data || responseData?.referral || responseData || {}),
+              id: refId,
+              referral_id: refId,
+              sync_status: "synced",
+              last_error: undefined,
+              updated_at: Date.now(),
+            })
+          }
+        }
+      }
+    } catch (syncStateErr) {
+      console.warn("[SyncEngine] Failed to update local Dexie record after successful mutation:", syncStateErr)
+    }
   }
 
   private async reconcileTempId(
@@ -734,6 +816,11 @@ class SyncEngine {
             .where("mother_id")
             .equals(tempId)
             .modify({ mother_id: canonicalMotherId })
+          await db.referrals
+            .where("mother_id")
+            .equals(tempId)
+            .modify({ mother_id: canonicalMotherId })
+            .catch(() => {})
           await db.messages
             .where("receiver_id")
             .equals(tempId)
@@ -748,7 +835,7 @@ class SyncEngine {
             await db.pregnancies.delete(tempId)
             await db.pregnancies.put({
               ...existingLocal,
-              ...(responseData?.pregnancy || responseData),
+              ...(responseData?.pregnancy || responseData?.result || responseData),
               id: canonicalId,
               pregnancy_id: canonicalId,
               sync_status: "synced",
@@ -787,6 +874,19 @@ class SyncEngine {
               s.id
             ) {
               await db.supplements.update(s.id, { pregnancy_id: canonicalId })
+            }
+          }
+
+          const allRefs = await db.referrals.toArray()
+          for (const r of allRefs) {
+            if (
+              (r.pregnancy_id === tempId ||
+                (r as any).pregnancyId === tempId) &&
+              r.id
+            ) {
+              await db.referrals.update(r.id, {
+                pregnancy_id: canonicalId,
+              })
             }
           }
         } else if (entityType === "appointment") {
@@ -1056,6 +1156,45 @@ class SyncEngine {
             created_at: Date.now(),
           })
           queuedTempIds.add(mother.id)
+        } else if (
+          mother.sync_status === "pending_update" &&
+          mother.id &&
+          !String(mother.id).startsWith("temp-")
+        ) {
+          const mId = mother.mother_id || mother.id
+          const alreadyQueued = pendingQueue.some(
+            (q) =>
+              q.endpoint?.includes(`/mother/update/${mId}`) ||
+              (q.temp_id === mId && q.action === "UPDATE")
+          )
+          if (!alreadyQueued) {
+            console.log(
+              `[SyncEngine] Auto-recovering offline mother update ${mId} to outbox queue...`
+            )
+            await db.offlineQueue.add({
+              client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+              entity_type: "mother",
+              action: "UPDATE",
+              endpoint: `/api/v1/mother/update/${mId}`,
+              method: "PUT",
+              payload: {
+                first_name: mother.first_name || mother.user?.first_name,
+                last_name: mother.last_name || mother.user?.last_name,
+                middle_name: mother.middle_name || mother.user?.middle_name,
+                address: mother.address || mother.user?.address,
+                phone_number: mother.phone_number || mother.user?.phone_number,
+                email: mother.email || mother.user?.email,
+                birth_date: mother.birth_date,
+                civil_status: mother.civil_status,
+                blood_type: mother.blood_type,
+                family_serial_no: mother.family_serial_no,
+                photo_url: mother.photo_url || mother.profile_url || mother.user?.profile_url,
+                profile_url: mother.photo_url || mother.profile_url || mother.user?.profile_url,
+              },
+              retry_count: 0,
+              created_at: Date.now(),
+            })
+          }
         }
       }
 
@@ -1266,12 +1405,13 @@ class SyncEngine {
           )
           await db.offlineQueue.add({
             client_mutation_id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-            entity_type: "custom_request",
+            entity_type: "referral",
             action: "CREATE",
             endpoint: "/api/v1/referral/register",
             method: "POST",
             payload: {
               pregnancy_id: ref.pregnancy_id,
+              mother_id: ref.mother_id || undefined,
               from_facility_id: ref.from_facility_id,
               to_facility_id: ref.to_facility_id,
               external_facility_name: ref.external_facility_name,
@@ -1407,6 +1547,89 @@ class SyncEngine {
       }
     } catch (err) {
       console.warn("[SyncEngine] Auto-resync unsynced records error:", err)
+    }
+  }
+
+  public async syncEhrDocuments(): Promise<void> {
+    if (!this.isNetworkOnline()) return
+    try {
+      const userStr =
+        typeof window !== "undefined" ? localStorage.getItem("user") : null
+      const user = userStr ? JSON.parse(userStr) : null
+      const facilityId = user?.facility_id || user?.facilityId
+      const queryParams = facilityId ? `?facility_id=${facilityId}` : ""
+      const res = await apiClient.get(`/api/v1/ehr/getAll${queryParams}`)
+      const remoteDocs =
+        res.data?.data || (Array.isArray(res.data) ? res.data : [])
+
+      if (Array.isArray(remoteDocs) && remoteDocs.length > 0) {
+        const pendingQueue = await this.getQueue()
+        const pendingTempIds = new Set(
+          pendingQueue.map((m) => m.temp_id).filter(Boolean)
+        )
+
+        const formattedRemote = remoteDocs
+          .filter((item: any) => {
+            const canonicalId = item.document_id || item.id
+            return !pendingTempIds.has(canonicalId)
+          })
+          .map((item: any) => {
+            const canonicalId = item.document_id || item.id
+            const motherUser = item.mother?.user
+            const resolvedPatientName =
+              item.patient_name ||
+              (motherUser
+                ? `${motherUser.first_name || ""} ${motherUser.last_name || ""}`.trim()
+                : "Facility General")
+
+            return {
+              id: canonicalId,
+              document_id: canonicalId,
+              title: item.title || item.document_name || "Facility Document",
+              document_name:
+                item.title || item.document_name || "Facility Document",
+              category: item.category || "Clinical Protocols",
+              patientName: resolvedPatientName,
+              patient_name: resolvedPatientName,
+              securityLevel:
+                item.security_level || item.securityLevel || "Confidential",
+              security_level:
+                item.security_level || item.securityLevel || "Confidential",
+              format: item.format || "PDF",
+              size: item.size || "1.0 MB",
+              dateUploaded: item.created_at
+                ? new Date(item.created_at).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : new Date().toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  }),
+              date_uploaded: item.created_at || new Date().toISOString(),
+              uploadedBy:
+                item.uploaded_by || item.uploadedBy || "Healthcare Staff",
+              uploaded_by:
+                item.uploaded_by || item.uploadedBy || "Healthcare Staff",
+              fileUrl: item.file_url || item.fileUrl,
+              file_url: item.file_url || item.fileUrl,
+              mother_id: item.mother_id,
+              facility_id: item.facility_id || facilityId,
+              sync_status: "synced" as const,
+              updated_at: item.updated_at
+                ? new Date(item.updated_at).getTime()
+                : Date.now(),
+            }
+          })
+
+        if (formattedRemote.length > 0) {
+          await db.ehrDocuments.bulkPut(formattedRemote)
+        }
+      }
+    } catch (err) {
+      console.warn("[SyncEngine] Failed to pre-cache EHR documents:", err)
     }
   }
 }

@@ -1101,6 +1101,13 @@ export const motherRepository = {
     }
 
     const photoUrl = payload.photo_url || payload.profile_url || ""
+    const updatedFirstName = payload.first_name !== undefined ? payload.first_name : (local?.first_name || local?.user?.first_name || "")
+    const updatedMiddleName = payload.middle_name !== undefined ? payload.middle_name : (local?.middle_name || local?.user?.middle_name || "")
+    const updatedLastName = payload.last_name !== undefined ? payload.last_name : (local?.last_name || local?.user?.last_name || "")
+    const fullName = [updatedFirstName, updatedMiddleName, updatedLastName].filter(Boolean).join(" ") || local?.name || ""
+
+    const isOnline = syncEngine.isNetworkOnline() && !motherId.startsWith("temp-")
+
     if (local) {
       const actualKey = local.id
       const birthDate = payload.birth_date || local.birth_date
@@ -1115,32 +1122,65 @@ export const motherRepository = {
       const updatedUser = {
         ...(local.user || {}),
         ...(photoUrl ? { profile_url: photoUrl, photo_url: photoUrl } : {}),
-        ...(payload.first_name !== undefined
-          ? { first_name: payload.first_name }
-          : {}),
-        ...(payload.middle_name !== undefined
-          ? { middle_name: payload.middle_name }
-          : {}),
-        ...(payload.last_name !== undefined
-          ? { last_name: payload.last_name }
-          : {}),
+        ...(payload.first_name !== undefined ? { first_name: payload.first_name } : {}),
+        ...(payload.middle_name !== undefined ? { middle_name: payload.middle_name } : {}),
+        ...(payload.last_name !== undefined ? { last_name: payload.last_name } : {}),
         ...(payload.address !== undefined ? { address: payload.address } : {}),
-        ...(payload.phone_number !== undefined
-          ? { phone_number: payload.phone_number }
-          : {}),
+        ...(payload.phone_number !== undefined ? { phone_number: payload.phone_number } : {}),
         ...(payload.email !== undefined ? { email: payload.email } : {}),
         ...(birthDate ? { birth_date: birthDate } : {}),
       }
 
       await db.mothers.update(actualKey, {
         ...payload,
+        name: fullName,
+        first_name: updatedFirstName,
+        middle_name: updatedMiddleName,
+        last_name: updatedLastName,
         ...(photoUrl ? { photo_url: photoUrl, profile_url: photoUrl } : {}),
         ...(calculatedAge ? { age: calculatedAge } : {}),
         user: updatedUser,
-        sync_status:
-          local.sync_status === "pending_create"
-            ? "pending_create"
-            : "pending_update",
+        sync_status: isOnline
+          ? "synced"
+          : (local.sync_status === "pending_create" ? "pending_create" : "pending_update"),
+        updated_at: Date.now(),
+      })
+    }
+
+    if (isOnline) {
+      try {
+        const response = await apiClient.put(`/api/v1/mother/update/${motherId}`, payload)
+        const updated = response.data?.result || response.data
+        if (updated && local) {
+          const respMother = updated.mother || updated
+          const respUser = updated.user || respMother.user || {}
+          const resolvedPhoto = respUser.profile_url || respMother.photo_url || photoUrl || local.photo_url
+          await db.mothers.update(local.id, {
+            ...respMother,
+            name: fullName,
+            photo_url: resolvedPhoto,
+            profile_url: resolvedPhoto,
+            user: {
+              ...(local.user || {}),
+              ...respUser,
+              profile_url: resolvedPhoto,
+            },
+            sync_status: "synced",
+            updated_at: Date.now(),
+          })
+        }
+        return { success: true }
+      } catch (err: any) {
+        if (err.response?.status >= 400 && err.response?.status < 500 && err.response?.status !== 408 && err.response?.status !== 429) {
+          throw err
+        }
+        console.warn("[motherRepository] Online updateMother failed, queuing offline:", err)
+      }
+    }
+
+    if (local) {
+      await db.mothers.update(local.id, {
+        sync_status: local.sync_status === "pending_create" ? "pending_create" : "pending_update",
         updated_at: Date.now(),
       })
     }
