@@ -37,6 +37,7 @@ import { motherRepository } from "@/lib/repositories/motherRepository"
 import { referralRepository } from "@/lib/repositories/referralRepository"
 import { apiClient } from "@/lib/apiClient"
 import { db } from "@/lib/db/bmsDatabase"
+import { syncEngine } from "@/lib/sync/syncEngine"
 import { useLiveQuery } from "dexie-react-hooks"
 import type { ReferralSuccessData } from "./ReferralSuccessModal"
 import { ReferralSuccessModal } from "./ReferralSuccessModal"
@@ -242,21 +243,31 @@ export function CreateReferralModal({
     const findPregnancyAndVisits = async () => {
       try {
         let preg: any = null
-        const localPregnancies = await db.pregnancies
-          .where("mother_id")
-          .equals(selectedMotherId)
-          .toArray()
+        const allPregs = await db.pregnancies.toArray()
+        const localPregnancies = allPregs.filter((p) => {
+          const mid = p.mother_id || (p as any).motherId
+          return (
+            mid === selectedMotherId ||
+            (mid &&
+              selectedMotherId &&
+              (mid.includes(selectedMotherId) ||
+                selectedMotherId.includes(mid)))
+          )
+        })
+
         if (localPregnancies.length > 0) {
           preg = localPregnancies[0]
-        } else {
-          const res = await apiClient.get(
-            `/api/v1/pregnancy/mother/${selectedMotherId}`
-          )
-          const data =
-            res.data?.data ||
-            res.data?.result ||
-            (Array.isArray(res.data) ? res.data[0] : res.data)
-          preg = Array.isArray(data) ? data[0] : data
+        } else if (syncEngine.isNetworkOnline()) {
+          try {
+            const res = await apiClient.get(
+              `/api/v1/pregnancy/mother/${selectedMotherId}`
+            )
+            const data =
+              res.data?.data ||
+              res.data?.result ||
+              (Array.isArray(res.data) ? res.data[0] : res.data)
+            preg = Array.isArray(data) ? data[0] : data
+          } catch {}
         }
 
         if (preg) {

@@ -94,12 +94,27 @@ export interface LocalSupplement {
 
 export interface LocalEhrDocument {
   id: string
+  document_id?: string
   mother_id?: string
+  facility_id?: string
+  title?: string
   document_name?: string
   category?: string
+  patient_name?: string
+  patientName?: string
+  security_level?: string
+  securityLevel?: string
+  format?: string
+  size?: string
+  date_uploaded?: string
+  dateUploaded?: string
+  uploaded_by?: string
+  uploadedBy?: string
   file_url?: string
+  fileUrl?: string
   temp_blob_id?: string
   sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  last_error?: string
   updated_at: number
   [key: string]: any
 }
@@ -123,6 +138,7 @@ export interface LocalReferral {
   id: string
   referral_id?: string
   pregnancy_id?: string
+  mother_id?: string
   from_facility_id?: string
   to_facility_id?: string
   external_facility_name?: string
@@ -136,6 +152,7 @@ export interface LocalReferral {
   outcome?: string
   date_responded?: string
   sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  last_error?: string
   updated_at: number
   pregnancy?: any
   fromFacility?: any
@@ -180,6 +197,7 @@ export interface OfflineQueueItem {
   blob_ids?: string[]
   retry_count: number
   last_error?: string
+  status?: "pending" | "processing" | "error"
   created_at: number
 }
 
@@ -327,6 +345,32 @@ export class BMSDatabase extends Dexie {
         "id, sender_id, receiver_id, message_date, is_read, sync_status, updated_at",
       referrals:
         "id, referral_id, pregnancy_id, from_facility_id, to_facility_id, status, sync_status, updated_at",
+      notifications:
+        "id, notification_id, user_id, notification_type, is_read, sync_status, updated_at",
+      offlineQueue:
+        "++id, client_mutation_id, entity_type, created_at, retry_count",
+      blobs: "id",
+      userSession: "id",
+    })
+
+    this.version(7).stores({
+      mothers:
+        "id, mother_id, user_id, facility_id, assigned_worker_id, created_by_id, phone_number, sync_status, updated_at",
+      pregnancies: "id, pregnancy_id, mother_id, sync_status, updated_at",
+      prenatalVisits:
+        "id, visit_id, pregnancy_id, mother_id, visit_date, sync_status, updated_at",
+      appointments:
+        "id, appointment_id, mother_id, user_id, facility_id, appointment_date, status, sync_status, updated_at",
+      labRecords:
+        "id, screening_id, pregnancy_id, mother_id, sync_status, updated_at",
+      supplements:
+        "id, supplement_id, pregnancy_id, mother_id, sync_status, updated_at",
+      ehrDocuments:
+        "id, document_id, mother_id, facility_id, sync_status, updated_at",
+      messages:
+        "id, sender_id, receiver_id, message_date, is_read, sync_status, updated_at",
+      referrals:
+        "id, referral_id, pregnancy_id, mother_id, from_facility_id, to_facility_id, status, sync_status, updated_at",
       notifications:
         "id, notification_id, user_id, notification_type, is_read, sync_status, updated_at",
       offlineQueue:
