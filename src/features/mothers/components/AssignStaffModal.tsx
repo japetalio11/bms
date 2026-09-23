@@ -16,6 +16,7 @@ import { apiClient } from "@/lib/apiClient"
 import { mothersApi } from "../api"
 import { toast } from "sonner"
 import { clsx } from "clsx"
+import { sanitizeMediaUrl } from "@/lib/utils"
 
 interface StaffMember {
   user_id: string
@@ -262,7 +263,7 @@ export function AssignStaffModal({
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9 shrink-0 border border-border">
-                        <AvatarImage src={staff.profile_url} />
+                        <AvatarImage src={sanitizeMediaUrl(staff.profile_url)} />
                         <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
                           {staff.first_name.charAt(0)}
                           {staff.last_name.charAt(0)}

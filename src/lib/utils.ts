@@ -47,3 +47,29 @@ export function getMessagePreview(
 
   return content
 }
+
+export function sanitizeMediaUrl(url?: string | null): string {
+  if (!url || typeof url !== "string") return ""
+  if (url.startsWith("data:") || url.startsWith("blob:")) return url
+
+  // If we are loaded on HTTPS or in production, prevent localhost:6700 or mixed-content http: calls
+  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    const backendUrl = import.meta.env.VITE_BACKEND_API_URL || ""
+    if (url.startsWith("http://localhost:6700")) {
+      if (backendUrl && backendUrl.startsWith("http")) {
+        return url.replace("http://localhost:6700", backendUrl)
+      }
+      return url.replace("http://", "https://")
+    }
+    if (url.startsWith("http://")) {
+      if (backendUrl && (url.includes("/uploads/") || url.includes(":6700"))) {
+        const pathPart = url.substring(url.indexOf("/uploads/"))
+        if (pathPart.startsWith("/uploads/")) {
+          return `${backendUrl}${pathPart}`
+        }
+      }
+      return url.replace("http://", "https://")
+    }
+  }
+  return url
+}
