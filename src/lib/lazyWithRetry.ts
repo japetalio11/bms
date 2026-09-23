@@ -1,9 +1,5 @@
 import { lazy, type ComponentType } from "react"
 
-/**
- * Wraps React.lazy with automatic single-retry reload on chunk load failures.
- * This gracefully handles new deployments where previous JS chunk hashes have been replaced on the server.
- */
 export function lazyWithRetry<T extends ComponentType<any>>(
   componentImport: () => Promise<{ default: T } | { [key: string]: any }>,
   name?: string

@@ -1,11 +1,3 @@
-/**
- * Clinical and Medical Data Validation Helpers
- * 
- * Ensures maternal, fetal, and reproductive health records conform to 
- * physiological thresholds and backend constraints before saving locally
- * or transmitting to the remote API.
- */
-
 export interface ClinicalValidationResult {
   isValid: boolean
   errors: string[]
@@ -44,9 +36,6 @@ export const CLINICAL_LIMITS = {
   oxygen_saturation_pct: { min: 50, max: 100, label: "Oxygen saturation (%)" },
 }
 
-/**
- * Validates clinical vitals for prenatal visits and encounters
- */
 export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValidationResult {
   const errors: string[] = []
   const errorMap: Record<string, string> = {}
@@ -58,7 +47,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 1. Trimester
   if (data.trimester !== undefined && data.trimester !== null && data.trimester !== "") {
     const val = Number(data.trimester)
     if (isNaN(val) || val < CLINICAL_LIMITS.trimester.min || val > CLINICAL_LIMITS.trimester.max) {
@@ -66,7 +54,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 2. Visit number
   if (data.visit_number !== undefined && data.visit_number !== null && data.visit_number !== "") {
     const val = Number(data.visit_number)
     if (isNaN(val) || val < CLINICAL_LIMITS.visit_number.min || val > CLINICAL_LIMITS.visit_number.max) {
@@ -74,7 +61,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 3. Gestation (Weeks)
   if (data.age_of_gestation_weeks !== undefined && data.age_of_gestation_weeks !== null && data.age_of_gestation_weeks !== "") {
     const val = Number(data.age_of_gestation_weeks)
     if (isNaN(val) || val < CLINICAL_LIMITS.age_of_gestation_weeks.min || val > CLINICAL_LIMITS.age_of_gestation_weeks.max) {
@@ -82,7 +68,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 4. Weight (kg)
   if (data.weight_kg !== undefined && data.weight_kg !== null && data.weight_kg !== "") {
     const val = Number(data.weight_kg)
     if (isNaN(val) || val < CLINICAL_LIMITS.weight_kg.min || val > CLINICAL_LIMITS.weight_kg.max) {
@@ -90,7 +75,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 5. Temperature (°C)
   if (data.temperature_celsius !== undefined && data.temperature_celsius !== null && data.temperature_celsius !== "") {
     const val = Number(data.temperature_celsius)
     if (isNaN(val) || val < CLINICAL_LIMITS.temperature_celsius.min || val > CLINICAL_LIMITS.temperature_celsius.max) {
@@ -98,7 +82,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 6. Pulse Rate (BPM)
   if (data.pulse_rate_bpm !== undefined && data.pulse_rate_bpm !== null && data.pulse_rate_bpm !== "") {
     const val = Number(data.pulse_rate_bpm)
     if (isNaN(val) || val < CLINICAL_LIMITS.pulse_rate_bpm.min || val > CLINICAL_LIMITS.pulse_rate_bpm.max) {
@@ -106,7 +89,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 7. Systolic Blood Pressure
   let numSys: number | null = null
   if (data.bp_systolic !== undefined && data.bp_systolic !== null && data.bp_systolic !== "") {
     const val = Number(data.bp_systolic)
@@ -117,7 +99,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 8. Diastolic Blood Pressure
   let numDia: number | null = null
   if (data.bp_diastolic !== undefined && data.bp_diastolic !== null && data.bp_diastolic !== "") {
     const val = Number(data.bp_diastolic)
@@ -128,7 +109,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 9. Systolic vs Diastolic Relationship
   if (numSys !== null && numDia !== null) {
     if (numDia >= numSys) {
       addError("bp_diastolic", "Diastolic BP cannot be equal to or higher than Systolic BP.")
@@ -137,7 +117,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 10. Fundic Height (cm) - Optional
   if (data.fundic_height_cm !== undefined && data.fundic_height_cm !== null && data.fundic_height_cm !== "") {
     const val = Number(data.fundic_height_cm)
     if (isNaN(val) || val < CLINICAL_LIMITS.fundic_height_cm.min || val > CLINICAL_LIMITS.fundic_height_cm.max) {
@@ -145,7 +124,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 11. Fetal Heart Tone (BPM) - Optional
   if (data.fetal_heart_tone_bpm !== undefined && data.fetal_heart_tone_bpm !== null && data.fetal_heart_tone_bpm !== "") {
     const val = Number(data.fetal_heart_tone_bpm)
     if (isNaN(val) || val < CLINICAL_LIMITS.fetal_heart_tone_bpm.min || val > CLINICAL_LIMITS.fetal_heart_tone_bpm.max) {
@@ -153,7 +131,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 12. Blood Sugar (mg/dL) - Optional
   if (data.blood_sugar_mg_dl !== undefined && data.blood_sugar_mg_dl !== null && data.blood_sugar_mg_dl !== "") {
     const val = Number(data.blood_sugar_mg_dl)
     if (isNaN(val) || val < CLINICAL_LIMITS.blood_sugar_mg_dl.min || val > CLINICAL_LIMITS.blood_sugar_mg_dl.max) {
@@ -161,7 +138,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 13. Respiratory Rate (cpm) - Optional
   if (data.respiratory_rate_cpm !== undefined && data.respiratory_rate_cpm !== null && data.respiratory_rate_cpm !== "") {
     const val = Number(data.respiratory_rate_cpm)
     if (isNaN(val) || val < CLINICAL_LIMITS.respiratory_rate_cpm.min || val > CLINICAL_LIMITS.respiratory_rate_cpm.max) {
@@ -169,7 +145,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
     }
   }
 
-  // 14. Oxygen Saturation (%) - Optional
   if (data.oxygen_saturation_pct !== undefined && data.oxygen_saturation_pct !== null && data.oxygen_saturation_pct !== "") {
     const val = Number(data.oxygen_saturation_pct)
     if (isNaN(val) || val < CLINICAL_LIMITS.oxygen_saturation_pct.min || val > CLINICAL_LIMITS.oxygen_saturation_pct.max) {
@@ -184,9 +159,6 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
   }
 }
 
-/**
- * Validates pregnancy registration data
- */
 export function validatePregnancyData(data: {
   lmp_date?: string | Date | null
   gravida?: number | string | null
@@ -247,9 +219,6 @@ export function validatePregnancyData(data: {
   }
 }
 
-/**
- * Validates supplement record data
- */
 export function validateSupplementData(data: {
   supplement_type?: string | null
   date_given?: string | Date | null
@@ -294,9 +263,6 @@ export function validateSupplementData(data: {
   }
 }
 
-/**
- * Validates laboratory screening record
- */
 export function validateLabData(data: {
   screening_type?: string | null
   result?: string | null
