@@ -3,12 +3,8 @@ import { syncEngine } from "@/lib/sync/syncEngine"
 
 const getApiBaseUrl = () => {
   const envUrl = import.meta.env.VITE_BACKEND_API_URL
-  if (
-    envUrl &&
-    !envUrl.includes("localhost") &&
-    !envUrl.includes("127.0.0.1")
-  ) {
-    return envUrl
+  if (envUrl && typeof envUrl === "string" && envUrl.trim() !== "") {
+    return envUrl.trim().replace(/\/+$/, "")
   }
   if (
     typeof window !== "undefined" &&
@@ -16,9 +12,9 @@ const getApiBaseUrl = () => {
     window.location.hostname !== "localhost" &&
     window.location.hostname !== "127.0.0.1"
   ) {
-    return `http://${window.location.hostname}:6700`
+    return `${window.location.protocol}//${window.location.hostname}:6700`
   }
-  return envUrl || "http://localhost:6700"
+  return "http://localhost:6700"
 }
 
 const BASE_URL = getApiBaseUrl()
