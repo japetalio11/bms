@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { formatDate } from "@/lib/utils"
+import { formatDate, sanitizeMediaUrl } from "@/lib/utils"
 import {
   extractRiskLevel,
   getRiskVariant,
@@ -184,12 +184,13 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
       )
     }
 
-    const avatarUrl =
+    const avatarUrl = sanitizeMediaUrl(
       motherData?.user?.profile_url ||
       motherData?.profile_url ||
       motherData?.photo_url ||
       motherData?.user?.photo_url ||
       ""
+    )
 
     const connectedFacilities = useMemo(() => {
       const list: Array<{ name: string; type?: string; isHome?: boolean }> = []

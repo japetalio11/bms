@@ -6,6 +6,7 @@ import { Upload, Check, Loader2 } from "lucide-react"
 import { useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { mothersApi } from "../api"
+import { sanitizeMediaUrl } from "@/lib/utils"
 
 export interface UploadAvatarModalProps {
   open: boolean
@@ -30,12 +31,12 @@ export function UploadAvatarModal({
   React.useEffect(() => {
     if (open) {
       setSelectedFile(null)
-      setPreviewUrl(
+      const raw =
         motherData?.user?.profile_url ||
-          motherData?.photo_url ||
-          motherData?.profile_url ||
-          null
-      )
+        motherData?.photo_url ||
+        motherData?.profile_url ||
+        null
+      setPreviewUrl(raw ? sanitizeMediaUrl(raw) : null)
       setSuccess(false)
       setError(null)
     }

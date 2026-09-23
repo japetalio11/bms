@@ -35,7 +35,8 @@ import {
   FileText,
   Lock,
 } from "lucide-react"
-import headerIcon from "@/assets/icon.svg"
+import logoLight from "@/assets/bms-logo-light.svg"
+import logoDark from "@/assets/bms-logo-dark.svg"
 import rhuLogo from "@/assets/pili-rhu-logo.jpg"
 import { apiClient } from "@/lib/apiClient"
 import { useAuth } from "@/features/auth/hooks/useAuth"
@@ -139,18 +140,18 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="flex flex-col p-0">
-        <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-4 transition-all duration-200 ease-linear group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-transparent transition-all duration-200 ease-linear">
+        <div className="flex h-14 items-center border-b border-sidebar-border px-4 transition-all duration-200 ease-linear group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
+          <div className="flex h-9 w-full items-center justify-start overflow-hidden transition-all duration-200 ease-linear group-data-[collapsible=icon]:justify-center">
             <img
-              src={headerIcon}
+              src={logoLight}
               alt="BMS Logo"
-              className="h-full w-full object-contain dark:invert"
+              className="h-8 w-auto max-w-full object-contain dark:hidden"
             />
-          </div>
-          <div className="flex max-w-[250px] flex-col overflow-hidden transition-all duration-200 ease-linear group-data-[collapsible=icon]:max-w-0 group-data-[collapsible=icon]:opacity-0">
-            <span className="text-xl font-bold tracking-wider whitespace-nowrap text-foreground uppercase">
-              BMS
-            </span>
+            <img
+              src={logoDark}
+              alt="BMS Logo"
+              className="hidden h-8 w-auto max-w-full object-contain dark:block"
+            />
           </div>
         </div>
         <div className="px-4 pt-2 pb-2 transition-all duration-200 ease-linear group-data-[collapsible=icon]:px-0">

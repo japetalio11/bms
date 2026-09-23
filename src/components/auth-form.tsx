@@ -5,7 +5,8 @@ import { Eye, EyeOff, Building2, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import headerIcon from "@/assets/icon.svg"
+import logoLight from "@/assets/bms-logo-light.svg"
+import logoDark from "@/assets/bms-logo-dark.svg"
 import { db } from "@/lib/db/bmsDatabase"
 import { TermsOfServiceModal } from "@/components/TermsOfServiceModal"
 import { PrivacyPolicyModal } from "@/components/PrivacyPolicyModal"
@@ -599,9 +600,9 @@ export function AuthForm() {
   return (
     <div className="flex min-h-svh w-full flex-col items-center justify-center bg-background p-6">
       <div className="flex w-full max-w-md flex-col items-center gap-6">
-        <div className="flex items-center justify-center gap-3 mb-2">
-          <img src={headerIcon} alt="BMS Logo" className="h-10 w-auto dark:invert" />
-          <span className="text-3xl font-extrabold tracking-wider text-foreground">BMS</span>
+        <div className="flex items-center justify-center mb-2">
+          <img src={logoLight} alt="BMS Logo" className="h-12 w-auto dark:hidden" />
+          <img src={logoDark} alt="BMS Logo" className="hidden h-12 w-auto dark:block" />
         </div>
 
         <div className="w-full rounded-xl border bg-card p-6 shadow-sm">

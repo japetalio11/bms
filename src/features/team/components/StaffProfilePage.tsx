@@ -30,6 +30,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { sanitizeMediaUrl } from "@/lib/utils"
 import { UploadStaffAvatarModal } from "./UploadStaffAvatarModal"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -545,7 +546,7 @@ export function StaffProfilePage() {
           <div className="flex items-center gap-4 border-b border-border pb-6 lg:col-span-4 lg:border-r lg:border-b-0 lg:pr-6 lg:pb-0">
             <div className="relative group">
               <Avatar className="h-16 w-16 border border-border shadow-sm">
-                <AvatarImage src={staff.profile_url || ""} />
+                <AvatarImage src={sanitizeMediaUrl(staff.profile_url)} />
                 <AvatarFallback className="bg-primary/10 text-lg font-semibold text-primary">
                   {initials}
                 </AvatarFallback>
