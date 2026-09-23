@@ -34,18 +34,16 @@ export function App() {
         <BrowserRouter>
           <Suspense fallback={<UnifiedPageLoader />}>
             <Routes>
-              {/* Public open patient endpoints */}
+   
               <Route path="/referral/:id" element={<PublicReferralPage />} />
               <Route path="/shared-journey/:token" element={<PublicSharedJourneyPage />} />
               <Route path="/m/:token" element={<PublicSharedJourneyPage />} />
 
-              {/* Developer / test utilities */}
               <Route path="/test-sms" element={<TestSmsPage />} />
               <Route path="/test sms" element={<TestSmsPage />} />
               <Route path="/test%20sms" element={<TestSmsPage />} />
               <Route path="/sms-test" element={<TestSmsPage />} />
 
-              {/* Public-only / Guest auth routes */}
               <Route element={<PublicOnlyRoute />}>
                 <Route path="/" element={<AuthForm />} />
                 <Route path="/login" element={<AuthForm />} />
@@ -56,7 +54,6 @@ export function App() {
                 <Route path="/terms" element={<AuthForm />} />
               </Route>
 
-              {/* Protected staff dashboard routes */}
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<DashboardLayout />}>
                   <Route index element={<DashboardPage />} />
@@ -77,7 +74,6 @@ export function App() {
                 </Route>
               </Route>
 
-              {/* Catch-all fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>

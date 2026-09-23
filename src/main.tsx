@@ -6,7 +6,6 @@ import { initStoragePersistence } from "@/lib/db/storagePersist"
 import { syncEngine } from "@/lib/sync/syncEngine"
 import { db } from "@/lib/db/bmsDatabase"
 
-// Handle stale deployment chunks gracefully by reloading once
 window.addEventListener("vite:preloadError", (event) => {
   event.preventDefault?.()
   const reloadKey = `bms_chunk_reload_${window.location.pathname}`
