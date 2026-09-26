@@ -11,6 +11,7 @@ import { VisitationTab } from "./profile/VisitationTab"
 import { AppointmentsTab } from "./profile/AppointmentsTab"
 import { LaboratoryTab } from "./profile/LaboratoryTab"
 import { PrescriptionsTab } from "./profile/PrescriptionsTab"
+import { DeliveryNewbornTab } from "./profile/DeliveryNewbornTab"
 
 import { EditMotherModal } from "./EditMotherModal"
 import { UploadAvatarModal } from "./UploadAvatarModal"
@@ -19,6 +20,7 @@ import { RegisterPregnancyModal } from "./RegisterPregnancyModal"
 import { RegisterAppointmentModal } from "./RegisterAppointmentModal"
 import { RegisterLabModal } from "./RegisterLabModal"
 import { RegisterSupplementModal } from "./RegisterSupplementModal"
+import { RecordDeliveryModal } from "./RecordDeliveryModal"
 import { AssignStaffModal } from "./AssignStaffModal"
 import { DetailSideSheet } from "./DetailSideSheet"
 import { extractRiskLevel } from "@/lib/riskUtils"
@@ -39,6 +41,7 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
   const [appointmentModalOpen, setAppointmentModalOpen] = useState(false)
   const [labModalOpen, setLabModalOpen] = useState(false)
   const [supplementModalOpen, setSupplementModalOpen] = useState(false)
+  const [recordDeliveryModalOpen, setRecordDeliveryModalOpen] = useState(false)
 
   const [sideSheetOpen, setSideSheetOpen] = useState(false)
   const [sideSheetType, setSideSheetType] = useState<
@@ -47,6 +50,7 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
     | "appointment"
     | "laboratory"
     | "prescription"
+    | "delivery"
     | null
   >(null)
   const [selectedRecord, setSelectedRecord] = useState<any>(null)
@@ -57,7 +61,8 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
       | "visitation"
       | "appointment"
       | "laboratory"
-      | "prescription",
+      | "prescription"
+      | "delivery",
     record: any
   ) => {
     setSideSheetType(type)
@@ -72,6 +77,9 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
     appointments,
     labRecords,
     supplements,
+    deliveries,
+    newborns,
+    postpartumVisits,
     isLoading,
     isSyncing,
     refresh,
@@ -132,6 +140,9 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
       appointments,
       labRecords,
       supplementationRecords: supplements,
+      deliveries,
+      newborns,
+      postpartumVisits,
     }
   }, [
     mother,
@@ -140,6 +151,9 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
     appointments,
     labRecords,
     supplements,
+    deliveries,
+    newborns,
+    postpartumVisits,
     targetId,
   ])
 
@@ -220,6 +234,9 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
                 <TabsTrigger value="encounters" className={tabTriggerClass}>
                   Visitation
                 </TabsTrigger>
+                <TabsTrigger value="delivery" className={tabTriggerClass}>
+                  Delivery & Newborns
+                </TabsTrigger>
                 <TabsTrigger value="appointments" className={tabTriggerClass}>
                   Appointments
                 </TabsTrigger>
@@ -253,6 +270,19 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
                 onEditRecord={(v) => openSideSheet("visitation", v)}
                 onDeleteRecord={(v) => openSideSheet("visitation", v)}
                 onNewRecord={() => setLogVitalsModalOpen(true)}
+                onRefresh={refresh}
+              />
+            )}
+
+            {activeTab === "delivery" && (
+              <DeliveryNewbornTab
+                deliveryList={deliveries}
+                newbornList={newborns}
+                postpartumList={postpartumVisits}
+                onViewRecord={(d) => openSideSheet("delivery", d)}
+                onEditRecord={(d) => openSideSheet("delivery", d)}
+                onDeleteRecord={(d) => openSideSheet("delivery", d)}
+                onNewRecord={() => setRecordDeliveryModalOpen(true)}
                 onRefresh={refresh}
               />
             )}
@@ -317,6 +347,13 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
         motherData={fullMotherData}
         onSuccess={refresh}
       />
+      <RecordDeliveryModal
+        open={recordDeliveryModalOpen}
+        onOpenChange={setRecordDeliveryModalOpen}
+        motherData={fullMotherData}
+        pregnancyList={pregnancies}
+        onSuccess={refresh}
+      />
       <RegisterAppointmentModal
         open={appointmentModalOpen}
         onOpenChange={setAppointmentModalOpen}
@@ -370,3 +407,4 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
     </div>
   )
 }
+

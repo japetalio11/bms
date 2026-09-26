@@ -266,6 +266,9 @@ class SyncEngine {
           message: db.messages,
           ehr_doc: db.ehrDocuments,
           ehr_document: db.ehrDocuments,
+          delivery_outcome: db.deliveries,
+          newborn_record: db.newborns,
+          postpartum_visit: db.postpartumVisits,
         }
 
         const targetEntityId = item.temp_id || (item.endpoint ? item.endpoint.split("/").pop() : undefined)
@@ -499,6 +502,29 @@ class SyncEngine {
         response = await apiClient.delete(item.endpoint)
       }
     } catch (err: any) {
+      if (
+        (item.method === "DELETE" || item.action === "DELETE") &&
+        (err.response?.status === 404 ||
+          err.response?.status === 400 ||
+          err.response?.data?.error?.toLowerCase?.().includes("not found") ||
+          err.message?.toLowerCase?.().includes("not found"))
+      ) {
+        console.warn(
+          `[SyncEngine] Record already deleted or not found on server for ${item.endpoint}. Queue item resolved.`
+        )
+        return
+      }
+      if (
+        item.endpoint &&
+        item.endpoint.includes("/temp-") &&
+        (err.response?.status === 404 || err.response?.status === 400)
+      ) {
+        console.warn(
+          `[SyncEngine] Temporary record endpoint ${item.endpoint} not found on server. Queue item resolved.`
+        )
+        return
+      }
+
       const errDetail =
         err.response?.data?.error ||
         err.response?.data?.message ||
@@ -708,6 +734,38 @@ class SyncEngine {
               last_error: undefined,
               updated_at: Date.now(),
             })
+          }
+        }
+      } else if (item.entity_type === "delivery_outcome") {
+        const targetId = item.temp_id || (item.endpoint ? item.endpoint.split("/").pop() : undefined)
+        const outcome = responseData?.data || responseData?.result
+        if (outcome && targetId) {
+          const canonicalId = outcome.delivery_id || outcome.id || targetId
+          if (targetId.startsWith("temp-") && targetId !== canonicalId) {
+            await db.deliveries.delete(targetId).catch(() => {})
+            await db.newborns.where("delivery_id").equals(targetId).delete().catch(() => {})
+          }
+          await db.deliveries.put({
+            ...outcome,
+            id: canonicalId,
+            delivery_id: canonicalId,
+            pregnancy_id: payload?.pregnancy_id || outcome.pregnancy_id,
+            sync_status: "synced",
+            last_error: undefined,
+            updated_at: Date.now(),
+          })
+          if (Array.isArray(outcome.newbornRecords)) {
+            for (const nb of outcome.newbornRecords) {
+              const nbId = nb.newborn_id || nb.id
+              await db.newborns.put({
+                ...nb,
+                id: nbId,
+                newborn_id: nbId,
+                delivery_id: canonicalId,
+                sync_status: "synced",
+                updated_at: Date.now(),
+              })
+            }
           }
         }
       }

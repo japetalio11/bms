@@ -44,6 +44,8 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
     onRefresh,
   }) => {
     const [searchQuery, setSearchQuery] = useState("")
+    const [currentPage, setCurrentPage] = useState(1)
+    const pageSize = 5
 
     const filteredList = useMemo(() => {
       if (!searchQuery.trim()) return appointmentList
@@ -63,6 +65,17 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
         )
       })
     }, [appointmentList, searchQuery])
+
+    const totalPages = Math.max(1, Math.ceil(filteredList.length / pageSize))
+
+    React.useEffect(() => {
+      setCurrentPage(1)
+    }, [searchQuery])
+
+    const paginatedList = useMemo(() => {
+      const start = (currentPage - 1) * pageSize
+      return filteredList.slice(start, start + pageSize)
+    }, [filteredList, currentPage, pageSize])
 
     const handleExportCSV = () => {
       if (filteredList.length === 0) return
@@ -180,7 +193,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredList.map((p: any, i: number) => (
+                  paginatedList.map((p: any, i: number) => (
                     <TableRow
                       key={p.appointment_id || p._id || p.id || i}
                       className="cursor-pointer border-sidebar-border transition-colors hover:bg-accent dark:hover:bg-white/5"
@@ -254,6 +267,39 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
             </Table>
           </div>
         </div>
+
+        {filteredList.length > pageSize && (
+          <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+            <span>
+              Showing {(currentPage - 1) * pageSize + 1} to{" "}
+              {Math.min(currentPage * pageSize, filteredList.length)} of{" "}
+              {filteredList.length} records
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+              >
+                Previous
+              </Button>
+              <span className="font-medium text-foreground">
+                {currentPage} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

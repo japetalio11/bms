@@ -38,6 +38,7 @@ export interface EditRecordModalProps {
     | "appointment"
     | "laboratory"
     | "prescription"
+    | "delivery"
     | null
   data: any
   onSuccess?: () => void
@@ -92,6 +93,8 @@ export function EditRecordModal({
       setDateVal(new Date(data.date_of_screening))
     } else if (type === "prescription" && data.date_given) {
       setDateVal(new Date(data.date_given))
+    } else if (type === "delivery" && data.delivery_date) {
+      setDateVal(new Date(data.delivery_date))
     }
   }, [data, type, open])
 
@@ -336,6 +339,41 @@ export function EditRecordModal({
         await db.supplements
           .update(suppId, { ...payload, updated_at: Date.now() })
           .catch(() => {})
+      } else if (type === "delivery") {
+        if (dateVal) payload.delivery_date = dateVal.toISOString()
+        if (
+          payload.duration_of_labor_hours !== undefined &&
+          payload.duration_of_labor_hours !== ""
+        ) {
+          payload.duration_of_labor_hours = Number(
+            payload.duration_of_labor_hours
+          )
+        }
+        if (payload.blood_loss_ml !== undefined && payload.blood_loss_ml !== "") {
+          payload.blood_loss_ml = Number(payload.blood_loss_ml)
+        }
+
+        let delId = data.delivery_id || data.id || data._id
+        if (delId && delId.startsWith("temp-")) {
+          const allDeliveries = await db.deliveries.toArray()
+          const matched = allDeliveries.find(
+            (d: any) =>
+              d.temp_id === delId ||
+              d.id === delId ||
+              (data.pregnancy_id && d.pregnancy_id === data.pregnancy_id)
+          )
+          if (
+            matched &&
+            matched.delivery_id &&
+            !matched.delivery_id.startsWith("temp-")
+          ) {
+            delId = matched.delivery_id
+          }
+        }
+        endpoint = `/api/v1/delivery-outcome/update/${delId}`
+        await db.deliveries
+          .update(delId, { ...payload, updated_at: Date.now() })
+          .catch(() => {})
       }
 
       if (endpoint) {
@@ -364,6 +402,8 @@ export function EditRecordModal({
         return "Edit Laboratory Screening"
       case "prescription":
         return "Edit Prescription / Supplement"
+      case "delivery":
+        return "Edit Delivery Record"
       default:
         return "Edit Record"
     }
@@ -375,7 +415,7 @@ export function EditRecordModal({
       onOpenChange={onOpenChange}
       title={getTitle()}
       description="Update record details and click save to apply changes."
-      className="sm:max-w-[500px]"
+      className="sm:max-w-[580px]"
     >
       <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-1 py-2">
         {error && (
@@ -446,7 +486,7 @@ export function EditRecordModal({
                 value={formData.pregnancy_status || "Active"}
                 onValueChange={(v) => handleChange("pregnancy_status", v)}
               >
-                <SelectTrigger className="!h-9 border-border bg-card text-xs text-card-foreground">
+                <SelectTrigger className="!h-9 w-full min-w-0 justify-between border-border bg-card px-3 text-xs text-card-foreground [&>span]:truncate [&>span]:block pr-7">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -625,7 +665,7 @@ export function EditRecordModal({
                 value={formData.status || "scheduled"}
                 onValueChange={(v) => handleChange("status", v)}
               >
-                <SelectTrigger className="!h-9 border-border bg-card text-xs text-card-foreground">
+                <SelectTrigger className="!h-9 w-full min-w-0 justify-between border-border bg-card px-3 text-xs text-card-foreground [&>span]:truncate [&>span]:block pr-7">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -747,7 +787,7 @@ export function EditRecordModal({
                   handleChange("is_completed", v === "completed")
                 }
               >
-                <SelectTrigger className="!h-9 border-border bg-card text-xs text-card-foreground">
+                <SelectTrigger className="!h-9 w-full min-w-0 justify-between border-border bg-card px-3 text-xs text-card-foreground [&>span]:truncate [&>span]:block pr-7">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -755,6 +795,205 @@ export function EditRecordModal({
                   <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+        )}
+
+        {type === "delivery" && (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-foreground">
+                Delivery Date
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "!h-9 w-full justify-start border-border bg-card text-left text-xs font-normal",
+                      !dateVal && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    {dateVal ? format(dateVal, "PPP") : <span>Pick Date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateVal}
+                    onSelect={setDateVal}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5 min-w-0">
+                <Label className="text-xs font-medium text-foreground">
+                  Place of Delivery
+                </Label>
+                <Select
+                  value={
+                    formData.place_of_delivery ||
+                    "Rural Health Unit / Birthing Clinic"
+                  }
+                  onValueChange={(v) => handleChange("place_of_delivery", v)}
+                >
+                  <SelectTrigger className="!h-9 w-full min-w-0 justify-between border-border bg-card px-3 text-xs text-card-foreground [&>span]:truncate [&>span]:block pr-7">
+                    <SelectValue placeholder="Place" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formData.place_of_delivery &&
+                      ![
+                        "Rural Health Unit / Birthing Clinic",
+                        "District Hospital",
+                        "Provincial / Tertiary Hospital",
+                        "Private Hospital / Clinic",
+                        "Barangay Health Station",
+                        "Birthing Home",
+                        "Hospital",
+                        "Home Delivery",
+                        "In-Transit",
+                        "Other",
+                      ].includes(formData.place_of_delivery) && (
+                        <SelectItem value={formData.place_of_delivery}>
+                          {formData.place_of_delivery}
+                        </SelectItem>
+                      )}
+                    <SelectItem value="Rural Health Unit / Birthing Clinic">
+                      Rural Health Unit / Birthing Clinic
+                    </SelectItem>
+                    <SelectItem value="District Hospital">
+                      District Hospital
+                    </SelectItem>
+                    <SelectItem value="Provincial / Tertiary Hospital">
+                      Provincial / Tertiary Hospital
+                    </SelectItem>
+                    <SelectItem value="Private Hospital / Clinic">
+                      Private Hospital / Clinic
+                    </SelectItem>
+                    <SelectItem value="Barangay Health Station">
+                      Barangay Health Station
+                    </SelectItem>
+                    <SelectItem value="Birthing Home">
+                      Birthing Home
+                    </SelectItem>
+                    <SelectItem value="Hospital">
+                      Hospital
+                    </SelectItem>
+                    <SelectItem value="Home Delivery">
+                      Home Delivery
+                    </SelectItem>
+                    <SelectItem value="In-Transit">
+                      In-Transit
+                    </SelectItem>
+                    <SelectItem value="Other">
+                      Other
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1.5 min-w-0">
+                <Label className="text-xs font-medium text-foreground">
+                  Mode of Delivery
+                </Label>
+                <Select
+                  value={
+                    formData.mode_of_delivery ||
+                    "Normal Spontaneous Vaginal Delivery (NSVD)"
+                  }
+                  onValueChange={(v) => handleChange("mode_of_delivery", v)}
+                >
+                  <SelectTrigger className="!h-9 w-full min-w-0 justify-between border-border bg-card px-3 text-xs text-card-foreground [&>span]:truncate [&>span]:block pr-7">
+                    <SelectValue placeholder="Mode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formData.mode_of_delivery &&
+                      ![
+                        "Normal Spontaneous Vaginal Delivery (NSVD)",
+                        "Normal Spontaneous (NSVD)",
+                        "Cesarean Section (C-Section)",
+                        "Assisted Vaginal Delivery (Forceps/Vacuum)",
+                        "Assisted Vaginal (Forceps/Vacuum)",
+                        "Breech Extraction",
+                        "Other",
+                      ].includes(formData.mode_of_delivery) && (
+                        <SelectItem value={formData.mode_of_delivery}>
+                          {formData.mode_of_delivery}
+                        </SelectItem>
+                      )}
+                    <SelectItem value="Normal Spontaneous Vaginal Delivery (NSVD)">
+                      Normal Spontaneous Vaginal Delivery (NSVD)
+                    </SelectItem>
+                    <SelectItem value="Normal Spontaneous (NSVD)">
+                      Normal Spontaneous (NSVD)
+                    </SelectItem>
+                    <SelectItem value="Cesarean Section (C-Section)">
+                      Cesarean Section (C-Section)
+                    </SelectItem>
+                    <SelectItem value="Assisted Vaginal Delivery (Forceps/Vacuum)">
+                      Assisted Vaginal Delivery (Forceps/Vacuum)
+                    </SelectItem>
+                    <SelectItem value="Assisted Vaginal (Forceps/Vacuum)">
+                      Assisted Vaginal (Forceps/Vacuum)
+                    </SelectItem>
+                    <SelectItem value="Breech Extraction">
+                      Breech Extraction
+                    </SelectItem>
+                    <SelectItem value="Other">
+                      Other
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-medium text-foreground">
+                  Labor Duration (hrs)
+                </Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  value={formData.duration_of_labor_hours ?? ""}
+                  onChange={(e) =>
+                    handleChange("duration_of_labor_hours", e.target.value)
+                  }
+                  className="!h-9 border-border bg-card text-xs text-card-foreground"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-medium text-foreground">
+                  Blood Loss (mL)
+                </Label>
+                <Input
+                  type="number"
+                  step="10"
+                  value={formData.blood_loss_ml ?? ""}
+                  onChange={(e) =>
+                    handleChange("blood_loss_ml", e.target.value)
+                  }
+                  className="!h-9 border-border bg-card text-xs text-card-foreground"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-foreground">
+                Complications & Remarks
+              </Label>
+              <Textarea
+                value={formData.delivery_complications || ""}
+                onChange={(e) =>
+                  handleChange("delivery_complications", e.target.value)
+                }
+                placeholder="None or specify any maternal complications..."
+                className="h-[65px] resize-none border-border bg-card text-xs text-card-foreground"
+              />
             </div>
           </div>
         )}

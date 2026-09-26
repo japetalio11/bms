@@ -47,6 +47,7 @@ export interface DetailSideSheetProps {
     | "appointment"
     | "laboratory"
     | "prescription"
+    | "delivery"
     | null
   data: any
   motherName?: string
@@ -103,8 +104,11 @@ export function DetailSideSheet({
       recordId = data.screening_id || data.id || data._id
     } else if (type === "prescription") {
       recordId = data.supplement_id || data.id || data._id
+    } else if (type === "delivery") {
+      recordId = data.delivery_id || data.id || data._id
     } else {
       recordId =
+        data.delivery_id ||
         data.visit_id ||
         data.pregnancy_id ||
         data.appointment_id ||
@@ -131,6 +135,9 @@ export function DetailSideSheet({
         await motherRepository.deleteLabRecord(recordId)
       } else if (type === "prescription") {
         await motherRepository.deleteSupplement(recordId)
+      } else if (type === "delivery") {
+        await mothersApi.deleteRecord(`/api/v1/delivery-outcome/delete/${recordId}`)
+        await db.deliveries.delete(recordId).catch(() => {})
       }
 
       toast.success("Record deleted successfully")
@@ -158,6 +165,8 @@ export function DetailSideSheet({
         return `${motherName} - Lab Screening`
       case "prescription":
         return `${motherName} - Prescription`
+      case "delivery":
+        return `${motherName} - Delivery Outcome`
       default:
         return `${motherName} - Record Details`
     }
@@ -192,6 +201,12 @@ export function DetailSideSheet({
                 <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-medium text-purple-500 capitalize shadow-none">
                   <Baby className="h-3 w-3" />
                   {data.pregnancy_status || "Active"}
+                </Badge>
+              )}
+              {type === "delivery" && (
+                <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-500 capitalize shadow-none">
+                  <Baby className="h-3 w-3" />
+                  Delivered
                 </Badge>
               )}
               {type === "laboratory" && (
@@ -236,6 +251,102 @@ export function DetailSideSheet({
         </div>
 
         <div className="flex flex-1 flex-col overflow-y-auto">
+          {type === "delivery" && (
+            <>
+              <div className="flex flex-col gap-4 border-b border-border p-4">
+                <h3 className="text-xs font-semibold text-foreground">
+                  Delivery Details
+                </h3>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span className="text-xs">Date of Delivery</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.delivery_date ? formatDate(data.delivery_date) : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Stethoscope className="h-3.5 w-3.5" />
+                      <span className="text-xs">Mode of Delivery</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground font-medium">
+                      {data.mode_of_delivery || "NSVD"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Activity className="h-3.5 w-3.5" />
+                      <span className="text-xs">Place of Delivery</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.place_of_delivery || "RHU / Birthing Clinic"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span className="text-xs">Labor Duration</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.duration_of_labor_hours ? `${data.duration_of_labor_hours} hours` : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <HeartPulse className="h-3.5 w-3.5" />
+                      <span className="text-xs">Blood Loss</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.blood_loss_ml ? `${data.blood_loss_ml} mL` : "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {Array.isArray(data.newbornRecords) && data.newbornRecords.length > 0 && (
+                <div className="flex flex-col gap-3 border-b border-border p-4">
+                  <h3 className="text-xs font-semibold text-foreground">
+                    Newborn Statistics ({data.newbornRecords.length})
+                  </h3>
+                  <div className="flex flex-col gap-2">
+                    {data.newbornRecords.map((nb: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between rounded-md border border-border bg-muted/40 p-2.5 text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Baby className="h-4 w-4 text-primary" />
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">{nb.sex} Newborn #{idx + 1}</span>
+                            <span className="text-[11px] text-muted-foreground">{nb.status_at_birth || "Alive"}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-foreground">{nb.birth_weight_kg} kg</span>
+                          <Badge variant="outline" className="text-[10px]">
+                            APGAR {nb.apgar_score}/10
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 border-b border-border p-4">
+                <h3 className="text-xs font-semibold text-foreground">
+                  Complications & Notes
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {data.delivery_complications || "None recorded."}
+                </p>
+              </div>
+            </>
+          )}
+
           {type === "pregnancy" && (
             <>
               <div className="flex flex-col gap-4 border-b border-border p-4">

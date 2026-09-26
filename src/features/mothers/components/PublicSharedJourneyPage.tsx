@@ -6,49 +6,34 @@ import {
   ShieldAlert,
   ShieldCheck,
   Building2,
-  Calendar,
   User,
   Heart,
   Activity,
   FileText,
-  Clock,
   CheckCircle2,
   AlertTriangle,
   Lock,
   ArrowRight,
   Phone,
-  Mail,
   MapPin,
   Printer,
-  ChevronRight,
   Sun,
   Moon,
   Baby,
   Droplet,
-  FileSpreadsheet,
-  Check,
-  XCircle,
   Sparkles,
   ExternalLink,
   Pill,
   Microscope,
   Stethoscope,
-  RefreshCw,
-  Share2,
   Copy,
   Eye,
-  Download,
-  AlertCircle,
-  FileCheck,
-  Info,
-  Layers,
-  ChevronDown,
+  Scale,
 } from "lucide-react"
 import {
   extractRiskLevel,
-  getRiskVariant,
-  getRiskLabel,
   getRiskBadgeClasses,
+  getRiskLabel,
 } from "@/lib/riskUtils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -71,6 +56,46 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
+
+export interface NewbornRecordItem {
+  newborn_id?: string
+  delivery_id?: string
+  sex: string
+  birth_weight_kg: number
+  status_at_birth: string
+  apgar_score: number
+}
+
+export interface PostpartumVisitItem {
+  postpartum_visit_id?: string
+  delivery_id?: string
+  visit_date: string
+  visit_number: number
+  weight_kg?: number
+  temperature_celsius?: number
+  pulse_rate_bpm?: number
+  bp_diastolic?: number
+  bp_systolic?: number
+  fundic_height_cm?: number
+  chief_complaint?: string
+  danger_signs_observed?: string
+  risk_level_assessed?: string
+  vitamin_a_given?: boolean
+  iron_supplement_given?: boolean
+}
+
+export interface DeliveryOutcomeItem {
+  delivery_id: string
+  pregnancy_id?: string
+  delivery_date: string
+  place_of_delivery: string
+  mode_of_delivery: string
+  duration_of_labor_hours?: number
+  blood_loss_ml?: number
+  delivery_complications?: string
+  newbornRecords?: NewbornRecordItem[]
+  postpartumVisits?: PostpartumVisitItem[]
+}
 
 interface SharedJourneyResponse {
   isPinRequired: boolean
@@ -141,7 +166,7 @@ interface SharedJourneyResponse {
   prenatal_visits?: any[]
   lab_screenings?: any[]
   supplements?: any[]
-  delivery_outcomes?: any[]
+  delivery_outcomes?: DeliveryOutcomeItem[]
   referrals?: any[]
   share_metadata?: {
     share_id: string
@@ -256,7 +281,9 @@ export function PublicSharedJourneyPage() {
 
     try {
       setSearchParams({ pin: cleanPin }, { replace: true })
-    } catch (e) {}
+    } catch {
+      // Ignored
+    }
   }
 
   const handleCopyLink = () => {
@@ -317,6 +344,20 @@ export function PublicSharedJourneyPage() {
   const openMediaViewer = (url: string, title: string) => {
     setSelectedMediaUrl(url)
     setSelectedMediaTitle(title)
+  }
+
+  const getApgarBadgeStyle = (score: number) => {
+    if (score >= 7)
+      return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+    if (score >= 4)
+      return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+    return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
+  }
+
+  const getApgarStatusText = (score: number) => {
+    if (score >= 7) return "Reassuring"
+    if (score >= 4) return "Moderately Depressed"
+    return "Critical"
   }
 
   if (data?.isPinRequired && !data.isPinVerified) {
@@ -723,15 +764,13 @@ export function PublicSharedJourneyPage() {
               <Pill className="h-3.5 w-3.5" />
               Prescriptions ({supplements.length})
             </TabsTrigger>
-            {deliveryOutcomes.length > 0 && (
-              <TabsTrigger
-                value="deliveries"
-                className="shrink-0 gap-1.5 rounded-lg text-xs font-semibold"
-              >
-                <Baby className="h-3.5 w-3.5" />
-                Past Deliveries ({deliveryOutcomes.length})
-              </TabsTrigger>
-            )}
+            <TabsTrigger
+              value="deliveries"
+              className="shrink-0 gap-1.5 rounded-lg text-xs font-semibold"
+            >
+              <Baby className="h-3.5 w-3.5" />
+              Delivery & Newborns ({deliveryOutcomes.length})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -859,6 +898,79 @@ export function PublicSharedJourneyPage() {
                       </div>
                     </div>
                   </div>
+
+                  {deliveryOutcomes.length > 0 && (
+                    <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/10 pb-2">
+                        <div className="flex items-center gap-2">
+                          <Baby className="h-4 w-4 text-primary" />
+                          <span className="text-xs font-bold text-foreground">
+                            Delivery & Birth Outcome Recorded
+                          </span>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className="border-primary/30 bg-primary/10 text-[10px] font-semibold text-primary"
+                        >
+                          {deliveryOutcomes[0]?.mode_of_delivery || "Delivered"}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
+                        <div>
+                          <span className="block text-[11px] text-muted-foreground">
+                            Date & Facility:
+                          </span>
+                          <span className="font-medium text-foreground">
+                            {new Date(
+                              deliveryOutcomes[0].delivery_date
+                            ).toLocaleDateString()}{" "}
+                            • {deliveryOutcomes[0].place_of_delivery}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[11px] text-muted-foreground">
+                            Labor & Blood Loss:
+                          </span>
+                          <span className="font-medium text-foreground">
+                            {deliveryOutcomes[0].duration_of_labor_hours
+                              ? `${deliveryOutcomes[0].duration_of_labor_hours} hrs labor`
+                              : "Labor N/A"}{" "}
+                            •{" "}
+                            {deliveryOutcomes[0].blood_loss_ml
+                              ? `${deliveryOutcomes[0].blood_loss_ml} mL loss`
+                              : "Normal"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[11px] text-muted-foreground">
+                            Newborns Registered:
+                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                            {deliveryOutcomes[0].newbornRecords &&
+                            deliveryOutcomes[0].newbornRecords.length > 0 ? (
+                              deliveryOutcomes[0].newbornRecords.map(
+                                (nb: any, nIdx: number) => (
+                                  <Badge
+                                    key={nb.newborn_id || nIdx}
+                                    variant="secondary"
+                                    className="text-[10px] font-medium"
+                                  >
+                                    {nb.sex} ({nb.birth_weight_kg} kg) • APGAR{" "}
+                                    {nb.apgar_score}/10
+                                  </Badge>
+                                )
+                              )
+                            ) : (
+                              <span className="text-muted-foreground">
+                                Infant recorded
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -1319,58 +1431,322 @@ export function PublicSharedJourneyPage() {
             </Card>
           </TabsContent>
 
-          {deliveryOutcomes.length > 0 && (
-            <TabsContent value="deliveries" className="space-y-4">
-              <Card className="border-border bg-card shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                    <Baby className="h-4 w-4 text-primary" />
-                    Previous Deliveries & Newborn History
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {deliveryOutcomes.map((d: any, idx: number) => (
-                    <div
+          <TabsContent value="deliveries" className="space-y-5">
+            {deliveryOutcomes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center shadow-xs">
+                <div className="mb-3 rounded-full bg-primary/10 p-3.5 text-primary">
+                  <Baby className="h-7 w-7" />
+                </div>
+                <h3 className="text-sm font-bold text-foreground">
+                  No Delivery or Infant Birth Records Logged
+                </h3>
+                <p className="mt-1.5 max-w-sm text-xs text-muted-foreground leading-relaxed">
+                  This patient pregnancy journey is currently in the active prenatal / monitoring phase. Once labor and birth outcomes are recorded, infant weights, APGAR scores, and postpartum recovery vitals will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {deliveryOutcomes.map((d: DeliveryOutcomeItem, idx: number) => {
+                  const linkedNewborns = d.newbornRecords || []
+                  const linkedPostpartum = d.postpartumVisits || []
+
+                  return (
+                    <Card
                       key={d.delivery_id || idx}
-                      className="space-y-2 rounded-xl border border-border bg-muted/30 p-4 text-xs"
+                      className="overflow-hidden border-border bg-card shadow-sm"
                     >
-                      <div className="flex items-center justify-between border-b border-border/50 pb-2">
-                        <span className="font-bold text-foreground">
-                          Delivery Date:{" "}
-                          {new Date(d.delivery_date).toLocaleDateString()}
-                        </span>
-                        <Badge variant="secondary" className="text-[10px]">
-                          Mode: {d.mode_of_delivery}
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-1 gap-2 text-muted-foreground sm:grid-cols-3">
-                        <div>
-                          Place:{" "}
-                          <strong className="text-foreground">
-                            {d.place_of_delivery}
-                          </strong>
+                      <CardHeader className="border-b border-border/50 bg-muted/20 pb-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                              <Baby className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-sm font-bold text-foreground">
+                                Delivery Event{" "}
+                                {deliveryOutcomes.length > 1
+                                  ? `#${deliveryOutcomes.length - idx}`
+                                  : ""}
+                              </CardTitle>
+                              <CardDescription className="text-[11px]">
+                                {new Date(d.delivery_date).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    month: "long",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  }
+                                )}
+                              </CardDescription>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge
+                              variant="outline"
+                              className="border-primary/30 bg-primary/5 text-[11px] font-semibold text-primary"
+                            >
+                              Mode: {d.mode_of_delivery || "NSVD"}
+                            </Badge>
+                            <Badge
+                              variant="secondary"
+                              className="text-[11px] font-medium"
+                            >
+                              {d.place_of_delivery || "Health Facility"}
+                            </Badge>
+                          </div>
                         </div>
-                        <div>
-                          Blood Loss:{" "}
-                          <strong className="text-foreground">
-                            {d.blood_loss_ml
-                              ? `${d.blood_loss_ml} mL`
-                              : "Normal"}
-                          </strong>
+                      </CardHeader>
+
+                      <CardContent className="space-y-5 pt-4">
+                        {/* Maternal Labor & Delivery Metrics */}
+                        <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-muted/30 p-3.5 text-xs sm:grid-cols-4">
+                          <div>
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Place of Delivery
+                            </span>
+                            <span className="mt-0.5 font-semibold text-foreground">
+                              {d.place_of_delivery || "Clinic / Hospital"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Labor Duration
+                            </span>
+                            <span className="mt-0.5 font-semibold text-foreground">
+                              {d.duration_of_labor_hours
+                                ? `${d.duration_of_labor_hours} hours`
+                                : "N/A"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Estimated Blood Loss
+                            </span>
+                            <span className="mt-0.5 font-mono font-semibold text-foreground">
+                              {d.blood_loss_ml
+                                ? `${d.blood_loss_ml} mL`
+                                : "Normal"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Complications
+                            </span>
+                            <span
+                              className={`mt-0.5 font-medium ${
+                                d.delivery_complications &&
+                                d.delivery_complications !== "None"
+                                  ? "font-semibold text-red-500"
+                                  : "text-foreground"
+                              }`}
+                            >
+                              {d.delivery_complications || "None reported"}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          Complications:{" "}
-                          <strong className="text-foreground">
-                            {d.delivery_complications || "None"}
-                          </strong>
+
+                        {/* Newborn Infant Records */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            <Baby className="h-3.5 w-3.5 text-primary" />
+                            <span>
+                              Infant Birth Details ({linkedNewborns.length})
+                            </span>
+                          </div>
+
+                          {linkedNewborns.length === 0 ? (
+                            <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                              No newborn infant records attached to this
+                              delivery.
+                            </p>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                              {linkedNewborns.map((nb: NewbornRecordItem, nIdx: number) => (
+                                <div
+                                  key={nb.newborn_id || nIdx}
+                                  className="space-y-3 rounded-xl border border-border bg-card p-3.5 shadow-xs"
+                                >
+                                  <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                                        {nb.sex === "Female" ? "♀" : "♂"}
+                                      </div>
+                                      <div>
+                                        <span className="text-xs font-bold text-foreground">
+                                          {nb.sex} Infant{" "}
+                                          {linkedNewborns.length > 1
+                                            ? `#${nIdx + 1}`
+                                            : ""}
+                                        </span>
+                                        <span className="block text-[10px] text-muted-foreground">
+                                          Status:{" "}
+                                          {nb.status_at_birth || "Alive"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[10px] font-semibold ${getApgarBadgeStyle(
+                                        Number(nb.apgar_score || 0)
+                                      )}`}
+                                    >
+                                      APGAR {nb.apgar_score} / 10
+                                    </Badge>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div className="flex flex-col gap-0.5 rounded-lg bg-muted/40 p-2">
+                                      <span className="text-[10px] font-medium uppercase text-muted-foreground">
+                                        Birth Weight
+                                      </span>
+                                      <span className="flex items-center gap-1 font-semibold text-foreground">
+                                        <Scale className="h-3 w-3 text-primary" />
+                                        {nb.birth_weight_kg} kg
+                                      </span>
+                                    </div>
+                                    <div className="flex flex-col gap-0.5 rounded-lg bg-muted/40 p-2">
+                                      <span className="text-[10px] font-medium uppercase text-muted-foreground">
+                                        Assessment
+                                      </span>
+                                      <span className="font-semibold text-foreground">
+                                        {getApgarStatusText(
+                                          Number(nb.apgar_score || 0)
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+
+                        {/* Postpartum Care Visits */}
+                        {linkedPostpartum.length > 0 && (
+                          <div className="space-y-3 pt-2">
+                            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              <Activity className="h-3.5 w-3.5 text-primary" />
+                              <span>
+                                Postpartum Recovery Visits (
+                                {linkedPostpartum.length})
+                              </span>
+                            </div>
+
+                            <div className="w-full overflow-x-auto scrollbar-thin">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow className="border-border hover:bg-transparent">
+                                    <TableHead className="text-xs font-semibold">
+                                      Visit Date / #
+                                    </TableHead>
+                                    <TableHead className="text-xs font-semibold">
+                                      Blood Pressure
+                                    </TableHead>
+                                    <TableHead className="text-xs font-semibold">
+                                      Temp / Pulse
+                                    </TableHead>
+                                    <TableHead className="text-xs font-semibold">
+                                      Weight / Fundic
+                                    </TableHead>
+                                    <TableHead className="text-xs font-semibold">
+                                      Supplements
+                                    </TableHead>
+                                    <TableHead className="text-xs font-semibold">
+                                      Risk / Complaints
+                                    </TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {linkedPostpartum.map(
+                                    (pv: PostpartumVisitItem, pIdx: number) => (
+                                      <TableRow
+                                        key={pv.postpartum_visit_id || pIdx}
+                                        className="border-border"
+                                      >
+                                        <TableCell className="whitespace-nowrap text-xs font-medium">
+                                          <span className="font-bold text-foreground">
+                                            Visit #{pv.visit_number || pIdx + 1}
+                                          </span>
+                                          <span className="block text-[11px] text-muted-foreground">
+                                            {new Date(
+                                              pv.visit_date
+                                            ).toLocaleDateString()}
+                                          </span>
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs font-bold">
+                                          {pv.bp_systolic}/{pv.bp_diastolic}
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">
+                                          {pv.temperature_celsius}°C •{" "}
+                                          {pv.pulse_rate_bpm} bpm
+                                        </TableCell>
+                                        <TableCell className="font-mono text-xs">
+                                          {pv.weight_kg} kg
+                                          {pv.fundic_height_cm
+                                            ? ` • ${pv.fundic_height_cm} cm`
+                                            : ""}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          <div className="flex flex-wrap gap-1">
+                                            {pv.vitamin_a_given && (
+                                              <Badge
+                                                variant="outline"
+                                                className="border-emerald-500/30 bg-emerald-500/10 text-[9px] text-emerald-600 dark:text-emerald-400"
+                                              >
+                                                Vit A
+                                              </Badge>
+                                            )}
+                                            {pv.iron_supplement_given && (
+                                              <Badge
+                                                variant="outline"
+                                                className="border-primary/30 bg-primary/10 text-[9px] text-primary"
+                                              >
+                                                Iron
+                                              </Badge>
+                                            )}
+                                            {!pv.vitamin_a_given &&
+                                              !pv.iron_supplement_given && (
+                                                <span className="text-[11px] text-muted-foreground">
+                                                  None
+                                                </span>
+                                              )}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          <Badge
+                                            variant="outline"
+                                            className={`text-[10px] ${
+                                              (
+                                                pv.risk_level_assessed || ""
+                                              ).toLowerCase().includes("high")
+                                                ? "border-red-500/30 bg-red-500/10 text-red-500"
+                                                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                                            }`}
+                                          >
+                                            {pv.risk_level_assessed ||
+                                              "Low Risk"}
+                                          </Badge>
+                                          {pv.chief_complaint && (
+                                            <span className="mt-1 block line-clamp-1 text-[10px] text-muted-foreground">
+                                              {pv.chief_complaint}
+                                            </span>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                    )
+                                  )}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       </main>
 

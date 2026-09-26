@@ -17,12 +17,11 @@ import {
   Scale,
   History,
   CheckCircle2,
-  CloudOff,
   Wind,
-  Gauge
+  Gauge,
+  Baby,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { referralRepository } from "@/lib/repositories/referralRepository"
 import { extractRiskLevel } from "@/lib/riskUtils"
 
@@ -30,7 +29,6 @@ export function ReferralSidepeek({
   referral,
   onClose,
   onUpdated,
-  onDelete,
 }: {
   referral: any
   onClose: () => void
@@ -186,6 +184,13 @@ export function ReferralSidepeek({
   const dangerSigns = referral.pregnancy?.complications 
     ? referral.pregnancy.complications.split(',').map((s: string) => s.trim())
     : []
+
+  const deliveryOutcomes =
+    referral.pregnancy?.deliveryOutcomes ||
+    referral.pregnancy?.delivery_outcomes ||
+    referral.deliveryOutcomes ||
+    referral.delivery_outcomes ||
+    []
 
   const handleCopy = (text: string, label: string) => {
     if (!text || text === "N/A") return
@@ -406,6 +411,15 @@ export function ReferralSidepeek({
 
           <div className="flex flex-col gap-3">
             <span className="text-[10px] font-medium text-zinc-400">
+              Clinical Indication & Summary
+            </span>
+            <div className="rounded-lg border border-white/10 bg-[#1A1A1A] p-2.5 text-xs text-white">
+              {reasonText}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <span className="text-[10px] font-medium text-zinc-400">
               Clinical Indicators
             </span>
 
@@ -489,6 +503,52 @@ export function ReferralSidepeek({
               <span className="flex-1 text-xs text-white">{o2Sat}</span>
             </div>
           </div>
+
+          {deliveryOutcomes.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <span className="text-[10px] font-medium text-zinc-400">
+                Delivery & Newborn Outcome
+              </span>
+
+              {deliveryOutcomes.map((d: any, dIdx: number) => {
+                const linkedNbs = d.newbornRecords || d.newborn_records || []
+                return (
+                  <div
+                    key={d.delivery_id || d.id || dIdx}
+                    className="flex flex-col gap-2 rounded-lg border border-white/10 bg-[#1A1A1A] p-2.5 text-xs text-white"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-emerald-400 flex items-center gap-1">
+                        <Baby className="h-3.5 w-3.5" />
+                        {d.mode_of_delivery || "Delivered"}
+                      </span>
+                      <span className="text-[10px] text-zinc-400">
+                        {d.delivery_date ? new Date(d.delivery_date).toLocaleDateString() : "Recent"}
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-zinc-300">
+                      Facility: <span className="text-white font-medium">{d.place_of_delivery || "Clinic"}</span>
+                    </div>
+
+                    {linkedNbs.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {linkedNbs.map((nb: any, nIdx: number) => (
+                          <div
+                            key={nb.newborn_id || nb.id || nIdx}
+                            className="flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-0.5 text-[10px]"
+                          >
+                            <span>{nb.sex} ({nb.birth_weight_kg} kg)</span>
+                            <span className="font-semibold text-emerald-400">• APGAR {nb.apgar_score}/10</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 p-4 pb-6">
