@@ -92,34 +92,89 @@ export const mothersApi = {
   },
 
   async updateRecord(url: string, payload: any) {
+    let entityType: any = "custom_request"
+    if (url.includes("/delivery-outcome/")) entityType = "delivery_outcome"
+    else if (url.includes("/newborn/")) entityType = "newborn_record"
+    else if (url.includes("/pregnancy/")) entityType = "pregnancy"
+    else if (url.includes("/prenatal-visit/")) entityType = "prenatal_visit"
+    else if (url.includes("/appointment/")) entityType = "appointment"
+    else if (url.includes("/lab-screening/")) entityType = "lab_record"
+    else if (url.includes("/supplement/")) entityType = "supplement"
+
+    const targetId = url.split("/").pop()
+
     if (syncEngine.isNetworkOnline()) {
       try {
         const response = await apiClient.put(url, payload)
         return response.data
       } catch (err: any) {
-        if (url.includes("/temp-") && (err.response?.status === 404 || err.response?.status === 400)) {
-          console.warn("[mothersApi] Online update for temp record handled locally:", url)
+        if (
+          url.includes("/temp-") &&
+          (err.response?.status === 404 || err.response?.status === 400)
+        ) {
+          console.warn(
+            "[mothersApi] Online update for temp record handled locally:",
+            url
+          )
           return { success: true, offline: true }
         }
-        throw err
+        console.warn("[mothersApi] Online update failed, enqueuing offline:", err)
       }
     }
+
+    await syncEngine.enqueueMutation({
+      entity_type: entityType,
+      action: "UPDATE",
+      endpoint: url,
+      method: "PUT",
+      payload,
+      temp_id: targetId && !targetId.startsWith("temp-") ? undefined : targetId,
+    })
+
     return { success: true, offline: true }
   },
 
   async deleteRecord(url: string) {
+    let entityType: any = "custom_request"
+    if (url.includes("/delivery-outcome/")) entityType = "delivery_outcome"
+    else if (url.includes("/newborn/")) entityType = "newborn_record"
+    else if (url.includes("/pregnancy/")) entityType = "pregnancy"
+    else if (url.includes("/prenatal-visit/")) entityType = "prenatal_visit"
+    else if (url.includes("/appointment/")) entityType = "appointment"
+    else if (url.includes("/lab-screening/")) entityType = "lab_record"
+    else if (url.includes("/supplement/")) entityType = "supplement"
+
+    const targetId = url.split("/").pop()
+
     if (syncEngine.isNetworkOnline()) {
       try {
         const response = await apiClient.delete(url)
         return response.data
       } catch (err: any) {
-        if (url.includes("/temp-") && (err.response?.status === 404 || err.response?.status === 400)) {
-          console.warn("[mothersApi] Online delete for temp record handled locally:", url)
+        if (
+          url.includes("/temp-") &&
+          (err.response?.status === 404 || err.response?.status === 400)
+        ) {
+          console.warn(
+            "[mothersApi] Online delete for temp record handled locally:",
+            url
+          )
           return { success: true, offline: true }
         }
-        throw err
+        console.warn("[mothersApi] Online delete failed, enqueuing offline:", err)
       }
     }
+
+    if (targetId && !targetId.startsWith("temp-")) {
+      await syncEngine.enqueueMutation({
+        entity_type: entityType,
+        action: "DELETE",
+        endpoint: url,
+        method: "DELETE",
+        payload: { id: targetId },
+      })
+    }
+
     return { success: true, offline: true }
   },
 
