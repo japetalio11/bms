@@ -385,7 +385,7 @@ export function PublicSharedJourneyPage() {
                     setEnteredPin(e.target.value.replace(/\D/g, ""))
                     if (pinError) setPinError("")
                   }}
-                  className="h-12 bg-background text-center font-mono text-2xl tracking-[0.35em]"
+                  className="h-12 bg-background text-center font-mono text-xl tracking-[0.2em] sm:text-2xl sm:tracking-[0.35em]"
                   autoFocus
                 />
                 <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
@@ -453,25 +453,25 @@ export function PublicSharedJourneyPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground transition-colors">
-      <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-border bg-card/90 px-4 backdrop-blur-md sm:px-6 lg:px-8 print:hidden">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-base font-bold text-primary-foreground shadow-sm">
+      <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-border bg-card/90 px-3 backdrop-blur-md sm:px-6 lg:px-8 print:hidden">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-base font-bold text-primary-foreground shadow-sm">
             B
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold tracking-tight text-foreground">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="truncate text-xs sm:text-sm font-bold tracking-tight text-foreground">
                 BirthCare Network
               </span>
               <Badge
                 variant="outline"
-                className="flex h-4 items-center gap-1 border-emerald-500/30 bg-emerald-500/5 px-1.5 py-0 font-mono text-[10px] text-emerald-600 dark:text-emerald-400"
+                className="hidden xs:flex h-4 items-center gap-1 border-emerald-500/30 bg-emerald-500/5 px-1.5 py-0 font-mono text-[10px] text-emerald-600 dark:text-emerald-400"
               >
                 <ShieldCheck className="h-3 w-3" />
-                Verified Clinical Passport
+                Verified Passport
               </Badge>
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="truncate text-[10px] sm:text-[11px] text-muted-foreground">
               Primary Clinic:{" "}
               <span className="font-semibold text-foreground">
                 {patient?.primary_facility?.facility_name ||
@@ -481,7 +481,7 @@ export function PublicSharedJourneyPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {copyNotice && (
             <span className="animate-fade-in hidden text-[11px] font-medium text-emerald-600 sm:inline dark:text-emerald-400">
               {copyNotice}
@@ -524,23 +524,23 @@ export function PublicSharedJourneyPage() {
       </header>
 
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 p-4 sm:p-6 lg:p-8">
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-4">
-              <Avatar className="h-20 w-20 shrink-0 rounded-2xl border-2 border-border shadow-sm sm:h-24 sm:w-24">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col sm:flex-row items-start gap-4">
+              <Avatar className="h-16 w-16 sm:h-24 sm:w-24 shrink-0 rounded-2xl border-2 border-border shadow-sm">
                 <AvatarImage
                   src={patient?.profile_url || ""}
                   alt={patient?.name}
                   className="object-cover"
                 />
-                <AvatarFallback className="rounded-2xl bg-primary/10 text-2xl font-bold text-primary">
+                <AvatarFallback className="rounded-2xl bg-primary/10 text-xl sm:text-2xl font-bold text-primary">
                   {patient?.name?.slice(0, 2).toUpperCase() || "MO"}
                 </AvatarFallback>
               </Avatar>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                  <h1 className="text-lg font-bold tracking-tight text-foreground sm:text-2xl">
                     {patient?.name || "Patient Record"}
                   </h1>
 
@@ -552,7 +552,7 @@ export function PublicSharedJourneyPage() {
                   </Badge>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                   {patient?.age && (
                     <span className="flex items-center gap-1">
                       <User className="h-3.5 w-3.5" />
@@ -601,8 +601,8 @@ export function PublicSharedJourneyPage() {
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-col items-start gap-2 lg:items-end">
-              <div className="space-y-1 rounded-xl border border-border bg-muted/50 p-3.5 text-right">
+            <div className="flex shrink-0 flex-col items-start gap-2 lg:items-end w-full lg:w-auto">
+              <div className="space-y-1 rounded-xl border border-border bg-muted/50 p-3.5 text-left lg:text-right w-full lg:w-auto">
                 <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                   Current Pregnancy Stage
                 </span>
@@ -611,7 +611,7 @@ export function PublicSharedJourneyPage() {
                     ? `${gestationalWeeks} Weeks (${getTrimester(gestationalWeeks)})`
                     : "Active Pregnancy"}
                 </p>
-                <div className="h-1.5 w-48 overflow-hidden rounded-full bg-muted">
+                <div className="h-1.5 w-full max-w-full sm:w-48 overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full bg-primary transition-all duration-500"
                     style={{ width: `${progressPercent}%` }}
@@ -624,12 +624,12 @@ export function PublicSharedJourneyPage() {
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3 border-t border-border pt-5 sm:grid-cols-4">
-            <div className="rounded-xl border border-border/50 bg-muted/40 p-3">
+          <div className="mt-5 grid grid-cols-2 gap-2.5 border-t border-border pt-4 sm:grid-cols-4 sm:gap-3 sm:pt-5">
+            <div className="rounded-xl border border-border/50 bg-muted/40 p-2.5 sm:p-3">
               <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                 Obstetric History
               </span>
-              <p className="mt-0.5 text-base font-bold text-foreground">
+              <p className="mt-0.5 text-sm sm:text-base font-bold text-foreground">
                 G{currentPregnancy?.gravida ?? 1} P
                 {currentPregnancy?.parity ?? 0}
               </p>
@@ -638,11 +638,11 @@ export function PublicSharedJourneyPage() {
               </span>
             </div>
 
-            <div className="rounded-xl border border-border/50 bg-muted/40 p-3">
+            <div className="rounded-xl border border-border/50 bg-muted/40 p-2.5 sm:p-3">
               <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                 Est. Due Date (EDD)
               </span>
-              <p className="mt-0.5 text-base font-bold text-foreground">
+              <p className="mt-0.5 text-sm sm:text-base font-bold text-foreground">
                 {currentPregnancy?.edd
                   ? new Date(currentPregnancy.edd).toLocaleDateString()
                   : "Pending Scan"}
@@ -655,11 +655,11 @@ export function PublicSharedJourneyPage() {
               </span>
             </div>
 
-            <div className="rounded-xl border border-border/50 bg-muted/40 p-3">
+            <div className="rounded-xl border border-border/50 bg-muted/40 p-2.5 sm:p-3">
               <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                 Latest Blood Pressure
               </span>
-              <p className="mt-0.5 font-mono text-base font-bold text-foreground">
+              <p className="mt-0.5 font-mono text-sm sm:text-base font-bold text-foreground">
                 {latestVitals?.bp || "120/80"}
               </p>
               <span className="text-[11px] text-muted-foreground">
@@ -668,11 +668,11 @@ export function PublicSharedJourneyPage() {
               </span>
             </div>
 
-            <div className="rounded-xl border border-border/50 bg-muted/40 p-3">
+            <div className="rounded-xl border border-border/50 bg-muted/40 p-2.5 sm:p-3">
               <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                 Clinical Consultations
               </span>
-              <p className="mt-0.5 text-base font-bold text-foreground">
+              <p className="mt-0.5 text-sm sm:text-base font-bold text-foreground">
                 {prenatalVisits.length} Checkups
               </p>
               <span className="text-[11px] text-muted-foreground">
@@ -687,38 +687,38 @@ export function PublicSharedJourneyPage() {
           onValueChange={setActiveTab}
           className="space-y-4"
         >
-          <TabsList className="flex h-auto flex-wrap gap-1 rounded-xl border border-border bg-muted/70 p-1 print:hidden">
+          <TabsList className="flex h-auto w-full max-w-full overflow-x-auto whitespace-nowrap scrollbar-none gap-1 rounded-xl border border-border bg-muted/70 p-1 print:hidden flex-nowrap sm:flex-wrap">
             <TabsTrigger
               value="overview"
-              className="gap-1.5 rounded-lg text-xs font-semibold"
+              className="shrink-0 gap-1.5 rounded-lg text-xs font-semibold"
             >
               <FileText className="h-3.5 w-3.5" />
               Journey Overview
             </TabsTrigger>
             <TabsTrigger
               value="vitals"
-              className="gap-1.5 rounded-lg text-xs font-semibold"
+              className="shrink-0 gap-1.5 rounded-lg text-xs font-semibold"
             >
               <Heart className="h-3.5 w-3.5" />
               Vitals & Trends
             </TabsTrigger>
             <TabsTrigger
               value="visits"
-              className="gap-1.5 rounded-lg text-xs font-semibold"
+              className="shrink-0 gap-1.5 rounded-lg text-xs font-semibold"
             >
               <Activity className="h-3.5 w-3.5" />
               Checkups ({prenatalVisits.length})
             </TabsTrigger>
             <TabsTrigger
               value="labs"
-              className="gap-1.5 rounded-lg text-xs font-semibold"
+              className="shrink-0 gap-1.5 rounded-lg text-xs font-semibold"
             >
               <Microscope className="h-3.5 w-3.5" />
               Diagnostics & Scans ({labScreenings.length})
             </TabsTrigger>
             <TabsTrigger
               value="supplements"
-              className="gap-1.5 rounded-lg text-xs font-semibold"
+              className="shrink-0 gap-1.5 rounded-lg text-xs font-semibold"
             >
               <Pill className="h-3.5 w-3.5" />
               Prescriptions ({supplements.length})
@@ -726,7 +726,7 @@ export function PublicSharedJourneyPage() {
             {deliveryOutcomes.length > 0 && (
               <TabsTrigger
                 value="deliveries"
-                className="gap-1.5 rounded-lg text-xs font-semibold"
+                className="shrink-0 gap-1.5 rounded-lg text-xs font-semibold"
               >
                 <Baby className="h-3.5 w-3.5" />
                 Past Deliveries ({deliveryOutcomes.length})
@@ -959,7 +959,8 @@ export function PublicSharedJourneyPage() {
                     No longitudinal vitals records found for this patient.
                   </div>
                 ) : (
-                  <Table>
+                  <div className="w-full overflow-x-auto scrollbar-thin">
+                    <Table>
                     <TableHeader>
                       <TableRow className="border-border hover:bg-transparent">
                         <TableHead className="text-xs font-semibold">
@@ -1037,6 +1038,7 @@ export function PublicSharedJourneyPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1264,7 +1266,8 @@ export function PublicSharedJourneyPage() {
                     No prescription or supplement records found.
                   </div>
                 ) : (
-                  <Table>
+                  <div className="w-full overflow-x-auto scrollbar-thin">
+                    <Table>
                     <TableHeader>
                       <TableRow className="border-border hover:bg-transparent">
                         <TableHead className="text-xs font-semibold">
@@ -1310,6 +1313,7 @@ export function PublicSharedJourneyPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1374,7 +1378,7 @@ export function PublicSharedJourneyPage() {
         open={!!selectedMediaUrl}
         onOpenChange={(open) => !open && setSelectedMediaUrl(null)}
       >
-        <DialogContent className="max-w-4xl overflow-hidden border-none bg-black/95 p-2 text-white">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl overflow-hidden border-none bg-black/95 p-2 text-white">
           <div className="flex items-center justify-between border-b border-white/10 p-2">
             <span className="text-xs font-semibold">{selectedMediaTitle}</span>
             <Button
