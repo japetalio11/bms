@@ -52,7 +52,11 @@ export function sanitizeMediaUrl(url?: string | null): string {
   if (!url || typeof url !== "string") return ""
   if (url.startsWith("data:") || url.startsWith("blob:")) return url
 
-  // If we are loaded on HTTPS or in production, prevent localhost:6700 or mixed-content http: calls
+  const backendUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+  if (url.startsWith("/uploads/")) {
+    return `${backendUrl}${url}`
+  }
+
   if (typeof window !== "undefined" && window.location.protocol === "https:") {
     const backendUrl = import.meta.env.VITE_BACKEND_API_URL || ""
     if (url.startsWith("http://localhost:6700")) {

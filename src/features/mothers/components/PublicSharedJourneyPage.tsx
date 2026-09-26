@@ -33,6 +33,7 @@ import {
 import {
   extractRiskLevel,
   getRiskBadgeClasses,
+  getRiskLabel,
 } from "@/lib/riskUtils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
