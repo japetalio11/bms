@@ -2,6 +2,7 @@ import { motherRepository } from "@/lib/repositories/motherRepository"
 import { appointmentRepository } from "@/lib/repositories/appointmentRepository"
 import { apiClient } from "@/lib/apiClient"
 import { syncEngine } from "@/lib/sync/syncEngine"
+import { db } from "@/lib/db/bmsDatabase"
 
 export const mothersApi = {
   async getActiveMothers(facilityId?: string) {
@@ -128,5 +129,114 @@ export const mothersApi = {
 
   async assignStaff(motherId: string, assignedWorkerId: string, staffData?: any) {
     return await motherRepository.assignStaff(motherId, assignedWorkerId, staffData)
+  },
+
+  async registerDeliveryOutcome(payload: any) {
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.post("/api/v1/delivery-outcome/register", payload)
+        const outcome = response.data?.data || response.data?.result
+        if (outcome) {
+          const dId = outcome.delivery_id || outcome.id
+          await db.deliveries.put({
+            ...outcome,
+            id: dId,
+            delivery_id: dId,
+            pregnancy_id: payload.pregnancy_id,
+            sync_status: "synced",
+            updated_at: Date.now(),
+          })
+          if (Array.isArray(outcome.newbornRecords)) {
+            for (const nb of outcome.newbornRecords) {
+              const nbId = nb.newborn_id || nb.id
+              await db.newborns.put({
+                ...nb,
+                id: nbId,
+                newborn_id: nbId,
+                delivery_id: dId,
+                sync_status: "synced",
+                updated_at: Date.now(),
+              })
+            }
+          }
+          if (Array.isArray(outcome.postpartumVisits)) {
+            for (const pv of outcome.postpartumVisits) {
+              const pvId = pv.postpartum_visit_id || pv.id
+              await db.postpartumVisits.put({
+                ...pv,
+                id: pvId,
+                postpartum_visit_id: pvId,
+                delivery_id: dId,
+                sync_status: "synced",
+                updated_at: Date.now(),
+              })
+            }
+          }
+          if (payload.pregnancy_id) {
+            await db.pregnancies
+              .where("id")
+              .equals(payload.pregnancy_id)
+              .modify({ status: "Delivered", pregnancy_status: "Delivered" })
+              .catch(() => {})
+          }
+        }
+        return response.data
+      } catch (err) {
+        console.warn("[mothersApi] Online delivery registration failed, queuing offline:", err)
+      }
+    }
+
+    const tempDeliveryId = `temp-del-${Date.now()}`
+    const localDelivery = {
+      id: tempDeliveryId,
+      delivery_id: tempDeliveryId,
+      pregnancy_id: payload.pregnancy_id,
+      delivery_date: payload.delivery_date || new Date().toISOString(),
+      place_of_delivery: payload.place_of_delivery,
+      mode_of_delivery: payload.mode_of_delivery,
+      duration_of_labor_hours: payload.duration_of_labor_hours,
+      blood_loss_ml: payload.blood_loss_ml,
+      delivery_complications: payload.delivery_complications,
+      sync_status: "pending_create" as const,
+      updated_at: Date.now(),
+    }
+
+    await db.deliveries.put(localDelivery)
+
+    if (Array.isArray(payload.newborns)) {
+      for (const nb of payload.newborns) {
+        const tempNbId = `temp-nb-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`
+        await db.newborns.put({
+          id: tempNbId,
+          newborn_id: tempNbId,
+          delivery_id: tempDeliveryId,
+          sex: nb.sex,
+          birth_weight_kg: Number(nb.birth_weight_kg),
+          status_at_birth: nb.status_at_birth,
+          apgar_score: Number(nb.apgar_score),
+          sync_status: "pending_create",
+          updated_at: Date.now(),
+        })
+      }
+    }
+
+    if (payload.pregnancy_id) {
+      await db.pregnancies
+        .where("id")
+        .equals(payload.pregnancy_id)
+        .modify({ status: "Delivered", pregnancy_status: "Delivered" })
+        .catch(() => {})
+    }
+
+    await syncEngine.enqueueMutation({
+      entity_type: "delivery_outcome",
+      action: "CREATE",
+      endpoint: "/api/v1/delivery-outcome/register",
+      method: "POST",
+      payload,
+      temp_id: tempDeliveryId,
+    })
+
+    return { success: true, offline: true, data: localDelivery }
   },
 }
