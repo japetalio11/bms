@@ -152,11 +152,13 @@ export const mothersApi = {
         return response.data
       } catch (err: any) {
         if (
-          url.includes("/temp-") &&
-          (err.response?.status === 404 || err.response?.status === 400)
+          url.includes("/temp-") ||
+          err.response?.status === 404 ||
+          err.response?.status === 400 ||
+          err.response?.data?.error?.toLowerCase?.().includes("not found")
         ) {
           console.warn(
-            "[mothersApi] Online delete for temp record handled locally:",
+            "[mothersApi] Record already deleted or not found on server:",
             url
           )
           return { success: true, offline: true }

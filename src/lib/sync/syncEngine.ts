@@ -502,6 +502,29 @@ class SyncEngine {
         response = await apiClient.delete(item.endpoint)
       }
     } catch (err: any) {
+      if (
+        (item.method === "DELETE" || item.action === "DELETE") &&
+        (err.response?.status === 404 ||
+          err.response?.status === 400 ||
+          err.response?.data?.error?.toLowerCase?.().includes("not found") ||
+          err.message?.toLowerCase?.().includes("not found"))
+      ) {
+        console.warn(
+          `[SyncEngine] Record already deleted or not found on server for ${item.endpoint}. Queue item resolved.`
+        )
+        return
+      }
+      if (
+        item.endpoint &&
+        item.endpoint.includes("/temp-") &&
+        (err.response?.status === 404 || err.response?.status === 400)
+      ) {
+        console.warn(
+          `[SyncEngine] Temporary record endpoint ${item.endpoint} not found on server. Queue item resolved.`
+        )
+        return
+      }
+
       const errDetail =
         err.response?.data?.error ||
         err.response?.data?.message ||
