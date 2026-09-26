@@ -237,6 +237,50 @@ export const appointmentRepository = {
       })
     }
 
+    const getPriority = (status?: string) => {
+      const s = (status || "").toLowerCase().trim()
+      if (
+        s === "confirmed" ||
+        s === "scheduled" ||
+        s === "active" ||
+        s === "pending"
+      )
+        return 1
+      if (s === "completed") return 2
+      if (
+        s === "cancelled" ||
+        s === "canceled" ||
+        s === "missed" ||
+        s === "rejected"
+      )
+        return 3
+      return 1
+    }
+
+    result.sort((a: any, b: any) => {
+      const priorityA = getPriority(a.status)
+      const priorityB = getPriority(b.status)
+
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB
+      }
+
+      const dateA = a.appointment_date
+        ? new Date(a.appointment_date).getTime()
+        : 0
+      const dateB = b.appointment_date
+        ? new Date(b.appointment_date).getTime()
+        : 0
+
+      if (dateA !== dateB) {
+        return dateA - dateB
+      }
+
+      const timeA = (a.appointment_time || "").toString()
+      const timeB = (b.appointment_time || "").toString()
+      return timeA.localeCompare(timeB)
+    })
+
     return result
   },
 

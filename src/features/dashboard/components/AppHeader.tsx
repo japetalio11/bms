@@ -133,7 +133,7 @@ export function AppHeader() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="h-8 gap-2 px-2 text-xs font-medium">
+            <Button className="h-8 gap-2 bg-primary px-2.5 text-xs font-medium text-primary-foreground shadow-sm shadow-primary/25 hover:bg-primary/90">
               <PlusCircle className="size-3.5" />
               <span>Quick Create</span>
             </Button>

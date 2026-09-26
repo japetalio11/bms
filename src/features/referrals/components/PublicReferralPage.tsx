@@ -5,7 +5,6 @@ import { useTheme } from "@/components/theme-provider"
 import {
   ShieldAlert,
   Building2,
-  Lock,
   ArrowRight,
   AlertTriangle,
   Sun,
@@ -13,6 +12,7 @@ import {
   CheckCircle2,
   Printer,
 } from "lucide-react"
+import websiteLogo from "@/assets/logo.svg"
 import { extractRiskLevel } from "@/lib/riskUtils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -348,9 +348,11 @@ export function PublicReferralPage() {
 
         <Card className="w-full max-w-md border-border bg-card shadow-2xl">
           <CardHeader className="pb-2 text-center">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <Lock className="h-7 w-7" />
-            </div>
+            <img
+              src={websiteLogo}
+              alt="BMS Logo"
+              className="mx-auto mb-3 h-14 w-14 rounded-2xl object-cover shadow-sm"
+            />
             <CardTitle className="text-xl font-bold text-foreground">
               Protected Maternal Referral
             </CardTitle>

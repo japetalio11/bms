@@ -41,10 +41,13 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react"
 import { UploadDocumentModal } from "./UploadDocumentModal"
 import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
+import { UnifiedTableLoader } from "@/components/ui/unified-table-loader"
 import { toast } from "sonner"
 
 import { useLiveQuery } from "dexie-react-hooks"
@@ -70,6 +73,9 @@ export function EhrPage() {
   const [selectedCategoryFilters, setSelectedCategoryFilters] = useState<
     string[]
   >([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set())
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [viewingDoc, setViewingDoc] = useState<EhrDocument | null>(null)
@@ -172,11 +178,36 @@ export function EhrPage() {
     })
   }, [documents, searchQuery, activeTab, selectedCategoryFilters])
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredDocuments.length / pageSize)
+  )
+  const paginatedDocuments = filteredDocuments.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
+
+  const toggleSelectRow = (id: string) => {
+    const next = new Set(selectedRowIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectedRowIds(next)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedRowIds.size === filteredDocuments.length) {
+      setSelectedRowIds(new Set())
+    } else {
+      setSelectedRowIds(new Set(filteredDocuments.map((d) => d.id)))
+    }
+  }
+
   const toggleFilter = (
     list: string[],
     setList: (v: string[]) => void,
     item: string
   ) => {
+    setCurrentPage(1)
     if (list.includes(item)) setList(list.filter((i) => i !== item))
     else setList([...list, item])
   }
@@ -185,417 +216,552 @@ export function EhrPage() {
     <div className="relative flex h-full w-full items-start overflow-hidden bg-background">
       <div className="relative flex h-full w-full min-w-0 flex-col overflow-y-auto text-foreground">
         <div className="sticky top-0 z-10 flex flex-col gap-4 border-b border-border bg-background p-4 pr-4 pb-4 pl-3 md:border-none">
-        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="w-full md:w-auto"
-          >
-            <TabsList className="h-9 w-full justify-start gap-1 rounded-md border border-border bg-muted p-1 md:w-max">
-              <TabsTrigger value="all" className="px-2.5 py-1 text-xs">
-                All Records
-              </TabsTrigger>
-              <TabsTrigger value="protocols" className="px-2.5 py-1 text-xs">
-                Protocols
-              </TabsTrigger>
-              <TabsTrigger value="labs" className="px-2.5 py-1 text-xs">
-                Lab Archives
-              </TabsTrigger>
-              <TabsTrigger value="maternal" className="px-2.5 py-1 text-xs">
-                Maternal Files
-              </TabsTrigger>
-              <TabsTrigger value="audit" className="px-2.5 py-1 text-xs">
-                Audit & Compliance
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <div className="flex w-full items-center justify-end gap-2 md:w-auto">
-            <div className="relative w-full sm:w-[200px]">
-              <Search className="absolute top-2.5 left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search EHR records..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-9 border-border bg-card pl-8 text-xs text-card-foreground"
-              />
-            </div>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="h-9 shrink-0 gap-1.5 border-border bg-card px-2 text-xs font-medium text-card-foreground hover:bg-accent"
-                >
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  Category{" "}
-                  {selectedCategoryFilters.length > 0 &&
-                    `(${selectedCategoryFilters.length})`}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="flex w-[200px] flex-col gap-2.5 p-3"
-                align="end"
-              >
-                {[
-                  "Clinical Protocols",
-                  "Lab & Diagnostics",
-                  "Maternal Records",
-                  "Facility Audit & Accreditation",
-                  "Referral Archives",
-                ].map((cat) => (
-                  <div key={cat} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`filter-cat-${cat}`}
-                      checked={selectedCategoryFilters.includes(cat)}
-                      onCheckedChange={() =>
-                        toggleFilter(
-                          selectedCategoryFilters,
-                          setSelectedCategoryFilters,
-                          cat
-                        )
-                      }
-                      className="h-3.5 w-3.5 border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                    />
-                    <label
-                      htmlFor={`filter-cat-${cat}`}
-                      className="cursor-pointer text-xs text-foreground"
-                    >
-                      {cat}
-                    </label>
-                  </div>
-                ))}
-                {selectedCategoryFilters.length > 0 && (
-                  <Button
-                    onClick={() => setSelectedCategoryFilters([])}
-                    className="mt-1 h-7 bg-primary text-xs text-primary-foreground"
-                  >
-                    Clear
-                  </Button>
-                )}
-              </PopoverContent>
-            </Popover>
-
-            <UploadDocumentModal
-              open={isUploadModalOpen}
-              onOpenChange={setIsUploadModalOpen}
-              onSuccess={handleAddDocument}
+          <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+            <Tabs
+              value={activeTab}
+              onValueChange={(val) => {
+                setActiveTab(val)
+                setCurrentPage(1)
+              }}
+              className="w-full md:w-auto"
             >
-              <Button className="h-9 shrink-0 gap-2 bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
-                <Upload className="h-4 w-4" />
-                Upload Document
-              </Button>
-            </UploadDocumentModal>
+              <TabsList className="h-9 w-full justify-start gap-1 rounded-md border border-border bg-muted p-1 md:w-max">
+                <TabsTrigger value="all" className="px-2.5 py-1 text-xs">
+                  All Records
+                </TabsTrigger>
+                <TabsTrigger value="protocols" className="px-2.5 py-1 text-xs">
+                  Protocols
+                </TabsTrigger>
+                <TabsTrigger value="labs" className="px-2.5 py-1 text-xs">
+                  Lab Archives
+                </TabsTrigger>
+                <TabsTrigger value="maternal" className="px-2.5 py-1 text-xs">
+                  Maternal Files
+                </TabsTrigger>
+                <TabsTrigger value="audit" className="px-2.5 py-1 text-xs">
+                  Audit & Compliance
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <div className="flex w-full items-center justify-end gap-2 md:w-auto">
+              <div className="relative w-full sm:w-[200px]">
+                <Search className="absolute top-2.5 left-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search EHR records..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="h-9 border-border bg-card pl-8 text-xs text-card-foreground"
+                />
+              </div>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="h-9 shrink-0 gap-1.5 border-border bg-card px-2 text-xs font-medium text-card-foreground hover:bg-accent"
+                  >
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    Category{" "}
+                    {selectedCategoryFilters.length > 0 &&
+                      `(${selectedCategoryFilters.length})`}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="flex w-[200px] flex-col gap-2.5 p-3"
+                  align="end"
+                >
+                  {[
+                    "Clinical Protocols",
+                    "Lab & Diagnostics",
+                    "Maternal Records",
+                    "Facility Audit & Accreditation",
+                    "Referral Archives",
+                  ].map((cat) => (
+                    <div key={cat} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`filter-cat-${cat}`}
+                        checked={selectedCategoryFilters.includes(cat)}
+                        onCheckedChange={() =>
+                          toggleFilter(
+                            selectedCategoryFilters,
+                            setSelectedCategoryFilters,
+                            cat
+                          )
+                        }
+                        className="h-3.5 w-3.5 border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                      />
+                      <label
+                        htmlFor={`filter-cat-${cat}`}
+                        className="cursor-pointer text-xs text-foreground"
+                      >
+                        {cat}
+                      </label>
+                    </div>
+                  ))}
+                  {selectedCategoryFilters.length > 0 && (
+                    <Button
+                      onClick={() => {
+                        setSelectedCategoryFilters([])
+                        setCurrentPage(1)
+                      }}
+                      className="mt-1 h-7 bg-primary text-xs text-primary-foreground"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </PopoverContent>
+              </Popover>
+
+              <UploadDocumentModal
+                open={isUploadModalOpen}
+                onOpenChange={setIsUploadModalOpen}
+                onSuccess={handleAddDocument}
+              >
+                <Button className="h-9 shrink-0 gap-2 bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
+                  <Upload className="h-4 w-4" />
+                  Upload Document
+                </Button>
+              </UploadDocumentModal>
+            </div>
           </div>
-        </div>
+
+          <div className="mt-2 flex w-full items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground md:hidden">
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage(1)}
+                className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+              >
+                <ChevronsLeft className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={currentPage >= totalPages}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
+                className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage(totalPages)}
+                className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+              >
+                <ChevronsRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col gap-4 p-4 pr-4 pb-24 pl-3 md:pt-0 md:pb-4">
-        <div className="flex flex-col gap-4 md:hidden">
-          {filteredDocuments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center md:hidden">
-              <FileText className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
-              <h3 className="text-sm font-semibold text-card-foreground">
-                No EHR Records Found
-              </h3>
-              <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                No electronic health records match your current criteria. Upload a new document to get started.
-              </p>
-              <Button
-                onClick={() => setIsUploadModalOpen(true)}
-                className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
-              >
-                <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload Document
-              </Button>
+          <UnifiedTableLoader
+            isLoading={isLoading}
+            label="Loading EHR documents..."
+          >
+            <div className="flex flex-col gap-4 md:hidden">
+              {filteredDocuments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center md:hidden">
+                  <FileText className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
+                  <h3 className="text-sm font-semibold text-card-foreground">
+                    No EHR Records Found
+                  </h3>
+                  <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                    No electronic health records match your current criteria. Upload a new document to get started.
+                  </p>
+                  <Button
+                    onClick={() => setIsUploadModalOpen(true)}
+                    className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload Document
+                  </Button>
+                </div>
+              ) : (
+                paginatedDocuments.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-accent/50"
+                    onClick={() => setViewingDoc(doc)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {doc.format === "PDF" && (
+                          <FileText className="h-4 w-4 shrink-0 text-red-400" />
+                        )}
+                        {doc.format === "CSV" && (
+                          <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-400" />
+                        )}
+                        {doc.format !== "PDF" && doc.format !== "CSV" && (
+                          <FileCheck className="h-4 w-4 shrink-0 text-blue-400" />
+                        )}
+                        <h3 className="truncate text-sm font-semibold text-card-foreground">
+                          {doc.title}
+                        </h3>
+                      </div>
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                          doc.securityLevel === "Public"
+                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
+                            : doc.securityLevel === "Confidential"
+                              ? "border-blue-500/20 bg-blue-500/10 text-blue-500"
+                              : "border-purple-500/20 bg-purple-500/10 text-purple-500"
+                        }`}
+                      >
+                        {doc.securityLevel}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Category</span>
+                        <span className="font-medium text-card-foreground">
+                          {doc.category}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">
+                          Scope / Patient
+                        </span>
+                        <span className="font-medium text-card-foreground">
+                          {doc.patientName}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Date Uploaded</span>
+                        <span className="text-card-foreground">
+                          {doc.dateUploaded}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 border-t border-border pt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setViewingDoc(doc)
+                        }}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDownload(doc)
+                        }}
+                      >
+                        Download
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteDocument(doc)
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-          ) : (
-            filteredDocuments.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-accent/50"
-                onClick={() => setViewingDoc(doc)}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    {doc.format === "PDF" && (
-                      <FileText className="h-4 w-4 shrink-0 text-red-400" />
-                    )}
-                    {doc.format === "CSV" && (
-                      <FileSpreadsheet className="h-4 w-4 shrink-0 text-emerald-400" />
-                    )}
-                    {doc.format !== "PDF" && doc.format !== "CSV" && (
-                      <FileCheck className="h-4 w-4 shrink-0 text-blue-400" />
-                    )}
-                    <h3 className="truncate text-sm font-semibold text-card-foreground">
-                      {doc.title}
-                    </h3>
-                  </div>
-                  <span
-                    className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                      doc.securityLevel === "Public"
-                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-                        : doc.securityLevel === "Confidential"
-                          ? "border-blue-500/20 bg-blue-500/10 text-blue-500"
-                          : "border-purple-500/20 bg-purple-500/10 text-purple-500"
-                    }`}
-                  >
-                    {doc.securityLevel}
-                  </span>
-                </div>
 
-                <div className="flex flex-col gap-1.5 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Category</span>
-                    <span className="font-medium text-card-foreground">
-                      {doc.category}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">
-                      Scope / Patient
-                    </span>
-                    <span className="font-medium text-card-foreground">
-                      {doc.patientName}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Date Uploaded</span>
-                    <span className="text-card-foreground">
-                      {doc.dateUploaded}
-                    </span>
-                  </div>
-                </div>
+            {filteredDocuments.length === 0 && (
+              <div className="hidden flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center md:flex">
+                <FileText className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
+                <h3 className="text-sm font-semibold text-card-foreground">
+                  No EHR Records Found
+                </h3>
+                <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                  No electronic health records match your current criteria. Upload a new document to get started.
+                </p>
+                <Button
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+                >
+                  <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload Document
+                </Button>
+              </div>
+            )}
 
-                <div className="flex items-center justify-end gap-2 border-t border-border pt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setViewingDoc(doc)
-                    }}
-                  >
-                    View
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDownload(doc)
-                    }}
-                  >
-                    Download
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs text-red-500 hover:bg-red-500/10 hover:text-red-600"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDeleteDocument(doc)
-                    }}
-                  >
-                    Delete
-                  </Button>
+            {filteredDocuments.length > 0 && (
+              <div className="hidden overflow-x-auto rounded-md border border-border bg-card md:block">
+                <div className="min-w-[900px]">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow className="border-border hover:bg-transparent">
+                        <TableHead className="w-12 pl-4 text-center">
+                          <Checkbox
+                            checked={
+                              selectedRowIds.size === filteredDocuments.length &&
+                              filteredDocuments.length > 0
+                            }
+                            onCheckedChange={toggleSelectAll}
+                            className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                          />
+                        </TableHead>
+                        <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          Document Title
+                        </TableHead>
+                        <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          Category
+                        </TableHead>
+                        <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          Scope / Patient
+                        </TableHead>
+                        <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          Security Level
+                        </TableHead>
+                        <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          Format & Size
+                        </TableHead>
+                        <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          Date Uploaded
+                        </TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedDocuments.map((doc) => (
+                        <TableRow
+                          key={doc.id}
+                          className="group cursor-pointer border-border transition-colors hover:bg-accent/50"
+                          onClick={() => {
+                            const idx = filteredDocuments.findIndex(
+                              (d) => d.id === doc.id
+                            )
+                            setPreviewDocIndex(idx >= 0 ? idx : 0)
+                            setZoomScale(1)
+                          }}
+                        >
+                          <TableCell
+                            className="pl-4"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Checkbox
+                              checked={selectedRowIds.has(doc.id)}
+                              onCheckedChange={() => toggleSelectRow(doc.id)}
+                              className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                            />
+                          </TableCell>
+                          <TableCell className="text-xs font-medium whitespace-nowrap text-card-foreground">
+                            <div className="flex items-center gap-3">
+                              {doc.fileUrl &&
+                              (doc.format === "PNG" ||
+                                doc.format === "JPG" ||
+                                doc.format === "JPEG" ||
+                                doc.format === "WEBP" ||
+                                doc.format === "GIF" ||
+                                doc.format === "BMP") ? (
+                                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-muted shadow-sm transition-transform hover:scale-105">
+                                  <img
+                                    src={doc.fileUrl}
+                                    alt={doc.title}
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50">
+                                  {doc.format === "PDF" && (
+                                    <FileText className="h-6 w-6 text-red-400" />
+                                  )}
+                                  {doc.format === "CSV" && (
+                                    <FileSpreadsheet className="h-6 w-6 text-emerald-400" />
+                                  )}
+                                  {doc.format !== "PDF" && doc.format !== "CSV" && (
+                                    <FileCheck className="h-6 w-6 text-blue-400" />
+                                  )}
+                                </div>
+                              )}
+                              <div className="flex min-w-0 flex-col">
+                                <span
+                                  className="max-w-[260px] truncate text-xs font-semibold text-card-foreground"
+                                  title={doc.title}
+                                >
+                                  {doc.title}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {doc.format} • {doc.size}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap text-card-foreground">
+                            {doc.category}
+                          </TableCell>
+                          <TableCell className="text-xs font-medium whitespace-nowrap text-card-foreground">
+                            {doc.patientName}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                                doc.securityLevel === "Public"
+                                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
+                                  : doc.securityLevel === "Confidential"
+                                    ? "border-blue-500/20 bg-blue-500/10 text-blue-500"
+                                    : "border-purple-500/20 bg-purple-500/10 text-purple-500"
+                              }`}
+                            >
+                              {doc.securityLevel}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                            {doc.format} • {doc.size}
+                          </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                            {doc.dateUploaded}
+                          </TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-foreground hover:bg-accent"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="end"
+                                className="w-[160px] rounded-xl border-border shadow-md"
+                              >
+                                <DropdownMenuLabel className="text-xs">
+                                  Actions
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    const idx = filteredDocuments.findIndex(
+                                      (d) => d.id === doc.id
+                                    )
+                                    setPreviewDocIndex(idx >= 0 ? idx : 0)
+                                    setZoomScale(1)
+                                  }}
+                                  className="cursor-pointer rounded-md text-xs"
+                                >
+                                  View Full Screen
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDownload(doc)}
+                                  className="cursor-pointer rounded-md text-xs"
+                                >
+                                  Download File
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteDocument(doc)}
+                                  className="cursor-pointer rounded-md text-xs text-red-500 focus:text-red-500"
+                                >
+                                  Delete Record
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
-            ))
+            )}
+          </UnifiedTableLoader>
+
+          {!isLoading && filteredDocuments.length > 0 && (
+            <div className="mt-2 hidden flex-row items-center justify-between gap-4 text-xs text-muted-foreground md:flex">
+              <div>
+                {selectedRowIds.size} of {filteredDocuments.length} row(s)
+                selected.
+              </div>
+
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <span>Rows per page</span>
+                  <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-2 py-1">
+                    <span>{pageSize}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={currentPage <= 1}
+                      onClick={() => setCurrentPage(1)}
+                      className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+                    >
+                      <ChevronsLeft className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={currentPage <= 1}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
+                      className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+                    >
+                      <ChevronLeft className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={currentPage >= totalPages}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                      }
+                      className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+                    >
+                      <ChevronRight className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={currentPage >= totalPages}
+                      onClick={() => setCurrentPage(totalPages)}
+                      className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+                    >
+                      <ChevronsRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
-
-        {filteredDocuments.length === 0 && (
-          <div className="hidden flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center md:flex">
-            <FileText className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
-            <h3 className="text-sm font-semibold text-card-foreground">
-              No EHR Records Found
-            </h3>
-            <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-              No electronic health records match your current criteria. Upload a new document to get started.
-            </p>
-            <Button
-              onClick={() => setIsUploadModalOpen(true)}
-              className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
-            >
-              <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload Document
-            </Button>
-          </div>
-        )}
-
-        {filteredDocuments.length > 0 && (
-          <div className="hidden overflow-x-auto rounded-md border border-border bg-card md:block">
-            <div className="min-w-[900px]">
-            <Table>
-              <TableHeader className="bg-muted/50">
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="w-12 pl-4 text-center">
-                    <Checkbox className="border-border" />
-                  </TableHead>
-                  <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                    Document Title
-                  </TableHead>
-                  <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                    Category
-                  </TableHead>
-                  <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                    Scope / Patient
-                  </TableHead>
-                  <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                    Security Level
-                  </TableHead>
-                  <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                    Format & Size
-                  </TableHead>
-                  <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                    Date Uploaded
-                  </TableHead>
-                  <TableHead className="w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDocuments.map((doc) => (
-                    <TableRow
-                      key={doc.id}
-                      className="group cursor-pointer border-border transition-colors hover:bg-accent/50"
-                      onClick={() => {
-                        const idx = filteredDocuments.findIndex(
-                          (d) => d.id === doc.id
-                        )
-                        setPreviewDocIndex(idx >= 0 ? idx : 0)
-                        setZoomScale(1)
-                      }}
-                    >
-                      <TableCell
-                        className="pl-4"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Checkbox className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" />
-                      </TableCell>
-                      <TableCell className="text-xs font-medium whitespace-nowrap text-card-foreground">
-                        <div className="flex items-center gap-3">
-                          {doc.fileUrl &&
-                          (doc.format === "PNG" ||
-                            doc.format === "JPG" ||
-                            doc.format === "JPEG" ||
-                            doc.format === "WEBP" ||
-                            doc.format === "GIF" ||
-                            doc.format === "BMP") ? (
-                            <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-muted shadow-sm transition-transform hover:scale-105">
-                              <img
-                                src={doc.fileUrl}
-                                alt={doc.title}
-                                className="h-full w-full object-cover"
-                              />
-                            </div>
-                          ) : (
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50">
-                              {doc.format === "PDF" && (
-                                <FileText className="h-6 w-6 text-red-400" />
-                              )}
-                              {doc.format === "CSV" && (
-                                <FileSpreadsheet className="h-6 w-6 text-emerald-400" />
-                              )}
-                              {doc.format !== "PDF" && doc.format !== "CSV" && (
-                                <FileCheck className="h-6 w-6 text-blue-400" />
-                              )}
-                            </div>
-                          )}
-                          <div className="flex min-w-0 flex-col">
-                            <span
-                              className="max-w-[260px] truncate text-xs font-semibold text-card-foreground"
-                              title={doc.title}
-                            >
-                              {doc.title}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground">
-                              {doc.format} • {doc.size}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap text-card-foreground">
-                        {doc.category}
-                      </TableCell>
-                      <TableCell className="text-xs font-medium whitespace-nowrap text-card-foreground">
-                        {doc.patientName}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                            doc.securityLevel === "Public"
-                              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-                              : doc.securityLevel === "Confidential"
-                                ? "border-blue-500/20 bg-blue-500/10 text-blue-500"
-                                : "border-purple-500/20 bg-purple-500/10 text-purple-500"
-                          }`}
-                        >
-                          {doc.securityLevel}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
-                        {doc.format} • {doc.size}
-                      </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
-                        {doc.dateUploaded}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-foreground hover:bg-accent"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="w-[160px] rounded-xl border-border shadow-md"
-                          >
-                            <DropdownMenuLabel className="text-xs">
-                              Actions
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => {
-                                const idx = filteredDocuments.findIndex(
-                                  (d) => d.id === doc.id
-                                )
-                                setPreviewDocIndex(idx >= 0 ? idx : 0)
-                                setZoomScale(1)
-                              }}
-                              className="cursor-pointer rounded-md text-xs"
-                            >
-                              View Full Screen
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDownload(doc)}
-                              className="cursor-pointer rounded-md text-xs"
-                            >
-                              Download File
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteDocument(doc)}
-                              className="cursor-pointer rounded-md text-xs text-red-500 focus:text-red-500"
-                            >
-                              Delete Record
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                }
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-        )}
-      </div>
 
       {previewDocIndex !== null &&
         filteredDocuments[previewDocIndex] &&

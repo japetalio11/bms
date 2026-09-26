@@ -258,14 +258,14 @@ export function AppointmentSidepeek({
           </h2>
           <div className="flex items-center gap-2">
             <Badge
-              className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${
+              className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium shadow-none ${
                 isCompleted
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                   : isCancelled
-                    ? "bg-red-500/10 text-red-500"
+                    ? "border border-red-500/20 bg-red-500/10 text-red-500"
                     : isConfirmed
-                      ? "bg-blue-500/10 text-blue-500"
-                      : "bg-amber-500/10 text-amber-500"
+                      ? "border border-primary/20 bg-primary/10 text-primary"
+                      : "border border-amber-500/20 bg-amber-500/10 text-amber-500"
               }`}
             >
               {isCompleted || isConfirmed ? (
@@ -478,7 +478,7 @@ export function AppointmentSidepeek({
 
           <div className="mt-1 flex gap-3">
             <div className="mt-1.5 flex flex-col items-center">
-              <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-foreground" />
+              <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
             </div>
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-foreground">
@@ -496,7 +496,7 @@ export function AppointmentSidepeek({
         <Button
           onClick={() => setVitalsModalOpen(true)}
           disabled={vitalsLogged || isCancelled}
-          className="h-8 w-full bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-8 w-full bg-primary text-xs font-medium text-primary-foreground shadow-sm shadow-primary/25 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {vitalsLogged ? "Vitals Logged (Completed)" : "Log Vitals"}
         </Button>
@@ -504,7 +504,7 @@ export function AppointmentSidepeek({
         <Button
           onClick={() => setPrescriptionModalOpen(true)}
           disabled={isCancelled}
-          className="h-8 w-full border border-border bg-secondary text-xs font-medium text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-8 w-full border border-primary/20 bg-secondary text-xs font-medium text-secondary-foreground hover:bg-secondary/80 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Log Prescription
         </Button>

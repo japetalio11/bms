@@ -360,7 +360,7 @@ export function DashboardPage() {
                     Appointment Status
                   </span>
                   <Badge
-                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${app.status === "completed" ? "bg-green-500/10 text-green-500" : "bg-blue-500/10 text-blue-500"}`}
+                    className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium shadow-none ${app.status === "completed" ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border border-primary/20 bg-primary/10 text-primary"}`}
                   >
                     <CheckCircle2 className="h-3 w-3" />
                     {app.status || "Scheduled"}
@@ -474,7 +474,7 @@ export function DashboardPage() {
                   </TableCell>
                   <TableCell>
                     <Badge
-                      className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${app.status === "completed" ? "bg-green-500/10 text-green-500" : "bg-blue-500/10 text-blue-500"}`}
+                      className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium shadow-none ${app.status === "completed" ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "border border-primary/20 bg-primary/10 text-primary"}`}
                     >
                       <CheckCircle2 className="h-3 w-3" />
                       {app.status || "Scheduled"}
@@ -549,12 +549,12 @@ export function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Card className="border-border bg-card text-card-foreground shadow-xs">
+        <Card className="border-border bg-card text-card-foreground shadow-xs transition-colors hover:border-primary/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="truncate pr-2 text-xs font-normal text-muted-foreground">
               Active Pregnancies
             </CardTitle>
-            <div className="flex shrink-0 items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+            <div className="flex shrink-0 items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
               <TrendingUp className="h-3 w-3 shrink-0" />
               Live
             </div>
@@ -566,7 +566,7 @@ export function DashboardPage() {
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-xs font-medium text-foreground">
                 <span className="truncate pr-2">Local Database</span>
-                <TrendingUp className="h-3 w-3 shrink-0 text-foreground" />
+                <TrendingUp className="h-3 w-3 shrink-0 text-primary" />
               </div>
               <p className="truncate text-xs text-muted-foreground">
                 Total registered mothers
@@ -575,12 +575,12 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card text-card-foreground shadow-xs">
+        <Card className="border-border bg-card text-card-foreground shadow-xs transition-colors hover:border-primary/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="truncate pr-2 text-xs font-normal text-muted-foreground">
               Appointments Today
             </CardTitle>
-            <div className="flex shrink-0 items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+            <div className="flex shrink-0 items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
               <Clock className="h-3 w-3 shrink-0" />
               Ongoing
             </div>
@@ -592,7 +592,7 @@ export function DashboardPage() {
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-xs font-medium text-foreground">
                 <span className="truncate pr-2">Total for today</span>
-                <Clock className="h-3 w-3 shrink-0 text-foreground" />
+                <Clock className="h-3 w-3 shrink-0 text-primary" />
               </div>
               <p className="truncate text-xs text-muted-foreground">
                 Scheduled in your queue
@@ -601,12 +601,12 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card text-card-foreground shadow-xs">
+        <Card className="border-border bg-card text-card-foreground shadow-xs transition-colors hover:border-red-500/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="truncate pr-2 text-xs font-normal text-muted-foreground">
               High-Risk Profiles
             </CardTitle>
-            <div className="flex shrink-0 items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+            <div className="flex shrink-0 items-center gap-1 rounded-md border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 text-[10px] font-medium text-red-500">
               <Activity className="h-3 w-3 shrink-0" />
               Alert
             </div>
@@ -629,12 +629,12 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card text-card-foreground shadow-xs">
+        <Card className="border-border bg-card text-card-foreground shadow-xs transition-colors hover:border-primary/30">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="truncate pr-2 text-xs font-normal text-muted-foreground">
               Pending Syncs
             </CardTitle>
-            <div className="flex shrink-0 items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+            <div className="flex shrink-0 items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
               <RefreshCw
                 className={`h-3 w-3 shrink-0 ${pendingSyncsCount > 0 ? "animate-spin-slow" : ""}`}
               />
@@ -648,7 +648,7 @@ export function DashboardPage() {
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-xs font-medium text-foreground">
                 <span className="truncate pr-2">Local offline edits</span>
-                <RefreshCw className="h-3 w-3 shrink-0 text-foreground" />
+                <RefreshCw className="h-3 w-3 shrink-0 text-primary" />
               </div>
               <p className="truncate text-xs text-muted-foreground">
                 Waiting for network connection
@@ -668,25 +668,25 @@ export function DashboardPage() {
             <TabsList className="no-scrollbar h-9 w-full justify-start gap-1 overflow-x-auto rounded-lg border border-border bg-muted p-1 *:flex-1 md:w-auto md:*:flex-initial">
               <TabsTrigger
                 value="today"
-                className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+                className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-xs"
               >
                 Today's Queue ({todayAppointments.length})
               </TabsTrigger>
               <TabsTrigger
                 value="upcoming"
-                className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+                className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-xs"
               >
                 Upcoming ({upcomingAppointments.length})
               </TabsTrigger>
               <TabsTrigger
                 value="completed"
-                className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+                className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-xs"
               >
                 Completed
               </TabsTrigger>
               <TabsTrigger
                 value="cancelled"
-                className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+                className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-xs"
               >
                 Cancelled
               </TabsTrigger>
@@ -696,7 +696,7 @@ export function DashboardPage() {
               <Button
                 onClick={handleExportCSV}
                 variant="outline"
-                className="hidden h-8 gap-2 border-border bg-card px-2 text-xs font-medium text-foreground hover:bg-muted md:flex"
+                className="hidden h-8 gap-2 border-border bg-card px-2 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground md:flex"
               >
                 <Download className="h-3.5 w-3.5" />
                 Export
@@ -704,13 +704,13 @@ export function DashboardPage() {
               <Button
                 onClick={handleRefresh}
                 variant="outline"
-                className="hidden h-8 gap-2 border-border bg-card px-2 text-xs font-medium text-foreground hover:bg-muted md:flex"
+                className="hidden h-8 gap-2 border-border bg-card px-2 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground md:flex"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Refresh
               </Button>
               <CreateAppointmentModal onSuccess={handleRefresh}>
-                <Button className="h-8 w-full gap-2 bg-primary px-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 md:w-auto">
+                <Button className="h-8 w-full gap-2 bg-primary px-2 text-xs font-medium text-primary-foreground shadow-sm shadow-primary/25 hover:bg-primary/90 md:w-auto">
                   <Plus className="h-3.5 w-3.5" />
                   New Appointment
                 </Button>

@@ -179,7 +179,7 @@ export function AppointmentListPage() {
   const currentUserId = currentUser?.user_id || currentUser?.id
 
   const formattedAppointments = useMemo(() => {
-    return appointmentList
+    const mapped = appointmentList
       .filter((item: any) => {
         if (isAdmin || !currentUserId) return true
 
@@ -301,6 +301,30 @@ export function AppointmentListPage() {
         date: dateStr,
         rawDate: item.appointment_date,
       }
+    })
+
+    return [...mapped].sort((a, b) => {
+      const getPriority = (status: string) => {
+        const s = (status || "").toLowerCase().trim()
+        if (s === "confirmed" || s === "scheduled" || s === "pending" || s === "active") return 1
+        if (s === "completed") return 2
+        if (s === "cancelled" || s === "missed" || s === "rejected") return 3
+        return 1
+      }
+
+      const pA = getPriority(a.status)
+      const pB = getPriority(b.status)
+
+      if (pA !== pB) return pA - pB
+
+      const dateA = a.rawDate ? new Date(a.rawDate).getTime() : 0
+      const dateB = b.rawDate ? new Date(b.rawDate).getTime() : 0
+
+      if (dateA !== dateB) return dateA - dateB
+
+      const timeA = (a.raw?.appointment_time || "").toString()
+      const timeB = (b.raw?.appointment_time || "").toString()
+      return timeA.localeCompare(timeB)
     })
   }, [appointmentList, mothersMap])
 
