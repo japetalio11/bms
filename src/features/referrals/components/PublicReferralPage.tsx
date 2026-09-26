@@ -131,6 +131,46 @@ export interface SupplementItem {
   tablets_given_count?: number
 }
 
+export interface NewbornRecordItem {
+  newborn_id?: string
+  delivery_id?: string
+  sex: string
+  birth_weight_kg: number
+  status_at_birth: string
+  apgar_score: number
+}
+
+export interface PostpartumVisitItem {
+  postpartum_visit_id?: string
+  delivery_id?: string
+  visit_date: string
+  visit_number: number
+  weight_kg?: number
+  temperature_celsius?: number
+  pulse_rate_bpm?: number
+  bp_diastolic?: number
+  bp_systolic?: number
+  fundic_height_cm?: number
+  chief_complaint?: string
+  danger_signs_observed?: string
+  risk_level_assessed?: string
+  vitamin_a_given?: boolean
+  iron_supplement_given?: boolean
+}
+
+export interface DeliveryOutcomeItem {
+  delivery_id: string
+  pregnancy_id?: string
+  delivery_date: string
+  place_of_delivery: string
+  mode_of_delivery: string
+  duration_of_labor_hours?: number
+  blood_loss_ml?: number
+  delivery_complications?: string
+  newbornRecords?: NewbornRecordItem[]
+  postpartumVisits?: PostpartumVisitItem[]
+}
+
 export interface PublicReferralData {
   referral_id: string
   status: string
@@ -205,6 +245,7 @@ export interface PublicReferralData {
   lab_screenings?: LabScreeningItem[]
   supplements?: SupplementItem[]
   cdss_alerts?: Array<{ alert_id?: string; alert_type?: string; severity?: string; is_resolved?: boolean }>
+  delivery_outcomes?: DeliveryOutcomeItem[]
 }
 
 interface ParsedClinicalNotes {
@@ -606,6 +647,21 @@ export function PublicReferralPage() {
   const prenatalVisits = useMemo(() => data?.prenatal_visits || [], [data])
   const labScreenings = useMemo(() => data?.lab_screenings || [], [data])
   const supplements = useMemo(() => data?.supplements || [], [data])
+  const deliveryOutcomes = useMemo(() => data?.delivery_outcomes || [], [data])
+
+  const getApgarBadgeStyle = (score: number) => {
+    if (score >= 7)
+      return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+    if (score >= 4)
+      return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+    return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
+  }
+
+  const getApgarStatusText = (score: number) => {
+    if (score >= 7) return "Reassuring"
+    if (score >= 4) return "Moderately Depressed"
+    return "Critical"
+  }
 
   const parsedNotes = useMemo(
     () => parseReferralNotes(data?.reason, obstetric, patient),
@@ -1283,6 +1339,17 @@ export function PublicReferralPage() {
             </TabsTrigger>
 
             <TabsTrigger
+              value="deliveries"
+              className="shrink-0 gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-3.5 py-1 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border whitespace-nowrap"
+            >
+              <Baby className="h-3.5 w-3.5" />
+              <span>Delivery & Newborns</span>
+              <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-semibold text-primary">
+                {deliveryOutcomes.length}
+              </span>
+            </TabsTrigger>
+
+            <TabsTrigger
               value="coordination"
               className="shrink-0 gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-3.5 py-1 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border whitespace-nowrap"
             >
@@ -1436,6 +1503,52 @@ export function PublicReferralPage() {
                             Outcome: <span className="font-semibold text-foreground">{data.outcome}</span>
                           </p>
                         )}
+                      </div>
+                    )}
+
+                    {deliveryOutcomes.length > 0 && (
+                      <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-3.5 sm:p-4 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/10 pb-2">
+                          <div className="flex items-center gap-2">
+                            <Baby className="h-4 w-4 text-primary" />
+                            <span className="font-bold text-foreground">
+                              Delivery & Newborn Record Attached
+                            </span>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className="border-primary/30 bg-primary/10 text-[10px] font-semibold text-primary"
+                          >
+                            {deliveryOutcomes[0].mode_of_delivery || "Delivered"}
+                          </Badge>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs">
+                          <div>
+                            <span className="text-[10px] uppercase font-semibold text-muted-foreground block">
+                              Delivery Date & Place:
+                            </span>
+                            <span className="font-medium text-foreground">
+                              {new Date(deliveryOutcomes[0].delivery_date).toLocaleDateString()} • {deliveryOutcomes[0].place_of_delivery}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-semibold text-muted-foreground block">
+                              Infants:
+                            </span>
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              {deliveryOutcomes[0].newbornRecords && deliveryOutcomes[0].newbornRecords.length > 0 ? (
+                                deliveryOutcomes[0].newbornRecords.map((nb: NewbornRecordItem, nIdx: number) => (
+                                  <Badge key={nb.newborn_id || nIdx} variant="secondary" className="text-[10px]">
+                                    {nb.sex} ({nb.birth_weight_kg} kg) • APGAR {nb.apgar_score}/10
+                                  </Badge>
+                                ))
+                              ) : (
+                                <span className="text-muted-foreground">Record on file</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </CardContent>
@@ -2433,6 +2546,244 @@ export function PublicReferralPage() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* =============================================================== */}
+          {/* TAB 6: Delivery Outcomes & Newborn Profiles                     */}
+          {/* =============================================================== */}
+          <TabsContent value="deliveries" className="space-y-4">
+            {deliveryOutcomes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center shadow-xs">
+                <div className="mb-3 rounded-full bg-primary/10 p-3.5 text-primary">
+                  <Baby className="h-7 w-7" />
+                </div>
+                <h3 className="text-sm font-bold text-foreground">
+                  No Delivery or Infant Birth Records Logged
+                </h3>
+                <p className="mt-1.5 max-w-sm text-xs text-muted-foreground leading-relaxed">
+                  This patient transfer is currently in the active prenatal / monitoring phase. Once labor and birth outcomes are recorded, infant weights, APGAR scores, and postpartum recovery vitals will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {deliveryOutcomes.map((d: DeliveryOutcomeItem, idx: number) => {
+                  const linkedNewborns = d.newbornRecords || []
+                  const linkedPostpartum = d.postpartumVisits || []
+
+                  return (
+                    <Card
+                      key={d.delivery_id || idx}
+                      className="overflow-hidden border-border bg-card shadow-xs"
+                    >
+                      <CardHeader className="border-b border-border/60 bg-muted/20 p-4 sm:p-6 pb-3 sm:pb-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                              <Baby className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-sm sm:text-base font-bold text-foreground">
+                                Delivery Outcome {deliveryOutcomes.length > 1 ? `#${deliveryOutcomes.length - idx}` : ""}
+                              </CardTitle>
+                              <CardDescription className="text-xs">
+                                Registered on {new Date(d.delivery_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                              </CardDescription>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge variant="outline" className="border-primary/30 bg-primary/5 text-xs font-semibold text-primary">
+                              Mode: {d.mode_of_delivery || "NSVD"}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs font-medium">
+                              {d.place_of_delivery || "Health Facility"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="p-4 sm:p-6 space-y-5">
+                        {/* Maternal Labor & Delivery Metrics Grid */}
+                        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 rounded-xl border border-border bg-muted/30 p-3 sm:p-4 text-xs sm:grid-cols-4">
+                          <div>
+                            <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Place of Delivery
+                            </span>
+                            <span className="mt-0.5 font-semibold text-foreground truncate block">
+                              {d.place_of_delivery || "Hospital / RHU"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Labor Duration
+                            </span>
+                            <span className="mt-0.5 font-semibold text-foreground block">
+                              {d.duration_of_labor_hours ? `${d.duration_of_labor_hours} hrs` : "N/A"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Estimated Blood Loss
+                            </span>
+                            <span className="mt-0.5 font-mono font-semibold text-foreground block">
+                              {d.blood_loss_ml ? `${d.blood_loss_ml} mL` : "Normal"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Complications
+                            </span>
+                            <span className={`mt-0.5 font-medium truncate block ${d.delivery_complications && d.delivery_complications !== "None" ? "text-red-500 font-semibold" : "text-foreground"}`}>
+                              {d.delivery_complications || "None reported"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Newborn Infant Profiles */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            <Baby className="h-3.5 w-3.5 text-primary" />
+                            <span>Infant Birth Records ({linkedNewborns.length})</span>
+                          </div>
+
+                          {linkedNewborns.length === 0 ? (
+                            <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                              No newborn infant records attached.
+                            </p>
+                          ) : (
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                              {linkedNewborns.map((nb: NewbornRecordItem, nIdx: number) => (
+                                <div
+                                  key={nb.newborn_id || nIdx}
+                                  className="space-y-3 rounded-xl border border-border bg-card p-3.5 shadow-xs"
+                                >
+                                  <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                                        {nb.sex === "Female" ? "♀" : "♂"}
+                                      </div>
+                                      <div>
+                                        <span className="text-xs font-bold text-foreground">
+                                          {nb.sex} Infant {linkedNewborns.length > 1 ? `#${nIdx + 1}` : ""}
+                                        </span>
+                                        <span className="block text-[10px] text-muted-foreground">
+                                          Status: {nb.status_at_birth || "Alive"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[10px] font-semibold ${getApgarBadgeStyle(Number(nb.apgar_score || 0))}`}
+                                    >
+                                      APGAR {nb.apgar_score} / 10
+                                    </Badge>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-2 text-xs">
+                                    <div className="flex flex-col gap-0.5 rounded-lg bg-muted/40 p-2">
+                                      <span className="text-[10px] font-medium uppercase text-muted-foreground">
+                                        Birth Weight
+                                      </span>
+                                      <span className="flex items-center gap-1 font-semibold text-foreground">
+                                        <Scale className="h-3 w-3 text-primary" />
+                                        {nb.birth_weight_kg} kg
+                                      </span>
+                                    </div>
+                                    <div className="flex flex-col gap-0.5 rounded-lg bg-muted/40 p-2">
+                                      <span className="text-[10px] font-medium uppercase text-muted-foreground">
+                                        Transition
+                                      </span>
+                                      <span className="font-semibold text-foreground truncate">
+                                        {getApgarStatusText(Number(nb.apgar_score || 0))}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Postpartum Care Follow-ups */}
+                        {linkedPostpartum.length > 0 && (
+                          <div className="space-y-3 pt-2">
+                            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                              <Activity className="h-3.5 w-3.5 text-primary" />
+                              <span>Postpartum Recovery Visits ({linkedPostpartum.length})</span>
+                            </div>
+
+                            <div className="w-full overflow-x-auto scrollbar-thin">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow className="border-border hover:bg-transparent">
+                                    <TableHead className="text-xs font-semibold">Visit Date / #</TableHead>
+                                    <TableHead className="text-xs font-semibold">Blood Pressure</TableHead>
+                                    <TableHead className="text-xs font-semibold">Temp / Pulse</TableHead>
+                                    <TableHead className="text-xs font-semibold">Weight / Fundic</TableHead>
+                                    <TableHead className="text-xs font-semibold">Supplements</TableHead>
+                                    <TableHead className="text-xs font-semibold">Risk / Complaints</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {linkedPostpartum.map((pv: PostpartumVisitItem, pIdx: number) => (
+                                    <TableRow key={pv.postpartum_visit_id || pIdx} className="border-border">
+                                      <TableCell className="whitespace-nowrap text-xs font-medium">
+                                        <span className="font-bold text-foreground">Visit #{pv.visit_number || pIdx + 1}</span>
+                                        <span className="block text-[11px] text-muted-foreground">
+                                          {new Date(pv.visit_date).toLocaleDateString()}
+                                        </span>
+                                      </TableCell>
+                                      <TableCell className="font-mono text-xs font-bold">
+                                        {pv.bp_systolic}/{pv.bp_diastolic}
+                                      </TableCell>
+                                      <TableCell className="font-mono text-xs">
+                                        {pv.temperature_celsius}°C • {pv.pulse_rate_bpm} bpm
+                                      </TableCell>
+                                      <TableCell className="font-mono text-xs">
+                                        {pv.weight_kg} kg{pv.fundic_height_cm ? ` • ${pv.fundic_height_cm} cm` : ""}
+                                      </TableCell>
+                                      <TableCell className="text-xs">
+                                        <div className="flex flex-wrap gap-1">
+                                          {pv.vitamin_a_given && (
+                                            <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-[9px] text-emerald-600 dark:text-emerald-400">
+                                              Vit A
+                                            </Badge>
+                                          )}
+                                          {pv.iron_supplement_given && (
+                                            <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[9px] text-primary">
+                                              Iron
+                                            </Badge>
+                                          )}
+                                          {!pv.vitamin_a_given && !pv.iron_supplement_given && (
+                                            <span className="text-[11px] text-muted-foreground">None</span>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="text-xs">
+                                        <Badge
+                                          variant="outline"
+                                          className={`text-[10px] ${(pv.risk_level_assessed || "").toLowerCase().includes("high") ? "border-red-500/30 bg-red-500/10 text-red-500" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"}`}
+                                        >
+                                          {pv.risk_level_assessed || "Low Risk"}
+                                        </Badge>
+                                        {pv.chief_complaint && (
+                                          <span className="mt-1 block line-clamp-1 text-[10px] text-muted-foreground">
+                                            {pv.chief_complaint}
+                                          </span>
+                                        )}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>
