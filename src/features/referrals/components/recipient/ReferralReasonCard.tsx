@@ -12,18 +12,26 @@ import {
   Send,
   Calendar,
   UserCheck,
+  AlertTriangle,
+  Printer,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import type { PublicReferralData, ParsedReferralDetails } from "./referralTypes"
-import { determineReferralUrgency, formatStatusConfig } from "./referralClinicalUtils"
+import {
+  determineReferralUrgency,
+  formatStatusConfig,
+  calculateObstetricIndices,
+  checkClinicalConsistency,
+} from "./referralClinicalUtils"
 
 interface ReferralReasonCardProps {
   data: PublicReferralData
   parsed: ParsedReferralDetails
   resolvedRiskLevel: string
   onOpenClarificationModal: () => void
+  onPrint?: () => void
 }
 
 export function ReferralReasonCard({
@@ -31,6 +39,7 @@ export function ReferralReasonCard({
   parsed,
   resolvedRiskLevel,
   onOpenClarificationModal,
+  onPrint,
 }: ReferralReasonCardProps) {
   const urgency = determineReferralUrgency(
     resolvedRiskLevel,
@@ -39,6 +48,20 @@ export function ReferralReasonCard({
     data.obstetric_info?.latest_vitals
   )
   const statusConfig = formatStatusConfig(data.status)
+
+  const lmpEffective = data.obstetric_info?.lmp_date || parsed.lmpParsed
+  const obstetricMetrics = calculateObstetricIndices(
+    lmpEffective,
+    data.obstetric_info?.latest_vitals?.gestational_age_weeks || 0
+  )
+  const consistencyIssue = checkClinicalConsistency(
+    urgency.tier,
+    parsed,
+    data.obstetric_info,
+    data.cdss_alerts,
+    obstetricMetrics.gestationalWeeks,
+    data.obstetric_info?.latest_vitals?.fundic_height
+  )
 
   const referralDateFormatted = data.date_referred
     ? new Date(data.date_referred).toLocaleString("en-US", {
@@ -52,8 +75,7 @@ export function ReferralReasonCard({
     : "Date Unspecified"
 
   return (
-    <Card className="overflow-hidden border-2 border-border/90 bg-card shadow-sm transition-all">
-      {/* 1. Urgency & Triage Banner Strip */}
+    <Card className="overflow-hidden border border-border/80 bg-card shadow-xs transition-all">
       <div className={`flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5 sm:px-6 ${urgency.containerClass}`}>
         <div className="flex flex-wrap items-center gap-2">
           <Badge className={`px-2.5 py-0.5 text-[10px] sm:text-xs tracking-wider uppercase ${urgency.badgeClass}`}>
@@ -62,6 +84,16 @@ export function ReferralReasonCard({
           <span className="text-xs sm:text-sm font-bold tracking-tight">
             {urgency.title}
           </span>
+
+          {consistencyIssue && (
+            <span
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium text-amber-800 dark:text-amber-300 border-b border-dashed border-amber-600/70 dark:border-amber-400/70 cursor-help"
+              title={consistencyIssue.message}
+            >
+              <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>Verify ({consistencyIssue.shortLabel})</span>
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2 text-[11px] sm:text-xs">
@@ -69,18 +101,28 @@ export function ReferralReasonCard({
             <Clock className="h-3.5 w-3.5" />
             {referralDateFormatted}
           </span>
-          <Badge variant="outline" className="font-mono text-[10px] font-bold border-foreground/20">
+          <Badge variant="outline" className="font-mono text-[10px] font-semibold border-border/80 text-muted-foreground bg-transparent">
             REF #{data.referral_id.slice(-8).toUpperCase()}
           </Badge>
+          {onPrint && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onPrint}
+              className="h-7 px-2 text-[11px] font-semibold gap-1 text-foreground border-border hover:bg-muted"
+              title="Print clinical record or save as PDF"
+            >
+              <Printer className="h-3 w-3 text-primary" />
+              <span className="hidden sm:inline">Print / PDF</span>
+            </Button>
+          )}
         </div>
       </div>
 
       <CardContent className="p-4 sm:p-6 space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-          {/* Left Column (2 Cols): Reason, Concern & Requested Action */}
           <div className="space-y-4 lg:col-span-2">
             
-            {/* Primary Reason for Referral */}
             <div className="space-y-1.5">
               <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 <AlertCircle className="h-3.5 w-3.5 text-primary" />
@@ -99,9 +141,7 @@ export function ReferralReasonCard({
               </div>
             </div>
 
-            {/* Sub-grid: Clinical Concern & Requested Action */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Box 1: Documented Clinical Concern */}
               <div className="rounded-xl border border-border/80 bg-muted/30 p-3 sm:p-3.5 space-y-1">
                 <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Clinical Concern
@@ -114,7 +154,6 @@ export function ReferralReasonCard({
                 </p>
               </div>
 
-              {/* Box 2: Requested Action from Recipient */}
               <div className="rounded-xl border border-border/80 bg-muted/30 p-3 sm:p-3.5 space-y-1">
                 <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                   <ArrowRightCircle className="h-3 w-3 text-primary" />
@@ -129,21 +168,19 @@ export function ReferralReasonCard({
               </div>
             </div>
 
-            {/* Clinical Advice / Next Step Guidance */}
             <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground border border-border/60">
               <span className="font-bold text-foreground">Triage Protocol:</span>
               <span>{urgency.actionAdvice}</span>
             </div>
           </div>
 
-          {/* Right Column (1 Col): Referring Facility & Provider Direct Contact */}
           <div className="rounded-xl border border-border bg-card p-4 space-y-3.5 shadow-2xs">
             <div className="flex items-center justify-between border-b border-border/80 pb-2">
               <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                 <Building2 className="h-3.5 w-3.5 text-primary" />
                 Referring Facility (Origin)
               </span>
-              <Badge variant="outline" className="text-[9px] font-bold uppercase border-primary/30 text-primary">
+              <Badge variant="outline" className="text-[9px] font-medium uppercase border-border/80 text-muted-foreground bg-transparent">
                 Sending Clinic
               </Badge>
             </div>
@@ -180,7 +217,7 @@ export function ReferralReasonCard({
               ) : (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Phone className="h-3.5 w-3.5 shrink-0 opacity-40" />
-                  <span>No direct telephone logged</span>
+                  <span>No phone number listed</span>
                 </div>
               )}
 

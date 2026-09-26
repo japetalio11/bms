@@ -11,6 +11,7 @@ import {
   Sun,
   Moon,
   CheckCircle2,
+  Printer,
 } from "lucide-react"
 import { extractRiskLevel } from "@/lib/riskUtils"
 import { Button } from "@/components/ui/button"
@@ -22,9 +23,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-
-// Recipient Sub-components & Utilities
 import type {
   PublicReferralData,
   DocumentModalData,
@@ -45,6 +43,7 @@ import {
   ClarificationModal,
   DocumentLightbox,
 } from "./recipient/RecipientActionModals"
+import { ReferralPrintDocument } from "./recipient/ReferralPrintDocument"
 
 export function PublicReferralPage() {
   const { id } = useParams<{ id: string }>()
@@ -58,10 +57,8 @@ export function PublicReferralPage() {
   const [pinError, setPinError] = useState("")
   const [generalError, setGeneralError] = useState("")
 
-  // Active secondary tab
   const [activeTab, setActiveTab] = useState("narrative")
 
-  // Triage Action State
   const [isRespondModalOpen, setIsRespondModalOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<
     "acknowledged" | "accepted" | "in_progress" | "completed" | "rejected"
@@ -71,7 +68,6 @@ export function PublicReferralPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [actionSuccessMsg, setActionSuccessMsg] = useState("")
 
-  // Clarification / Direct Message Facility State
   const [isClarificationModalOpen, setIsClarificationModalOpen] = useState(false)
   const [clarificationTopic, setClarificationTopic] = useState("Diagnostic & Ultrasound Records")
   const [clarificationMessage, setClarificationMessage] = useState("")
@@ -79,11 +75,9 @@ export function PublicReferralPage() {
   const [clarificationLoading, setClarificationLoading] = useState(false)
   const [clarificationSentSuccess, setClarificationSentSuccess] = useState(false)
 
-  // Fullscreen Document / Lightbox State
   const [documentModal, setDocumentModal] = useState<DocumentModalData | null>(null)
   const [zoomScale, setZoomScale] = useState(1)
 
-  // Link copy feedback notice
   const [copyNotice, setCopyNotice] = useState("")
 
   const openDocument = (doc: DocumentModalData) => {
@@ -91,7 +85,6 @@ export function PublicReferralPage() {
     setDocumentModal(doc)
   }
 
-  // Fetch Referral Data
   const fetchReferral = useCallback(async (pinToUse?: string) => {
     if (!id) return
     setLoading(true)
@@ -167,7 +160,6 @@ export function PublicReferralPage() {
     }
   }, [id, pinFromUrl])
 
-  // Handle PIN Form Submission
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!enteredPin.trim()) {
@@ -178,7 +170,6 @@ export function PublicReferralPage() {
     fetchReferral(enteredPin.trim())
   }
 
-  // Handle Referral Status Update
   const handleActionSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!id) return
@@ -210,7 +201,6 @@ export function PublicReferralPage() {
     }
   }
 
-  // Handle Sending Clarification to Referring Facility
   const handleSendClarification = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!clarificationMessage.trim() || !id) return
@@ -232,7 +222,6 @@ export function PublicReferralPage() {
         setClarificationMessage("")
       }, 2000)
 
-      // Refresh data so audit notes show the inquiry
       fetchReferral(enteredPin || pinFromUrl)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
@@ -255,7 +244,49 @@ export function PublicReferralPage() {
     setTheme(theme === "dark" ? "light" : "dark")
   }
 
-  // Process Clinical Data
+  useEffect(() => {
+    if (data?.patient?.name) {
+      const refCode = data.referral_id ? data.referral_id.slice(-8).toUpperCase() : ""
+      document.title = `Referral ${refCode ? `REF-${refCode} ` : ""}- ${data.patient.name} | BMS`
+    }
+  }, [data])
+
+  const handlePrint = useCallback(() => {
+    if (!data) {
+      window.print()
+      return
+    }
+
+    const rawPatientName = data.patient?.name || "Patient"
+    const sanitizedName = rawPatientName
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9_-]/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "") || "Patient"
+
+    const refCode = data.referral_id ? data.referral_id.slice(-8).toUpperCase() : "RECORD"
+    const dateStr = data.date_referred
+      ? new Date(data.date_referred).toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0]
+
+    const pdfFileName = `Referral_REF-${refCode}_${sanitizedName}_${dateStr}`
+    const originalTitle = document.title
+    document.title = pdfFileName
+
+    window.print()
+
+    const restoreTitle = () => {
+      document.title = originalTitle
+      window.removeEventListener("afterprint", restoreTitle)
+    }
+    window.addEventListener("afterprint", restoreTitle)
+
+    setTimeout(() => {
+      document.title = originalTitle
+    }, 2500)
+  }, [data])
+
   const patient = data?.patient
   const obstetric = data?.obstetric_info
   const prenatalVisits = useMemo(() => data?.prenatal_visits || [], [data])
@@ -295,10 +326,6 @@ export function PublicReferralPage() {
 
     return assessed || obstetric?.latest_vitals?.risk_level || "Low Risk"
   }, [patient, obstetric, prenatalVisits, parsedNotes])
-
-  // -------------------------------------------------------------------------
-  // Render: Security PIN Protection
-  // -------------------------------------------------------------------------
 
   if (data?.isPinRequired && !data.isPinVerified) {
     return (
@@ -393,10 +420,6 @@ export function PublicReferralPage() {
     )
   }
 
-  // -------------------------------------------------------------------------
-  // Render: General Error State
-  // -------------------------------------------------------------------------
-
   if (generalError) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground">
@@ -420,10 +443,6 @@ export function PublicReferralPage() {
     )
   }
 
-  // -------------------------------------------------------------------------
-  // Render: Loading State
-  // -------------------------------------------------------------------------
-
   if (loading && !data) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground">
@@ -443,132 +462,152 @@ export function PublicReferralPage() {
   const isTerminal = normStatus === "completed" || normStatus === "rejected" || normStatus === "cancelled"
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-background font-sans text-foreground transition-colors">
-      {/* 1. Sticky Top Action & Triage Bar */}
-      <ReferralTriageHeader
-        data={data}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        onCopyLink={handleCopyLink}
-        copyNotice={copyNotice}
-        onOpenActionModal={(action) => {
-          setSelectedAction(action)
-          setIsRespondModalOpen(true)
-        }}
-        onOpenClarificationModal={() => setIsClarificationModalOpen(true)}
-        onOpenFormTab={() => setActiveTab("form")}
-      />
+    <>
+      <div className="print-only">
+        <ReferralPrintDocument data={data} parsed={parsedNotes} />
+      </div>
 
-      {/* Action Success Alert Toast Banner */}
-      {actionSuccessMsg && (
-        <div className="sticky top-14 sm:top-16 z-30 flex items-center justify-center gap-2 border-b border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-center text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          {actionSuccessMsg}
-        </div>
-      )}
-
-      {/* 2. Main Clinical Handoff Container */}
-      <main className="mx-auto w-full max-w-7xl flex-1 space-y-4 sm:space-y-6 p-3 sm:p-6 lg:p-8 pb-28 md:pb-12">
-        
-        {/* Section 1: SITUATION (Why Was This Mother Referred?) */}
-        <ReferralReasonCard
+      <div className="screen-only relative flex min-h-screen flex-col bg-background font-sans text-foreground transition-colors">
+        <ReferralTriageHeader
           data={data}
-          parsed={parsedNotes}
-          resolvedRiskLevel={resolvedRiskLevel}
-          onOpenClarificationModal={() => setIsClarificationModalOpen(true)}
-        />
-
-        {/* Section 2: BACKGROUND (Patient Identity & Obstetric Matrix) */}
-        <MaternalSnapshotCard
-          patient={data.patient}
-          obstetric={data.obstetric_info}
-          parsed={parsedNotes}
-          onPhotoClick={(photoUrl, name) => {
-            openDocument({
-              title: `${name} — Identification Photo`,
-              fileUrl: photoUrl,
-              file_url: photoUrl,
-              date: new Date().toISOString(),
-              type: "Clinical Photo ID",
-              remarks: "Patient identification photograph from official maternal health record.",
-            })
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onCopyLink={handleCopyLink}
+          copyNotice={copyNotice}
+          onOpenActionModal={(action) => {
+            setSelectedAction(action)
+            setIsRespondModalOpen(true)
           }}
+          onOpenClarificationModal={() => setIsClarificationModalOpen(true)}
+          onOpenFormTab={() => setActiveTab("form")}
+          onPrint={handlePrint}
         />
 
-        {/* Section 3: CLINICAL ALERTS & RISK FACTORS */}
-        <ClinicalAlertsBanner
-          data={data}
-          parsed={parsedNotes}
-        />
+        {actionSuccessMsg && (
+          <div className="sticky top-14 sm:top-16 z-30 flex items-center justify-center gap-2 border-b border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-center text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            {actionSuccessMsg}
+          </div>
+        )}
 
-        {/* Section 4: ASSESSMENT (Recent Clinical Snapshot) */}
-        <RecentClinicalSnapshot
-          data={data}
-          onOpenDocument={openDocument}
-          onOpenVisitsTab={() => setActiveTab("visits")}
-          onOpenLabsTab={() => setActiveTab("labs")}
-          onOpenMedsTab={() => setActiveTab("supplements")}
-        />
+        <main className="mx-auto w-full max-w-7xl flex-1 space-y-4 sm:space-y-6 p-3 sm:p-6 lg:p-8 pb-28 md:pb-12">
+          <ReferralReasonCard
+            data={data}
+            parsed={parsedNotes}
+            resolvedRiskLevel={resolvedRiskLevel}
+            onOpenClarificationModal={() => setIsClarificationModalOpen(true)}
+            onPrint={handlePrint}
+          />
 
-        {/* Section 5: LONGITUDINAL RECORDS & AUDIT HUB */}
-        <ClinicalTabsSection
-          data={data}
-          parsed={parsedNotes}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onOpenDocument={openDocument}
-        />
+          <MaternalSnapshotCard
+            patient={data.patient}
+            obstetric={data.obstetric_info}
+            parsed={parsedNotes}
+            onPhotoClick={(photoUrl, name) => {
+              openDocument({
+                title: `${name} — Identification Photo`,
+                fileUrl: photoUrl,
+                file_url: photoUrl,
+                date: new Date().toISOString(),
+                type: "Clinical Photo ID",
+                remarks: "Patient identification photograph from official maternal health record.",
+              })
+            }}
+          />
 
-      </main>
+          <ClinicalAlertsBanner
+            data={data}
+            parsed={parsedNotes}
+          />
 
-      {/* 3. Sticky Bottom Action Bar (Mobile Screens `< md`) */}
-      {!isTerminal && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border p-2.5 px-3 shadow-xl flex items-center gap-2 pb-[max(0.65rem,env(safe-area-inset-bottom))]">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsClarificationModalOpen(true)}
-            className="h-10 px-3 text-xs font-semibold border-primary/30 text-primary rounded-xl"
-            title="Message Facility"
-          >
-            Inquire
-          </Button>
+          <RecentClinicalSnapshot
+            data={data}
+            onOpenDocument={openDocument}
+            onOpenVisitsTab={() => setActiveTab("visits")}
+            onOpenLabsTab={() => setActiveTab("labs")}
+            onOpenMedsTab={() => setActiveTab("supplements")}
+          />
 
-          {normStatus === "pending" && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSelectedAction("rejected")
-                  setIsRespondModalOpen(true)
-                }}
-                className="h-10 px-3 text-xs font-semibold text-red-500 hover:bg-red-500/10 border-red-500/20 rounded-xl"
-              >
-                Decline
-              </Button>
-              <Button
-                onClick={() => {
-                  setSelectedAction("accepted")
-                  setIsRespondModalOpen(true)
-                }}
-                className="h-10 flex-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm rounded-xl"
-              >
-                Accept Transfer
-              </Button>
-            </>
-          )}
+          <ClinicalTabsSection
+            data={data}
+            parsed={parsedNotes}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onOpenDocument={openDocument}
+            onPrint={handlePrint}
+          />
+        </main>
 
-          {normStatus === "accepted" && (
-            <div className="flex-1 flex gap-2">
-              <Button
-                onClick={() => {
-                  setSelectedAction("in_progress")
-                  setIsRespondModalOpen(true)
-                }}
-                className="h-10 flex-1 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl"
-              >
-                Patient Arrived
-              </Button>
+        {!isTerminal && (
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-md border-t border-border p-2.5 px-3 shadow-xl flex items-center gap-2 pb-[max(0.65rem,env(safe-area-inset-bottom))]">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsClarificationModalOpen(true)}
+              className="h-10 px-3 text-xs font-semibold border-primary/30 text-primary rounded-xl"
+              title="Message Facility"
+            >
+              Inquire
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrint}
+              className="h-10 px-2.5 text-xs font-semibold border-border text-foreground hover:bg-muted rounded-xl shrink-0"
+              title="Print or Save Medical Record as PDF"
+            >
+              <Printer className="h-4 w-4" />
+            </Button>
+
+            {normStatus === "pending" && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedAction("rejected")
+                    setIsRespondModalOpen(true)
+                  }}
+                  className="h-10 px-3 text-xs font-semibold text-red-500 hover:bg-red-500/10 border-red-500/20 rounded-xl"
+                >
+                  Decline
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSelectedAction("accepted")
+                    setIsRespondModalOpen(true)
+                  }}
+                  className="h-10 flex-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm rounded-xl"
+                >
+                  Accept Transfer
+                </Button>
+              </>
+            )}
+
+            {normStatus === "accepted" && (
+              <div className="flex-1 flex gap-2">
+                <Button
+                  onClick={() => {
+                    setSelectedAction("in_progress")
+                    setIsRespondModalOpen(true)
+                  }}
+                  className="h-10 flex-1 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl"
+                >
+                  Patient Arrived
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSelectedAction("completed")
+                    setIsRespondModalOpen(true)
+                  }}
+                  className="h-10 flex-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl"
+                >
+                  Complete
+                </Button>
+              </div>
+            )}
+
+            {normStatus === "in_progress" && (
               <Button
                 onClick={() => {
                   setSelectedAction("completed")
@@ -576,68 +615,55 @@ export function PublicReferralPage() {
                 }}
                 className="h-10 flex-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl"
               >
-                Complete
+                Complete Care Handover
               </Button>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {normStatus === "in_progress" && (
-            <Button
-              onClick={() => {
-                setSelectedAction("completed")
-                setIsRespondModalOpen(true)
-              }}
-              className="h-10 flex-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl"
-            >
-              Complete Care Handover
-            </Button>
-          )}
-        </div>
-      )}
+        <TriageResponseModal
+          open={isRespondModalOpen}
+          onOpenChange={setIsRespondModalOpen}
+          data={data}
+          selectedAction={selectedAction}
+          onSelectAction={setSelectedAction}
+          responseNotes={responseNotes}
+          onResponseNotesChange={setResponseNotes}
+          outcomeNotes={outcomeNotes}
+          onOutcomeNotesChange={setOutcomeNotes}
+          onSubmit={handleActionSubmit}
+          loading={actionLoading}
+        />
 
-      {/* 4. Interactive Modals Suite */}
-      <TriageResponseModal
-        open={isRespondModalOpen}
-        onOpenChange={setIsRespondModalOpen}
-        data={data}
-        selectedAction={selectedAction}
-        onSelectAction={setSelectedAction}
-        responseNotes={responseNotes}
-        onResponseNotesChange={setResponseNotes}
-        outcomeNotes={outcomeNotes}
-        onOutcomeNotesChange={setOutcomeNotes}
-        onSubmit={handleActionSubmit}
-        loading={actionLoading}
-      />
+        <ClarificationModal
+          open={isClarificationModalOpen}
+          onOpenChange={setIsClarificationModalOpen}
+          facilityName={data.referring_facility.name}
+          facilityContact={data.referring_facility.contact}
+          facilityEmail={data.referring_facility.email}
+          topic={clarificationTopic}
+          onTopicChange={setClarificationTopic}
+          priority={clarificationPriority}
+          onPriorityChange={setClarificationPriority}
+          message={clarificationMessage}
+          onMessageChange={setClarificationMessage}
+          onSubmit={handleSendClarification}
+          loading={clarificationLoading}
+          sentSuccess={clarificationSentSuccess}
+        />
 
-      <ClarificationModal
-        open={isClarificationModalOpen}
-        onOpenChange={setIsClarificationModalOpen}
-        facilityName={data.referring_facility.name}
-        facilityContact={data.referring_facility.contact}
-        facilityEmail={data.referring_facility.email}
-        topic={clarificationTopic}
-        onTopicChange={setClarificationTopic}
-        priority={clarificationPriority}
-        onPriorityChange={setClarificationPriority}
-        message={clarificationMessage}
-        onMessageChange={setClarificationMessage}
-        onSubmit={handleSendClarification}
-        loading={clarificationLoading}
-        sentSuccess={clarificationSentSuccess}
-      />
-
-      <DocumentLightbox
-        documentModal={documentModal}
-        onClose={() => setDocumentModal(null)}
-        zoomScale={zoomScale}
-        onZoomIn={() => setZoomScale((z) => Math.min(3.0, Number((z + 0.2).toFixed(1))))}
-        onZoomOut={() => setZoomScale((z) => Math.max(0.4, Number((z - 0.2).toFixed(1))))}
-        onZoomReset={() => setZoomScale(1)}
-        patientName={patient?.name}
-        facilityName={data.referring_facility.name}
-      />
-    </div>
+        <DocumentLightbox
+          documentModal={documentModal}
+          onClose={() => setDocumentModal(null)}
+          zoomScale={zoomScale}
+          onZoomIn={() => setZoomScale((z) => Math.min(3.0, Number((z + 0.2).toFixed(1))))}
+          onZoomOut={() => setZoomScale((z) => Math.max(0.4, Number((z - 0.2).toFixed(1))))}
+          onZoomReset={() => setZoomScale(1)}
+          patientName={patient?.name}
+          facilityName={data.referring_facility.name}
+        />
+      </div>
+    </>
   )
 }
 

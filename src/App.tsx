@@ -28,7 +28,7 @@ const PublicSharedJourneyPage = lazyWithRetry(() => import("@/features/mothers/c
 
 export function App() {
   return (
-    <ThemeProvider>
+    <ThemeProvider defaultTheme="light">
       <AuthProvider>
         <PinUnlockModal />
         <BrowserRouter>

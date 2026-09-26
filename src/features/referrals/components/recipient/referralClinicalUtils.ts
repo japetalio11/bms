@@ -7,10 +7,6 @@ import type {
   PrenatalVisitItem,
 } from "./referralTypes"
 
-// ---------------------------------------------------------------------------
-// 1. Clinical Reason & SBAR Parser
-// ---------------------------------------------------------------------------
-
 export function parseReferralDetails(
   rawReason: string | undefined,
   obstetric?: PublicReferralData["obstetric_info"],
@@ -32,7 +28,7 @@ export function parseReferralDetails(
       previousDelivery: fallbackPrevDel,
       coMorbidities: fallbackCoMorb,
       allergies: fallbackAllergies,
-      cleanNarrative: "No freeform narrative commentary provided by referring clinician.",
+      cleanNarrative: "No notes added.",
     }
   }
 
@@ -49,7 +45,6 @@ export function parseReferralDetails(
   const coMorbMatch = text.match(/Co-morbidities\s*[-:]\s*([^\n\r]+)/i)
   const allergyMatch = text.match(/Allergies\s*[-:]\s*([^\n\r]+)/i)
 
-  // Filter out boilerplate greetings and field repetition to extract true clinician notes
   const lines = text.split("\n")
   const filteredLines = lines.filter((line) => {
     const l = line.trim()
@@ -95,7 +90,6 @@ export function parseReferralDetails(
       ? filteredLines[0]
       : fallbackCC)
 
-  // Determine requested action
   let requestedAction = actionMatch?.[1]?.trim()
   if (!requestedAction) {
     const lowerCC = extractedCC.toLowerCase()
@@ -112,7 +106,6 @@ export function parseReferralDetails(
     }
   }
 
-  // Determine primary clinical concern
   let clinicalConcern = concernMatch?.[1]?.trim()
   if (!clinicalConcern) {
     if (obstetric?.latest_vitals?.danger_signs) {
@@ -132,18 +125,13 @@ export function parseReferralDetails(
     coMorbidities: coMorbMatch?.[1]?.trim() || fallbackCoMorb,
     allergies: allergyMatch?.[1]?.trim() || fallbackAllergies,
     cleanNarrative:
-      filteredLines.join("\n").trim() ||
-      "No additional freeform narrative commentary entered by referring provider.",
+      filteredLines.join("\n").trim() || "No notes added.",
     lmpParsed: lmpMatch?.[1]?.trim(),
     eddParsed: edcMatch?.[1]?.trim(),
     aogParsed: aogMatch?.[1]?.trim(),
     gravidaParaParsed: gpMatch?.[1]?.trim(),
   }
 }
-
-// ---------------------------------------------------------------------------
-// 2. Obstetric Calculations (Single Source of Truth)
-// ---------------------------------------------------------------------------
 
 export function calculateObstetricIndices(lmpDateStr?: string, fallbackWeeks = 0) {
   if (!lmpDateStr) {
@@ -183,7 +171,6 @@ export function calculateObstetricIndices(lmpDateStr?: string, fallbackWeeks = 0
     }
   }
 
-  // Naegele's rule for EDD: LMP + 280 days
   const eddDate = new Date(lmp.getTime() + 280 * 24 * 60 * 60 * 1000)
   const now = new Date()
   const diffTime = now.getTime() - lmp.getTime()
@@ -234,10 +221,6 @@ export function calculateObstetricIndices(lmpDateStr?: string, fallbackWeeks = 0
   }
 }
 
-// ---------------------------------------------------------------------------
-// 3. Clinical Vital Signs Classification
-// ---------------------------------------------------------------------------
-
 export function classifyVitals(
   bpString?: string,
   pulse?: number,
@@ -246,7 +229,7 @@ export function classifyVitals(
 ): VitalStatusDetails {
   let bpLevel: VitalStatusDetails["bpLevel"] = "unknown"
   let bpLabel = "Unspecified"
-  let bpBadgeClass = "bg-muted text-muted-foreground border-border/60"
+  let bpBadgeClass = "bg-transparent text-muted-foreground border-border/80"
 
   if (bpString) {
     const match = bpString.match(/(\d+)\s*\/\s*(\d+)/)
@@ -257,24 +240,23 @@ export function classifyVitals(
       if (sys >= 160 || dia >= 110) {
         bpLevel = "emergency"
         bpLabel = "Severe HTN / Hypertensive Emergency"
-        bpBadgeClass = "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
+        bpBadgeClass = "bg-red-600 text-white border-transparent font-bold shadow-xs"
       } else if (sys >= 140 || dia >= 90) {
         bpLevel = "warning"
         bpLabel = "Gestational HTN (Stage 1 / Alert)"
-        bpBadgeClass = "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+        bpBadgeClass = "bg-amber-500 text-amber-950 border-transparent font-bold shadow-xs"
       } else if (sys >= 120 || dia >= 80) {
         bpLevel = "elevated"
         bpLabel = "Elevated Pre-HTN"
-        bpBadgeClass = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+        bpBadgeClass = "bg-transparent text-foreground border-border/80 font-medium"
       } else {
         bpLevel = "normal"
         bpLabel = "Normotensive"
-        bpBadgeClass = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+        bpBadgeClass = "bg-transparent text-muted-foreground border-border/80 font-normal"
       }
     }
   }
 
-  // Pulse
   let pulseLevel: VitalStatusDetails["pulseLevel"] = "unknown"
   let pulseLabel = "Normal"
   if (pulse) {
@@ -290,7 +272,6 @@ export function classifyVitals(
     }
   }
 
-  // Temp
   let tempLevel: VitalStatusDetails["tempLevel"] = "unknown"
   let tempLabel = "Normal"
   const tempNum = typeof temp === "string" ? parseFloat(temp) : temp
@@ -307,7 +288,6 @@ export function classifyVitals(
     }
   }
 
-  // FHT
   let fhtLevel: VitalStatusDetails["fhtLevel"] = "unknown"
   let fhtLabel = "Normal"
   if (fht) {
@@ -336,10 +316,6 @@ export function classifyVitals(
   }
 }
 
-// ---------------------------------------------------------------------------
-// 4. Clinical Referral Urgency Determination
-// ---------------------------------------------------------------------------
-
 export type UrgencyTier = "emergency" | "urgent" | "priority" | "routine"
 
 export function determineReferralUrgency(
@@ -359,7 +335,6 @@ export function determineReferralUrgency(
   const ccLower = parsed.chiefComplaint.toLowerCase()
   const dangerLower = (vitals?.danger_signs || "").toLowerCase()
 
-  // Critical indicators
   const isEmergency =
     vitals?.bp?.includes("160") ||
     vitals?.bp?.includes("170") ||
@@ -381,7 +356,7 @@ export function determineReferralUrgency(
       title: "EMERGENCY CLINICAL TRANSFER",
       badgeText: "STAT / EMERGENCY",
       containerClass: "border-red-500/40 bg-red-500/10 text-red-950 dark:text-red-100",
-      badgeClass: "bg-red-600 text-white font-black animate-pulse",
+      badgeClass: "bg-red-600 text-white font-black animate-pulse shadow-xs",
       actionAdvice: "Immediate OB physician triage and emergency bed preparation required.",
     }
   }
@@ -400,7 +375,7 @@ export function determineReferralUrgency(
       title: "URGENT MATERNAL TRIAGE",
       badgeText: "URGENT TRIAGE",
       containerClass: "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100",
-      badgeClass: "bg-amber-600 text-white font-extrabold",
+      badgeClass: "bg-amber-500 text-amber-950 font-black shadow-xs",
       actionAdvice: "Requires prompt evaluation by attending obstetrician upon arrival.",
     }
   }
@@ -416,8 +391,8 @@ export function determineReferralUrgency(
       tier: "priority",
       title: "PRIORITY SPECIALIST CONSULTATION",
       badgeText: "PRIORITY CARE",
-      containerClass: "border-blue-500/30 bg-blue-500/10 text-blue-950 dark:text-blue-100",
-      badgeClass: "bg-blue-600 text-white font-bold",
+      containerClass: "border-border/80 bg-muted/30 text-foreground",
+      badgeClass: "bg-transparent text-foreground border-border/80 font-bold",
       actionAdvice: "Scheduled specialist assessment and diagnostic review recommended.",
     }
   }
@@ -426,15 +401,70 @@ export function determineReferralUrgency(
     tier: "routine",
     title: "ROUTINE CLINICAL REFERRAL",
     badgeText: "ROUTINE CONTINUITY",
-    containerClass: "border-emerald-500/30 bg-emerald-500/5 text-emerald-950 dark:text-emerald-100",
-    badgeClass: "bg-emerald-600 text-white font-semibold",
+    containerClass: "border-border/80 bg-muted/20 text-foreground",
+    badgeClass: "bg-transparent text-muted-foreground border-border/80 font-medium",
     actionAdvice: "Standard maternal outpatient continuity and prenatal follow-up.",
   }
 }
 
-// ---------------------------------------------------------------------------
-// 5. Compile Documented Clinical Alerts & Risk Factors
-// ---------------------------------------------------------------------------
+export interface ClinicalConsistencyIssue {
+  hasInconsistency: boolean
+  shortLabel: string
+  message: string
+  field: "aog" | "urgency" | "vitals"
+}
+
+export function checkClinicalConsistency(
+  urgencyTier: UrgencyTier,
+  parsed: ParsedReferralDetails,
+  obstetric?: PublicReferralData["obstetric_info"],
+  cdssAlerts: CDSSAlertItem[] = [],
+  gestationalWeeks = 0,
+  fundicHeightCm?: number | string
+): ClinicalConsistencyIssue | null {
+  const combinedText = [
+    parsed.chiefComplaint,
+    parsed.clinicalConcern,
+    parsed.requestedAction,
+    obstetric?.latest_vitals?.danger_signs,
+    ...cdssAlerts.map((a) => `${a.alert_type} ${a.alert_message}`),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  const isLatePregnancyComplication =
+    combinedText.includes("preeclampsia") ||
+    combinedText.includes("pre-eclampsia") ||
+    combinedText.includes("eclampsia") ||
+    combinedText.includes("gestational hypertension") ||
+    combinedText.includes("gestational htn") ||
+    combinedText.includes("severe htn") ||
+    combinedText.includes("hypertensive emergency") ||
+    combinedText.includes("abruptio") ||
+    combinedText.includes("placenta previa")
+
+  if (isLatePregnancyComplication && gestationalWeeks > 0 && gestationalWeeks < 20) {
+    return {
+      hasInconsistency: true,
+      shortLabel: `Check AOG (${gestationalWeeks}w) vs. Condition`,
+      message: `Hypertensive disorders and preeclampsia typically manifest at ≥20 weeks AOG. Gestational age is shown as ${gestationalWeeks}w. Check records to confirm date of conception or LMP.`,
+      field: "aog",
+    }
+  }
+
+  const fundicNum = typeof fundicHeightCm === "string" ? parseFloat(fundicHeightCm) : fundicHeightCm
+  if (fundicNum && fundicNum >= 20 && gestationalWeeks > 0 && gestationalWeeks < 14) {
+    return {
+      hasInconsistency: true,
+      shortLabel: `Check Fundic (${fundicNum}cm) vs. AOG`,
+      message: `Fundic height of ${fundicNum}cm is disproportionate to early gestational age (${gestationalWeeks}w). Please verify measurements.`,
+      field: "vitals",
+    }
+  }
+
+  return null
+}
 
 export function compileClinicalAlerts(
   obstetric?: PublicReferralData["obstetric_info"],
@@ -445,7 +475,6 @@ export function compileClinicalAlerts(
 ): ClinicalAlertBadge[] {
   const alerts: ClinicalAlertBadge[] = []
 
-  // 1. Active CDSS Alerts from backend
   if (cdssAlerts && cdssAlerts.length > 0) {
     cdssAlerts.forEach((alert, i) => {
       if (!alert.is_resolved) {
@@ -461,7 +490,6 @@ export function compileClinicalAlerts(
     })
   }
 
-  // 2. Danger signs in latest vitals or visits
   const latestVitals = obstetric?.latest_vitals
   if (latestVitals?.danger_signs && latestVitals.danger_signs.trim()) {
     alerts.push({
@@ -473,7 +501,6 @@ export function compileClinicalAlerts(
     })
   }
 
-  // Check recent visits for danger signs
   prenatalVisits.slice(0, 3).forEach((v, idx) => {
     if (
       v.danger_signs_observed &&
@@ -490,7 +517,6 @@ export function compileClinicalAlerts(
     }
   })
 
-  // 3. Obstetric Risk: Prior Cesarean Section (Scarred Uterus)
   const prevDel = (obstetric?.previous_delivery_history || parsed?.previousDelivery || "").toLowerCase()
   if (
     prevDel.includes("c-section") ||
@@ -507,7 +533,6 @@ export function compileClinicalAlerts(
     })
   }
 
-  // 4. Parity Risk: Grand Multipara (>= 5)
   const parity = obstetric?.parity ?? 0
   if (parity >= 5) {
     alerts.push({
@@ -519,7 +544,6 @@ export function compileClinicalAlerts(
     })
   }
 
-  // 5. Age Risks: Adolescent (< 18) or Advanced Maternal Age (>= 35)
   const age = patient?.age
   if (age !== undefined && age !== null && age > 0) {
     if (age < 18) {
@@ -541,7 +565,6 @@ export function compileClinicalAlerts(
     }
   }
 
-  // 6. Co-morbidities
   const coMorb = (obstetric?.co_morbidities || parsed?.coMorbidities || "").trim()
   if (coMorb && !coMorb.toLowerCase().includes("none") && !coMorb.toLowerCase().includes("n/a")) {
     alerts.push({
@@ -553,7 +576,6 @@ export function compileClinicalAlerts(
     })
   }
 
-  // 7. Drug Allergies & Precautions
   const allergies = (patient?.allergies || obstetric?.allergies || parsed?.allergies || "").trim()
   if (
     allergies &&
@@ -573,10 +595,6 @@ export function compileClinicalAlerts(
   return alerts
 }
 
-// ---------------------------------------------------------------------------
-// 6. Referral Status Lifecycle Formatting
-// ---------------------------------------------------------------------------
-
 export interface StatusConfig {
   label: string
   badgeClass: string
@@ -590,66 +608,66 @@ export function formatStatusConfig(status?: string): StatusConfig {
   switch (norm) {
     case "pending":
       return {
-        label: "Pending Triage Review",
-        badgeClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+        label: "Pending Triage",
+        badgeClass: "bg-transparent text-amber-700 dark:text-amber-400 border-amber-500/40",
         nextActionAdvice: "Awaiting review and acceptance by destination triage team.",
         isActionable: true,
       }
     case "acknowledged":
       return {
-        label: "Referral Acknowledged",
-        badgeClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
-        nextActionAdvice: "Destination team has viewed referral. Patient transport/triage in coordination.",
+        label: "Acknowledged",
+        badgeClass: "bg-transparent text-blue-700 dark:text-blue-400 border-blue-500/40",
+        nextActionAdvice: "Referral reviewed. Patient transport in coordination.",
         isActionable: true,
       }
     case "accepted":
       return {
         label: "Transfer Accepted",
-        badgeClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-        nextActionAdvice: "Transfer accepted. Receiving facility preparing triage bed and clinical team.",
+        badgeClass: "bg-transparent text-emerald-700 dark:text-emerald-400 border-emerald-500/40",
+        nextActionAdvice: "Transfer accepted. Receiving facility preparing triage bed.",
         isActionable: true,
       }
     case "in_progress":
       return {
-        label: "In Progress (In Care)",
-        badgeClass: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30",
-        nextActionAdvice: "Patient arrived at facility. Active clinical evaluation and treatment ongoing.",
+        label: "In Care",
+        badgeClass: "bg-transparent text-purple-700 dark:text-purple-400 border-purple-500/40",
+        nextActionAdvice: "Patient arrived at facility. Active care ongoing.",
         isActionable: true,
       }
     case "completed":
       return {
-        label: "Referral Completed",
-        badgeClass: "bg-zinc-500/15 text-zinc-700 dark:text-zinc-300 border-zinc-500/30",
+        label: "Completed",
+        badgeClass: "bg-transparent text-muted-foreground border-border/80",
         nextActionAdvice: "Clinical care completed. Patient discharge or outcome documented.",
         isActionable: false,
       }
     case "rejected":
     case "declined":
       return {
-        label: "Referral Declined",
-        badgeClass: "bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30",
+        label: "Declined",
+        badgeClass: "bg-transparent text-red-700 dark:text-red-400 border-red-500/40",
         nextActionAdvice: "Transfer declined by destination facility. Reason documented in registry.",
         isActionable: false,
       }
     case "transferred":
       return {
-        label: "Rerouted / Transferred",
-        badgeClass: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30",
+        label: "Rerouted",
+        badgeClass: "bg-transparent text-cyan-700 dark:text-cyan-400 border-cyan-500/40",
         nextActionAdvice: "Patient redirected to another medical center.",
         isActionable: false,
       }
     case "cancelled":
       return {
-        label: "Cancelled by Origin",
-        badgeClass: "bg-zinc-500/15 text-zinc-500 border-zinc-500/30",
+        label: "Cancelled",
+        badgeClass: "bg-transparent text-muted-foreground border-border/80",
         nextActionAdvice: "Referral withdrawn by referring health facility.",
         isActionable: false,
       }
     default:
       return {
         label: status || "Pending",
-        badgeClass: "bg-muted text-muted-foreground border-border",
-        nextActionAdvice: "Review clinical handoff details.",
+        badgeClass: "bg-transparent text-muted-foreground border-border/80",
+        nextActionAdvice: "Review referral details.",
         isActionable: true,
       }
   }

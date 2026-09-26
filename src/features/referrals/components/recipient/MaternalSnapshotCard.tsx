@@ -1,4 +1,3 @@
-import React from "react"
 import {
   User,
   Droplet,
@@ -10,13 +9,14 @@ import {
   Layers,
   Sparkles,
   Maximize2,
+  AlertTriangle,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { sanitizeMediaUrl } from "@/lib/utils"
 import type { PublicReferralData, ParsedReferralDetails } from "./referralTypes"
-import { calculateObstetricIndices } from "./referralClinicalUtils"
+import { calculateObstetricIndices, checkClinicalConsistency } from "./referralClinicalUtils"
 
 interface MaternalSnapshotCardProps {
   patient?: PublicReferralData["patient"]
@@ -37,6 +37,15 @@ export function MaternalSnapshotCard({
     obstetric?.latest_vitals?.gestational_age_weeks || 0
   )
 
+  const consistencyIssue = checkClinicalConsistency(
+    "routine",
+    parsed,
+    obstetric,
+    [],
+    obstetricMetrics.gestationalWeeks,
+    obstetric?.latest_vitals?.fundic_height
+  )
+
   const gravida =
     obstetric?.gravida ??
     (parsed.gravidaParaParsed
@@ -52,7 +61,7 @@ export function MaternalSnapshotCard({
   const isAdolescent = age !== undefined && age !== null && age > 0 && age < 18
   const isAMA = age !== undefined && age !== null && age >= 35
 
-  const bloodType = patient?.blood_type || "Recorded in Profile"
+  const bloodType = patient?.blood_type || "On file"
 
   return (
     <Card className="border border-border/80 bg-card shadow-2xs">
@@ -123,12 +132,12 @@ export function MaternalSnapshotCard({
                   </h2>
 
                   {isAdolescent && (
-                    <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] font-bold">
+                    <Badge variant="outline" className="border-border/80 text-muted-foreground bg-transparent text-[10px] font-medium">
                       Adolescent ({age} yrs)
                     </Badge>
                   )}
                   {isAMA && (
-                    <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 text-[10px] font-bold">
+                    <Badge variant="outline" className="border-border/80 text-muted-foreground bg-transparent text-[10px] font-medium">
                       AMA ({age} yrs)
                     </Badge>
                   )}
@@ -184,9 +193,20 @@ export function MaternalSnapshotCard({
             </div>
 
             <div className="rounded-xl border border-border/80 bg-muted/30 p-2.5 sm:p-3 space-y-0.5">
-              <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Gestational Age
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Gestational Age
+                </span>
+                {consistencyIssue && (
+                  <span
+                    className="inline-flex items-center gap-0.5 text-[9px] font-medium text-amber-700 dark:text-amber-400 border-b border-dashed border-amber-600/70 dark:border-amber-400/70 cursor-help"
+                    title={consistencyIssue.message}
+                  >
+                    <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
+                    Verify
+                  </span>
+                )}
+              </div>
               <p className="text-base sm:text-lg font-black text-primary font-mono truncate">
                 {obstetricMetrics.formattedAog}
               </p>
@@ -207,7 +227,7 @@ export function MaternalSnapshotCard({
                   ? obstetricMetrics.daysRemaining >= 0
                     ? `${obstetricMetrics.daysRemaining}d to EDD`
                     : `${Math.abs(obstetricMetrics.daysRemaining)}d post-date`
-                  : "Calculation pending"}
+                  : "Pending"}
               </span>
             </div>
 

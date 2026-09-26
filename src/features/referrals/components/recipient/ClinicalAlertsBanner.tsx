@@ -31,14 +31,14 @@ export function ClinicalAlertsBanner({ data, parsed }: ClinicalAlertsBannerProps
 
   if (alerts.length === 0) {
     return (
-      <div className="flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-xs text-foreground">
+      <div className="flex items-center justify-between rounded-xl border border-border/80 bg-muted/20 px-4 py-3 text-xs text-foreground">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span className="font-semibold">
             No Active Danger Signs or High-Severity CDSS Alerts Logged in Patient Record
           </span>
         </div>
-        <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold text-[10px]">
+        <Badge variant="outline" className="border-border/80 text-muted-foreground font-medium text-[10px]">
           Standard Baseline
         </Badge>
       </div>
@@ -47,10 +47,10 @@ export function ClinicalAlertsBanner({ data, parsed }: ClinicalAlertsBannerProps
 
   return (
     <Card
-      className={`border-2 shadow-2xs overflow-hidden transition-colors ${
+      className={`border shadow-xs overflow-hidden transition-colors ${
         hasCritical
-          ? "border-red-500/40 bg-red-500/[0.03]"
-          : "border-amber-500/30 bg-amber-500/[0.03]"
+          ? "border-red-500/30 bg-red-500/[0.02]"
+          : "border-amber-500/30 bg-amber-500/[0.02]"
       }`}
     >
       <CardContent className="p-3.5 sm:p-4.5 space-y-3">
@@ -66,33 +66,30 @@ export function ClinicalAlertsBanner({ data, parsed }: ClinicalAlertsBannerProps
             </h3>
           </div>
           <Badge
-            className={`text-[10px] font-bold ${
-              hasCritical
-                ? "bg-red-600 text-white"
-                : "bg-amber-600 text-white"
-            }`}
+            variant="outline"
+            className="text-[10px] font-mono font-medium border-border/80 text-muted-foreground bg-transparent"
           >
             {alerts.length} Documented Indicator{alerts.length > 1 ? "s" : ""}
           </Badge>
         </div>
 
-        {/* Alert Badges / Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           {alerts.map((alert) => {
             const isCrit = alert.severity === "critical"
             const isWarn = alert.severity === "warning"
+            const isActionable = alert.type === "cdss" || alert.type === "danger" || isCrit
 
             const containerStyle = isCrit
-              ? "border-red-500/30 bg-red-500/10 text-red-950 dark:text-red-100"
+              ? "border-red-500/30 bg-red-500/5 text-red-950 dark:text-red-100"
               : isWarn
-                ? "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100"
-                : "border-blue-500/30 bg-blue-500/10 text-blue-950 dark:text-blue-100"
+                ? "border-amber-500/30 bg-amber-500/5 text-amber-950 dark:text-amber-100"
+                : "border-border/80 bg-muted/20 text-foreground"
 
             const badgeStyle = isCrit
-              ? "bg-red-600 text-white border-transparent"
-              : isWarn
-                ? "bg-amber-600 text-white border-transparent"
-                : "bg-blue-600 text-white border-transparent"
+              ? "bg-red-600 text-white border-transparent font-bold shadow-xs"
+              : isActionable
+                ? "bg-amber-500 text-amber-950 border-transparent font-black shadow-xs"
+                : "bg-transparent text-muted-foreground border-border/80 font-medium"
 
             const typeLabel =
               alert.type === "cdss"
@@ -114,7 +111,7 @@ export function ClinicalAlertsBanner({ data, parsed }: ClinicalAlertsBannerProps
                   <span className="font-extrabold text-foreground truncate block">
                     {alert.title}
                   </span>
-                  <Badge className={`text-[9px] uppercase font-bold shrink-0 ${badgeStyle}`}>
+                  <Badge variant={isActionable ? "default" : "outline"} className={`text-[9px] uppercase shrink-0 ${badgeStyle}`}>
                     {typeLabel}
                   </Badge>
                 </div>
