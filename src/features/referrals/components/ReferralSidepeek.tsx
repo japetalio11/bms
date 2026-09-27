@@ -228,20 +228,20 @@ export function ReferralSidepeek({
       : "N/A"
 
   return (
-    <div className="flex h-full w-full flex-col border-l border-white/10 bg-[#111111] text-zinc-100 xl:w-[450px]">
-      <div className="flex shrink-0 items-start justify-between border-b border-white/10 p-4 pb-4">
+    <div className="flex h-full w-full flex-col border-l border-border bg-card text-card-foreground xl:w-[450px]">
+      <div className="flex shrink-0 items-start justify-between border-b border-border p-4 pb-4">
         <div className="flex flex-col gap-2">
-          <h2 className="text-base font-semibold text-white">
+          <h2 className="text-base font-semibold text-foreground">
             {motherName}
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             <div
               className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                 isHighRisk
-                  ? "bg-red-500/20 text-red-400"
+                  ? "border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400"
                   : isMedRisk
-                    ? "bg-amber-500/20 text-amber-400"
-                    : "bg-green-500/20 text-green-400"
+                    ? "border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    : "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
               }`}
             >
               {isHighRisk ? (
@@ -256,12 +256,12 @@ export function ReferralSidepeek({
             <div
               className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                 statusLower === "accepted" || statusLower === "completed"
-                  ? "bg-emerald-500/20 text-emerald-400"
+                  ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                   : statusLower === "pending"
-                    ? "bg-amber-500/20 text-amber-400"
+                    ? "border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                     : statusLower === "rejected" || statusLower === "cancelled"
-                      ? "bg-red-500/20 text-red-400"
-                      : "bg-blue-500/20 text-blue-400"
+                      ? "border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400"
+                      : "border border-primary/20 bg-primary/10 text-primary"
               }`}
             >
               {statusLower === "accepted" || statusLower === "completed" ? (
@@ -279,7 +279,7 @@ export function ReferralSidepeek({
           <Button
             variant="ghost"
             size="icon"
-            className="hidden h-7 w-7 text-zinc-400 hover:text-white md:flex"
+            className="hidden h-7 w-7 text-muted-foreground hover:text-foreground md:flex"
             onClick={onClose}
           >
             <X className="h-4 w-4" />
@@ -288,225 +288,240 @@ export function ReferralSidepeek({
       </div>
 
       <div className="flex flex-1 flex-col overflow-y-auto">
-        <div className="flex flex-col gap-2 border-b border-white/10 p-4">
-          <h3 className="text-xs font-semibold text-white">
+        <div className="flex flex-col gap-2 border-b border-border p-4">
+          <h3 className="text-xs font-semibold text-foreground">
             Preferred Hospital
           </h3>
-          <div className="flex h-8 items-center justify-between rounded-md border border-white/10 bg-[#1A1A1A] px-3 text-xs text-white">
+          <div className="flex h-8 items-center justify-between rounded-md border border-border bg-muted/40 px-3 text-xs text-foreground">
             <span>{destination}</span>
-            <ChevronDown className="h-4 w-4 opacity-50" />
+            <ChevronDown className="h-4 w-4 text-muted-foreground opacity-70" />
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 border-b border-white/10 p-4">
-          <h3 className="text-xs font-semibold text-white">
+        <div className="flex flex-col gap-2 border-b border-border p-4">
+          <h3 className="text-xs font-semibold text-foreground">
             Transfer Patient Record Link
           </h3>
           <div className="flex min-w-0 items-center gap-2">
-            <div className="flex h-8 min-w-0 flex-1 items-center justify-between rounded-md border border-white/10 bg-[#1A1A1A] px-3 text-xs text-white">
+            <div className="flex h-8 min-w-0 flex-1 items-center justify-between rounded-md border border-border bg-muted/40 px-3 text-xs text-foreground">
               <span className="truncate font-mono text-[11px]" title={recordLink}>
                 {displayRecordLink}
               </span>
               <button
                 type="button"
                 onClick={() => handleCopy(recordLink, "link")}
-                className="ml-2 shrink-0 text-zinc-400 hover:text-white transition-colors"
+                className="ml-2 shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                 title="Copy Link"
               >
                 <Copy className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
-          <p className="text-[10px] text-zinc-400">
-            {copySuccess === "link" ? <span className="text-green-400">Link copied to clipboard!</span> : "Share this link with partners so they can book dates within this block."}
+          <p className="text-[10px] text-muted-foreground">
+            {copySuccess === "link" ? (
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                Link copied to clipboard!
+              </span>
+            ) : (
+              "Share this link with partners so they can book dates within this block."
+            )}
           </p>
         </div>
 
-        <div className="flex flex-col gap-2 border-b border-white/10 p-4">
-          <h3 className="text-xs font-semibold text-white">
+        <div className="flex flex-col gap-2 border-b border-border p-4">
+          <h3 className="text-xs font-semibold text-foreground">
             Transfer Code
           </h3>
           <div className="flex min-w-0 items-center gap-2">
-            <div className="flex h-8 min-w-0 flex-1 items-center justify-between rounded-md border border-white/10 bg-[#1A1A1A] px-3 text-xs text-white">
+            <div className="flex h-8 min-w-0 flex-1 items-center justify-between rounded-md border border-border bg-muted/40 px-3 text-xs text-foreground">
               <span className="truncate font-mono">{transferCode}</span>
               <button
                 type="button"
                 onClick={() => handleCopy(transferCode, "code")}
-                className="ml-2 shrink-0 text-zinc-400 hover:text-white transition-colors"
+                className="ml-2 shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                 title="Copy Code"
               >
                 <Copy className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
-          <p className="text-[10px] text-zinc-400">
-            {copySuccess === "code" ? <span className="text-green-400">Code copied to clipboard!</span> : "Share this code with partners so they can access the booking link."}
+          <p className="text-[10px] text-muted-foreground">
+            {copySuccess === "code" ? (
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                Code copied to clipboard!
+              </span>
+            ) : (
+              "Share this code with partners so they can access the booking link."
+            )}
           </p>
         </div>
 
-        <div className="flex flex-col gap-5 border-b border-white/10 p-4">
-          <h3 className="text-xs font-semibold text-white">Properties</h3>
+        <div className="flex flex-col gap-5 border-b border-border p-4">
+          <h3 className="text-xs font-semibold text-foreground">Properties</h3>
 
           <div className="flex flex-col gap-3">
-            <span className="text-[10px] font-medium text-zinc-400">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Patient Demographic
             </span>
 
             <div className="flex items-center">
-              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                 <User className="h-3.5 w-3.5" />
                 <span className="text-xs">Patient Name</span>
               </div>
-              <span className="flex-1 text-xs text-white">
+              <span className="flex-1 text-xs font-medium text-foreground">
                 {motherName}
               </span>
             </div>
 
             <div className="flex items-center">
-              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                 <Calendar className="h-3.5 w-3.5" />
                 <span className="text-xs">Gestational Age</span>
               </div>
-              <span className="flex-1 text-xs text-white">
+              <span className="flex-1 text-xs font-medium text-foreground">
                 {gestationalAge}
               </span>
             </div>
           </div>
 
           <div className="flex flex-col gap-3">
-            <span className="text-[10px] font-medium text-zinc-400">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Transfer Logistics
             </span>
 
             <div className="flex items-center">
-              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                 <Send className="h-3.5 w-3.5" />
                 <span className="text-xs">Referred By</span>
               </div>
-              <span className="flex-1 text-xs text-white">
+              <span className="flex-1 text-xs font-medium text-foreground">
                 {referredBy}
               </span>
             </div>
 
             <div className="flex items-center">
-              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                 <Building2 className="h-3.5 w-3.5" />
                 <span className="text-xs">Destination Facility</span>
               </div>
-              <span className="flex-1 text-xs text-white">
+              <span className="flex-1 text-xs font-medium text-foreground">
                 {destination}
               </span>
             </div>
 
             <div className="flex items-center">
-              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                 <Clock className="h-3.5 w-3.5" />
                 <span className="text-xs">Initiated At</span>
               </div>
-              <span className="flex-1 text-xs text-white">
+              <span className="flex-1 text-xs font-medium text-foreground">
                 {initiatedAt}
               </span>
             </div>
           </div>
 
           <div className="flex flex-col gap-3">
-            <span className="text-[10px] font-medium text-zinc-400">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Clinical Indication & Summary
             </span>
-            <div className="rounded-lg border border-white/10 bg-[#1A1A1A] p-2.5 text-xs text-white">
+            <div className="rounded-lg border border-border bg-muted/40 p-2.5 text-xs leading-relaxed text-foreground">
               {reasonText}
             </div>
           </div>
 
           <div className="flex flex-col gap-3">
-            <span className="text-[10px] font-medium text-zinc-400">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Clinical Indicators
             </span>
 
             <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-zinc-400">
+              <div className="flex items-center gap-2 text-muted-foreground">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 <span className="text-xs">Primary Danger Signs</span>
               </div>
               {dangerSigns.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {dangerSigns.map((sign: string, idx: number) => (
-                    <span key={idx} className="rounded-full border border-white/10 bg-[#1A1A1A] px-2.5 py-1 text-[10px] text-white">
+                    <span
+                      key={idx}
+                      className="rounded-full border border-border bg-muted px-2.5 py-1 text-[10px] font-medium text-foreground"
+                    >
                       {sign}
                     </span>
                   ))}
                 </div>
               ) : (
-                <span className="text-xs text-zinc-500 pl-5">None reported</span>
+                <span className="text-xs text-muted-foreground pl-5">None reported</span>
               )}
             </div>
           </div>
 
           <div className="flex flex-col gap-3">
-            <span className="text-[10px] font-medium text-zinc-400">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Maternal Vitals
             </span>
 
             <div className="flex items-center">
-              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                 <Activity className="h-3.5 w-3.5" />
                 <span className="text-xs">Blood Pressure</span>
               </div>
-              <span className="flex-1 text-xs text-white">{bloodPressure}</span>
+              <span className="flex-1 text-xs font-medium text-foreground">{bloodPressure}</span>
             </div>
 
             <div className="flex items-center">
-              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                 <Heart className="h-3.5 w-3.5" />
                 <span className="text-xs">Heart Rate</span>
               </div>
-              <span className="flex-1 text-xs text-white">{heartRate}</span>
+              <span className="flex-1 text-xs font-medium text-foreground">{heartRate}</span>
             </div>
 
             <div className="flex items-center">
-              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                 <Droplet className="h-3.5 w-3.5" />
                 <span className="text-xs">Blood Sugar</span>
               </div>
-              <span className="flex-1 text-xs text-white">{bloodSugar}</span>
+              <span className="flex-1 text-xs font-medium text-foreground">{bloodSugar}</span>
             </div>
 
             <div className="flex items-center">
-              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                 <Thermometer className="h-3.5 w-3.5" />
                 <span className="text-xs">Body Temp</span>
               </div>
-              <span className="flex-1 text-xs text-white">{bodyTemp}</span>
+              <span className="flex-1 text-xs font-medium text-foreground">{bodyTemp}</span>
             </div>
 
             <div className="flex items-center">
-              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                 <Scale className="h-3.5 w-3.5" />
                 <span className="text-xs">Weight</span>
               </div>
-              <span className="flex-1 text-xs text-white">{weight}</span>
+              <span className="flex-1 text-xs font-medium text-foreground">{weight}</span>
             </div>
 
             <div className="flex items-center">
-              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                 <Wind className="h-3.5 w-3.5" />
                 <span className="text-xs">Respiratory Rate</span>
               </div>
-              <span className="flex-1 text-xs text-white">{respRate}</span>
+              <span className="flex-1 text-xs font-medium text-foreground">{respRate}</span>
             </div>
 
             <div className="flex items-center">
-              <div className="flex w-[160px] shrink-0 items-center gap-2 text-zinc-400">
+              <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                 <Gauge className="h-3.5 w-3.5" />
                 <span className="text-xs">O2 Saturation</span>
               </div>
-              <span className="flex-1 text-xs text-white">{o2Sat}</span>
+              <span className="flex-1 text-xs font-medium text-foreground">{o2Sat}</span>
             </div>
           </div>
 
           {deliveryOutcomes.length > 0 && (
             <div className="flex flex-col gap-3">
-              <span className="text-[10px] font-medium text-zinc-400">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Delivery & Newborn Outcome
               </span>
 
@@ -515,20 +530,20 @@ export function ReferralSidepeek({
                 return (
                   <div
                     key={d.delivery_id || d.id || dIdx}
-                    className="flex flex-col gap-2 rounded-lg border border-white/10 bg-[#1A1A1A] p-2.5 text-xs text-white"
+                    className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 p-2.5 text-xs text-foreground"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-emerald-400 flex items-center gap-1">
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                         <Baby className="h-3.5 w-3.5" />
                         {d.mode_of_delivery || "Delivered"}
                       </span>
-                      <span className="text-[10px] text-zinc-400">
+                      <span className="text-[10px] text-muted-foreground">
                         {d.delivery_date ? new Date(d.delivery_date).toLocaleDateString() : "Recent"}
                       </span>
                     </div>
 
-                    <div className="text-[11px] text-zinc-300">
-                      Facility: <span className="text-white font-medium">{d.place_of_delivery || "Clinic"}</span>
+                    <div className="text-[11px] text-muted-foreground">
+                      Facility: <span className="text-foreground font-medium">{d.place_of_delivery || "Clinic"}</span>
                     </div>
 
                     {linkedNbs.length > 0 && (
@@ -536,10 +551,10 @@ export function ReferralSidepeek({
                         {linkedNbs.map((nb: any, nIdx: number) => (
                           <div
                             key={nb.newborn_id || nb.id || nIdx}
-                            className="flex items-center gap-1 rounded bg-white/5 border border-white/10 px-1.5 py-0.5 text-[10px]"
+                            className="flex items-center gap-1 rounded bg-card border border-border px-1.5 py-0.5 text-[10px] text-foreground"
                           >
                             <span>{nb.sex} ({nb.birth_weight_kg} kg)</span>
-                            <span className="font-semibold text-emerald-400">• APGAR {nb.apgar_score}/10</span>
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">• APGAR {nb.apgar_score}/10</span>
                           </div>
                         ))}
                       </div>
@@ -553,22 +568,22 @@ export function ReferralSidepeek({
 
         <div className="flex flex-col gap-4 p-4 pb-6">
           <div className="flex items-center gap-2">
-            <h3 className="text-xs font-semibold text-white">
-              Activity Log <History className="ml-1 inline h-3 w-3 text-zinc-400" />
+            <h3 className="text-xs font-semibold text-foreground">
+              Activity Log <History className="ml-1 inline h-3 w-3 text-muted-foreground" />
             </h3>
           </div>
-          <p className="text-[10px] text-zinc-400">Recent actions performed by this user.</p>
+          <p className="text-[10px] text-muted-foreground">Recent actions performed by this user.</p>
 
           {referral.date_responded && (
             <div className="mt-2 flex gap-3">
               <div className="mt-1.5 flex flex-col items-center">
-                <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-white" />
+                <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-white">
+                <span className="text-xs font-medium text-foreground">
                   Status updated to {status}
                 </span>
-                <span className="text-[10px] text-zinc-400">
+                <span className="text-[10px] text-muted-foreground">
                   {new Date(referral.date_responded).toLocaleString()}
                 </span>
               </div>
@@ -577,13 +592,13 @@ export function ReferralSidepeek({
 
           <div className="mt-2 flex gap-3">
             <div className="mt-1.5 flex flex-col items-center">
-              <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-white" />
+              <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-white">
+              <span className="text-xs font-medium text-foreground">
                 Initiated referral to {destination}
               </span>
-              <span className="text-[10px] text-zinc-400">
+              <span className="text-[10px] text-muted-foreground">
                 {initiatedAt}
               </span>
             </div>
@@ -591,12 +606,12 @@ export function ReferralSidepeek({
         </div>
       </div>
 
-      <div className="flex shrink-0 flex-col gap-2 border-t border-white/10 bg-[#111111] p-4 pb-8 md:pb-4">
+      <div className="flex shrink-0 flex-col gap-2 border-t border-border bg-card p-4 pb-8 md:pb-4">
         {statusLower === "pending" && isOrigin ? (
           <Button
             disabled={actionLoading}
             onClick={() => handleStatusChange("cancelled")}
-            className="h-9 w-full bg-red-400/90 text-xs font-medium text-red-950 hover:bg-red-400"
+            className="h-9 w-full bg-red-600 text-xs font-medium text-white shadow-xs hover:bg-red-700"
           >
             Cancel Transfer
           </Button>
@@ -605,14 +620,14 @@ export function ReferralSidepeek({
             <Button
               disabled={actionLoading}
               onClick={() => handleStatusChange("accepted")}
-              className="h-9 flex-1 bg-emerald-400/90 text-xs font-medium text-emerald-950 hover:bg-emerald-400"
+              className="h-9 flex-1 bg-emerald-600 text-xs font-medium text-white shadow-xs hover:bg-emerald-700"
             >
               Accept Transfer
             </Button>
             <Button
               disabled={actionLoading}
               onClick={() => handleStatusChange("rejected")}
-              className="h-9 flex-1 bg-red-400/90 text-xs font-medium text-red-950 hover:bg-red-400"
+              className="h-9 flex-1 bg-red-600 text-xs font-medium text-white shadow-xs hover:bg-red-700"
             >
               Decline
             </Button>
@@ -621,7 +636,7 @@ export function ReferralSidepeek({
 
         <Button
           variant="outline"
-          className="h-9 w-full border-white/10 bg-[#1A1A1A] text-xs font-medium text-white hover:bg-white/10 hover:text-white"
+          className="h-9 w-full border-border bg-card text-xs font-medium text-foreground hover:bg-muted"
         >
           Print Transfer Form
         </Button>

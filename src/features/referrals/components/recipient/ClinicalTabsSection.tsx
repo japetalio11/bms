@@ -48,6 +48,7 @@ interface ClinicalTabsSectionProps {
   activeTab: string
   onTabChange: (tab: string) => void
   onOpenDocument: (doc: DocumentModalData) => void
+  onPrint?: () => void
 }
 
 export function ClinicalTabsSection({
@@ -56,6 +57,7 @@ export function ClinicalTabsSection({
   activeTab,
   onTabChange,
   onOpenDocument,
+  onPrint,
 }: ClinicalTabsSectionProps) {
   const prenatalVisits = data.prenatal_visits || []
   const labScreenings = data.lab_screenings || []
@@ -78,18 +80,19 @@ export function ClinicalTabsSection({
   }
 
   return (
-    <div className="space-y-4 pt-2">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-muted-foreground">
-          Detailed Medical Records & Audit Trails
-        </h3>
-        <span className="text-[11px] text-muted-foreground font-medium">
-          Select section to inspect longitudinal data
-        </span>
+    <div id="clinical-tabs-section" className="space-y-4 pt-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+        <div>
+          <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-foreground">
+            Detailed Medical Records & Audit Trails
+          </h3>
+          <p className="text-[11px] text-muted-foreground font-medium">
+            Full longitudinal history — the cards above show only the most recent entry.
+          </p>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={onTabChange} className="space-y-4">
-        {/* Navigation Tabs Pill Bar */}
         <TabsList className="h-10 sm:h-11 w-full justify-start rounded-xl border border-border bg-muted/80 p-1 backdrop-blur-sm overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex-nowrap shrink-0">
           <TabsTrigger
             value="narrative"
@@ -105,7 +108,7 @@ export function ClinicalTabsSection({
           >
             <Activity className="h-3.5 w-3.5" />
             <span>Consultations</span>
-            <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-semibold text-primary">
+            <span className="ml-1 rounded-full bg-muted border border-border/60 px-1.5 py-0.2 text-[10px] font-medium text-muted-foreground">
               {prenatalVisits.length}
             </span>
           </TabsTrigger>
@@ -116,7 +119,7 @@ export function ClinicalTabsSection({
           >
             <Microscope className="h-3.5 w-3.5" />
             <span>Labs & Scans</span>
-            <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-semibold text-primary">
+            <span className="ml-1 rounded-full bg-muted border border-border/60 px-1.5 py-0.2 text-[10px] font-medium text-muted-foreground">
               {labScreenings.length}
             </span>
           </TabsTrigger>
@@ -127,7 +130,7 @@ export function ClinicalTabsSection({
           >
             <Pill className="h-3.5 w-3.5" />
             <span>Medications</span>
-            <span className="ml-1 rounded-full bg-primary/10 px-1.5 py-0.2 text-[10px] font-semibold text-primary">
+            <span className="ml-1 rounded-full bg-muted border border-border/60 px-1.5 py-0.2 text-[10px] font-medium text-muted-foreground">
               {supplements.length}
             </span>
           </TabsTrigger>
@@ -139,7 +142,7 @@ export function ClinicalTabsSection({
             <Baby className="h-3.5 w-3.5" />
             <span>Delivery & Newborn</span>
             {deliveryOutcomes.length > 0 && (
-              <span className="ml-1 rounded-full bg-emerald-500/10 px-1.5 py-0.2 text-[10px] font-semibold text-emerald-600">
+              <span className="ml-1 rounded-full bg-muted border border-border/60 px-1.5 py-0.2 text-[10px] font-medium text-muted-foreground">
                 {deliveryOutcomes.length}
               </span>
             )}
@@ -147,23 +150,23 @@ export function ClinicalTabsSection({
 
           <TabsTrigger
             value="form"
-            className="shrink-0 gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-3.5 py-1 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-border whitespace-nowrap"
+            className="shrink-0 gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-3.5 py-1 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-primary/50 whitespace-nowrap border border-dashed border-border"
           >
-            <FileSpreadsheet className="h-3.5 w-3.5" />
+            <FileSpreadsheet className="h-3.5 w-3.5 text-primary" />
             <span>Official DOH Form</span>
+            <span className="rounded bg-primary/10 px-1 py-0.2 text-[9px] font-bold text-primary font-mono">
+              DOH
+            </span>
           </TabsTrigger>
         </TabsList>
 
-        {/* =============================================================== */}
-        {/* TAB 1: Clinical Handover Notes & Communication Audit            */}
-        {/* =============================================================== */}
         <TabsContent value="narrative" className="space-y-4">
           <Card className="border border-border/80 bg-card shadow-xs">
             <CardHeader className="p-4 sm:p-5 pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xs sm:text-sm font-bold uppercase text-foreground flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary" />
-                  Referring Provider Handover Narrative & Coordination Audit
+                  Referring Provider Clinical Notes
                 </CardTitle>
                 <span className="text-[11px] text-muted-foreground">
                   By {data.referring_facility.name}
@@ -172,21 +175,19 @@ export function ClinicalTabsSection({
             </CardHeader>
 
             <CardContent className="p-4 sm:p-5 pt-0 space-y-4">
-              {/* Sanitized Narrative Commentary */}
               <div className="space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                  Physician / Health Worker Commentary:
+                  Clinical Notes:
                 </span>
                 <div className="rounded-xl border border-border bg-muted/30 p-4 text-xs sm:text-sm leading-relaxed text-foreground whitespace-pre-wrap font-sans">
                   {parsed.cleanNarrative}
                 </div>
               </div>
 
-              {/* Receiving Hospital Response Notes */}
               {data.response_notes && (
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
-                    Receiving Hospital Coordination & Response Notes:
+                    Receiving Facility Response:
                   </span>
                   <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-xs sm:text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                     {data.response_notes}
@@ -194,11 +195,10 @@ export function ClinicalTabsSection({
                 </div>
               )}
 
-              {/* Clinical Outcome Note */}
               {data.outcome && (
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 sm:p-4 text-xs">
                   <span className="font-bold text-emerald-700 dark:text-emerald-400 block mb-0.5">
-                    Recorded Clinical Outcome:
+                    Outcome:
                   </span>
                   <p className="text-foreground font-semibold">{data.outcome}</p>
                 </div>
@@ -207,9 +207,6 @@ export function ClinicalTabsSection({
           </Card>
         </TabsContent>
 
-        {/* =============================================================== */}
-        {/* TAB 2: Prenatal Consultation History Logs                       */}
-        {/* =============================================================== */}
         <TabsContent value="visits" className="space-y-4">
           <Card className="border border-border/80 bg-card shadow-xs">
             <CardHeader className="p-4 sm:p-5 pb-3">
@@ -217,13 +214,13 @@ export function ClinicalTabsSection({
                 <div>
                   <CardTitle className="text-xs sm:text-sm font-bold uppercase text-foreground flex items-center gap-2">
                     <Activity className="h-4 w-4 text-primary" />
-                    Longitudinal Prenatal Consultation Records
+                    Prenatal Consultation Records
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Chronological consultation logs recorded during this pregnancy.
+                    Consultation logs recorded during this pregnancy.
                   </CardDescription>
                 </div>
-                <Badge variant="outline" className="text-xs font-mono">
+                <Badge variant="outline" className="text-xs font-mono border-border/80 text-muted-foreground">
                   {prenatalVisits.length} Consultations
                 </Badge>
               </div>
@@ -232,11 +229,10 @@ export function ClinicalTabsSection({
             <CardContent className="p-0">
               {prenatalVisits.length === 0 ? (
                 <div className="py-12 text-center text-xs text-muted-foreground">
-                  No individual prenatal visit consultation logs found for this pregnancy.
+                  No visit logs recorded.
                 </div>
               ) : (
                 <>
-                  {/* Mobile View (< sm) */}
                   <div className="block sm:hidden divide-y divide-border px-3">
                     {prenatalVisits.map((visit: PrenatalVisitItem, index: number) => (
                       <div key={visit.visit_id || index} className="py-3.5 space-y-2">
@@ -286,7 +282,6 @@ export function ClinicalTabsSection({
                     ))}
                   </div>
 
-                  {/* Desktop View (>= sm) */}
                   <div className="hidden sm:block overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -352,9 +347,6 @@ export function ClinicalTabsSection({
           </Card>
         </TabsContent>
 
-        {/* =============================================================== */}
-        {/* TAB 3: Diagnostic & Laboratory Documents Archive                */}
-        {/* =============================================================== */}
         <TabsContent value="labs" className="space-y-4">
           <Card className="border border-border/80 bg-card shadow-xs">
             <CardHeader className="p-4 sm:p-5 pb-3">
@@ -362,13 +354,13 @@ export function ClinicalTabsSection({
                 <div>
                   <CardTitle className="text-xs sm:text-sm font-bold uppercase text-foreground flex items-center gap-2">
                     <Microscope className="h-4 w-4 text-primary" />
-                    Diagnostic Screenings, Blood Tests & Ultrasound Scans
+                    Diagnostic & Laboratory Tests
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Blood screenings, urinalysis, rapid serology, and obstetric ultrasound scans.
+                    Blood screenings, urinalysis, and ultrasound scans.
                   </CardDescription>
                 </div>
-                <Badge variant="outline" className="text-xs font-mono">
+                <Badge variant="outline" className="text-xs font-mono border-border/80 text-muted-foreground">
                   {labScreenings.length} Screenings
                 </Badge>
               </div>
@@ -377,11 +369,10 @@ export function ClinicalTabsSection({
             <CardContent className="p-0">
               {labScreenings.length === 0 ? (
                 <div className="py-12 text-center text-xs text-muted-foreground">
-                  No laboratory or diagnostic screening records attached to this pregnancy handoff.
+                  No lab results attached.
                 </div>
               ) : (
                 <>
-                  {/* Mobile View (< sm) */}
                   <div className="block sm:hidden divide-y divide-border px-3">
                     {labScreenings.map((lab: LabScreeningItem, index: number) => (
                       <div key={lab.screening_id || index} className="py-3.5 space-y-2">
@@ -396,7 +387,7 @@ export function ClinicalTabsSection({
                               })}
                             </span>
                           </div>
-                          <Badge variant="outline" className="text-[10px] font-semibold shrink-0">
+                          <Badge variant="outline" className="text-[10px] font-semibold shrink-0 border-border/80 text-muted-foreground">
                             {lab.result || "Completed"}
                           </Badge>
                         </div>
@@ -435,7 +426,6 @@ export function ClinicalTabsSection({
                     ))}
                   </div>
 
-                  {/* Desktop View (>= sm) */}
                   <div className="hidden sm:block overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -461,12 +451,12 @@ export function ClinicalTabsSection({
                               {lab.screening_type}
                             </TableCell>
                             <TableCell className="text-xs">
-                              <span className="rounded-md bg-muted/80 px-2.5 py-1 text-[11px] font-semibold border border-border/60">
+                              <span className="rounded-md bg-muted/60 px-2.5 py-1 text-[11px] font-medium border border-border/80 text-foreground">
                                 {lab.result || "Completed"}
                               </span>
                             </TableCell>
                             <TableCell className="text-xs text-muted-foreground">
-                              {lab.remarks || "No abnormalities noted"}
+                              {lab.remarks || "Normal findings"}
                             </TableCell>
                             <TableCell className="text-xs">
                               <Button
@@ -505,9 +495,6 @@ export function ClinicalTabsSection({
           </Card>
         </TabsContent>
 
-        {/* =============================================================== */}
-        {/* TAB 4: Prescriptions & Supplements Log                          */}
-        {/* =============================================================== */}
         <TabsContent value="supplements" className="space-y-4">
           <Card className="border border-border/80 bg-card shadow-xs">
             <CardHeader className="p-4 sm:p-5 pb-3">
@@ -515,13 +502,13 @@ export function ClinicalTabsSection({
                 <div>
                   <CardTitle className="text-xs sm:text-sm font-bold uppercase text-foreground flex items-center gap-2">
                     <Pill className="h-4 w-4 text-primary" />
-                    Prescriptions & Micronutrient Supplementation
+                    Medications & Prescriptions
                   </CardTitle>
                   <CardDescription className="text-xs">
-                    Medications, micronutrient supplementation, and tocolytics dispensed.
+                    Medications and supplements dispensed.
                   </CardDescription>
                 </div>
-                <Badge variant="outline" className="text-xs font-mono">
+                <Badge variant="outline" className="text-xs font-mono border-border/80 text-muted-foreground">
                   {supplements.length} Prescriptions
                 </Badge>
               </div>
@@ -530,7 +517,7 @@ export function ClinicalTabsSection({
             <CardContent className="p-0">
               {supplements.length === 0 ? (
                 <div className="py-12 text-center text-xs text-muted-foreground">
-                  No supplementation or medication records logged for this pregnancy.
+                  No medications logged.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -557,11 +544,11 @@ export function ClinicalTabsSection({
                           <TableCell className="text-xs font-bold text-foreground">
                             {supp.supplement_type}
                           </TableCell>
-                          <TableCell className="font-mono text-xs font-semibold">
+                          <TableCell className="font-mono text-xs font-medium text-foreground">
                             {supp.tablets_given_count} units
                           </TableCell>
                           <TableCell className="text-xs">
-                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                            <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
                               <CheckCircle2 className="h-3 w-3" /> Dispensed
                             </span>
                           </TableCell>
@@ -575,7 +562,7 @@ export function ClinicalTabsSection({
                                   type: "prescription",
                                   date: supp.date_given,
                                   result: `Dispensed: ${supp.tablets_given_count || 0} units`,
-                                  remarks: "Administered as standard prenatal supplementation protocol",
+                                  remarks: "Prenatal supplementation",
                                   metadata: {
                                     "Item": supp.supplement_type,
                                     "Quantity": `${supp.tablets_given_count || 0} units`,
@@ -600,9 +587,6 @@ export function ClinicalTabsSection({
           </Card>
         </TabsContent>
 
-        {/* =============================================================== */}
-        {/* TAB 5: Delivery & Newborn Outcomes                              */}
-        {/* =============================================================== */}
         <TabsContent value="deliveries" className="space-y-4">
           {deliveryOutcomes.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center shadow-xs">
@@ -613,7 +597,7 @@ export function ClinicalTabsSection({
                 Active Prenatal / Intrapartum Care Stage
               </h3>
               <p className="mt-1.5 max-w-sm text-xs text-muted-foreground leading-relaxed">
-                This referral is currently for antenatal care or triage prior to delivery. Once birth occurs, infant birth weights, APGAR transitions, and postpartum evaluations will be archived here.
+                Prenatal stage — delivery and newborn records will appear here once registered.
               </p>
             </div>
           ) : (
@@ -640,10 +624,10 @@ export function ClinicalTabsSection({
                           </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <Badge variant="outline" className="border-primary/30 bg-primary/5 text-xs font-semibold text-primary">
+                          <Badge variant="outline" className="border-border/80 bg-muted/20 text-xs font-medium text-muted-foreground">
                             Mode: {d.mode_of_delivery || "NSVD"}
                           </Badge>
-                          <Badge variant="secondary" className="text-xs font-medium">
+                          <Badge variant="outline" className="border-border/80 bg-muted/20 text-xs font-medium text-muted-foreground">
                             {d.place_of_delivery || "Health Facility"}
                           </Badge>
                         </div>
@@ -651,7 +635,6 @@ export function ClinicalTabsSection({
                     </CardHeader>
 
                     <CardContent className="p-4 sm:p-5 space-y-4">
-                      {/* Labor Metrics */}
                       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 rounded-xl border border-border bg-muted/30 p-3 text-xs sm:grid-cols-4">
                         <div>
                           <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-muted-foreground">Place</span>
@@ -673,7 +656,6 @@ export function ClinicalTabsSection({
                         </div>
                       </div>
 
-                      {/* Newborn Records */}
                       <div className="space-y-2.5">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                           <Baby className="h-3.5 w-3.5 text-primary" /> Newborn Infants ({linkedNewborns.length})
@@ -706,9 +688,6 @@ export function ClinicalTabsSection({
           )}
         </TabsContent>
 
-        {/* =============================================================== */}
-        {/* TAB 6: Official Philippine DOH Referral Form                    */}
-        {/* =============================================================== */}
         <TabsContent value="form" className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
@@ -724,7 +703,7 @@ export function ClinicalTabsSection({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.print()}
+                onClick={onPrint || (() => window.print())}
                 className="h-8 gap-1.5 text-xs font-semibold"
               >
                 <Printer className="h-3.5 w-3.5 text-primary" />
@@ -733,9 +712,7 @@ export function ClinicalTabsSection({
             </div>
           </div>
 
-          {/* Printable Official Form */}
           <div className="w-full rounded-2xl border border-border bg-card p-4 sm:p-8 md:p-10 shadow-xs space-y-6 text-foreground">
-            {/* Header */}
             <div className="border-b-2 border-primary/30 pb-4 sm:pb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="space-y-0.5 sm:space-y-1">
                 <span className="text-[9px] sm:text-[10px] font-bold tracking-widest text-primary uppercase block">
@@ -750,7 +727,7 @@ export function ClinicalTabsSection({
               </div>
 
               <div className="text-left sm:text-right space-y-0.5">
-                <Badge variant="outline" className="font-mono text-[10px] sm:text-xs font-bold border-primary/40 bg-primary/5 text-primary">
+                <Badge variant="outline" className="font-mono text-[10px] sm:text-xs font-medium border-border/80 bg-muted/20 text-muted-foreground">
                   REF #{data.referral_id.slice(-8).toUpperCase()}
                 </Badge>
                 <p className="text-[11px] font-mono text-muted-foreground">
@@ -759,7 +736,6 @@ export function ClinicalTabsSection({
               </div>
             </div>
 
-            {/* Routing Facilities */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-1 text-xs">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -780,7 +756,6 @@ export function ClinicalTabsSection({
               </div>
             </div>
 
-            {/* Patient Demographics */}
             <div className="space-y-2 text-xs">
               <h3 className="font-bold uppercase tracking-wider text-foreground border-b border-border pb-1 flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5 text-primary" /> Patient Demographics & Obstetric Baseline
@@ -805,7 +780,6 @@ export function ClinicalTabsSection({
               </div>
             </div>
 
-            {/* Clinical Assessment */}
             <div className="space-y-2 text-xs">
               <h3 className="font-bold uppercase tracking-wider text-foreground border-b border-border pb-1 flex items-center gap-1.5">
                 <AlertCircle className="h-3.5 w-3.5 text-primary" /> Clinical Indication & Assessment
@@ -819,7 +793,6 @@ export function ClinicalTabsSection({
               </div>
             </div>
 
-            {/* Vitals Snapshot */}
             <div className="space-y-2 text-xs">
               <h3 className="font-bold uppercase tracking-wider text-foreground border-b border-border pb-1 flex items-center gap-1.5">
                 <Stethoscope className="h-3.5 w-3.5 text-primary" /> Examination Vitals at Transfer
@@ -848,7 +821,6 @@ export function ClinicalTabsSection({
               </div>
             </div>
 
-            {/* Official Sign-off */}
             <div className="border-t-2 border-border pt-6 grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs">
               <div className="space-y-2">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase block">Referring Health Worker</span>
@@ -861,7 +833,7 @@ export function ClinicalTabsSection({
                 <div className="border-b border-dashed border-foreground/40 pb-1 pt-6 font-semibold">
                   {data.status === "accepted" || data.status === "completed" || data.status === "in_progress"
                     ? `Acknowledged by ${data.destination_facility.name}`
-                    : "Pending Receiving Evaluation"}
+                    : "Pending evaluation"}
                 </div>
               </div>
             </div>

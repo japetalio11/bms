@@ -87,7 +87,6 @@ export function RecentClinicalSnapshot({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         
-        {/* Card 1: Examination Vitals & Fetal Wellbeing */}
         <Card className="border border-border/80 bg-card shadow-2xs flex flex-col justify-between">
           <CardHeader className="p-3.5 sm:p-4 pb-2">
             <div className="flex items-center justify-between">
@@ -95,17 +94,16 @@ export function RecentClinicalSnapshot({
                 <Gauge className="h-3.5 w-3.5 text-primary" />
                 Latest Vital Signs
               </CardTitle>
-              <Badge variant="outline" className="text-[9px] font-mono">
+              <Badge variant="outline" className="text-[9px] font-mono border-border/80 text-muted-foreground bg-transparent">
                 {vitalsDateFormatted}
               </Badge>
             </div>
-            <p className="text-[10px] text-muted-foreground truncate">
-              By: {attendingWorker}
+            <p className="text-[10px] text-muted-foreground">
+              Latest reading · see full consultation history below
             </p>
           </CardHeader>
 
           <CardContent className="p-3.5 sm:p-4 pt-1 space-y-2 flex-1 text-xs">
-            {/* Blood Pressure */}
             <div className="rounded-lg border border-border/60 bg-muted/20 p-2 flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-muted-foreground block font-medium">Blood Pressure</span>
@@ -118,7 +116,6 @@ export function RecentClinicalSnapshot({
               </Badge>
             </div>
 
-            {/* Pulse & Temperature */}
             <div className="grid grid-cols-2 gap-1.5">
               <div className="rounded-lg border border-border/60 bg-muted/20 p-2">
                 <span className="text-[10px] text-muted-foreground block font-medium flex items-center gap-1">
@@ -138,7 +135,6 @@ export function RecentClinicalSnapshot({
               </div>
             </div>
 
-            {/* Fundic Height & FHT */}
             <div className="grid grid-cols-2 gap-1.5">
               <div className="rounded-lg border border-border/60 bg-muted/20 p-2">
                 <span className="text-[10px] text-muted-foreground block font-medium flex items-center gap-1">
@@ -172,7 +168,6 @@ export function RecentClinicalSnapshot({
           </div>
         </Card>
 
-        {/* Card 2: Recent Medications & Supplements */}
         <Card className="border border-border/80 bg-card shadow-2xs flex flex-col justify-between">
           <CardHeader className="p-3.5 sm:p-4 pb-2">
             <div className="flex items-center justify-between">
@@ -180,19 +175,19 @@ export function RecentClinicalSnapshot({
                 <Pill className="h-3.5 w-3.5 text-primary" />
                 Medications & Supplements
               </CardTitle>
-              <Badge variant="outline" className="text-[9px]">
-                {data.supplements?.length || 0} Logged
+              <Badge variant="outline" className="text-[9px] border-border/80 text-muted-foreground bg-transparent">
+                {data.supplements?.length || 0} Total
               </Badge>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Micronutrients & pre-referral doses
+              Showing most recent · {data.supplements?.length || 0} total in record — see full medication history below
             </p>
           </CardHeader>
 
           <CardContent className="p-3.5 sm:p-4 pt-1 space-y-2 flex-1 text-xs">
             {recentSupplements.length === 0 ? (
               <div className="py-6 text-center text-muted-foreground text-xs">
-                No medication records logged.
+                No medications recorded.
               </div>
             ) : (
               recentSupplements.map((s, idx) => (
@@ -204,7 +199,7 @@ export function RecentClinicalSnapshot({
                     <span className="font-bold text-foreground truncate max-w-[130px]">
                       {s.supplement_type}
                     </span>
-                    <span className="font-mono text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.2 rounded">
+                    <span className="font-mono text-[10px] text-muted-foreground font-medium">
                       {s.tablets_given_count || 1} units
                     </span>
                   </div>
@@ -212,15 +207,14 @@ export function RecentClinicalSnapshot({
                     <span>
                       {new Date(s.date_given).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
-                      <CheckCircle2 className="h-2.5 w-2.5" /> Dispensed
+                    <span className="text-muted-foreground font-medium flex items-center gap-0.5">
+                      <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" /> Dispensed
                     </span>
                   </div>
                 </div>
               ))
             )}
 
-            {/* Deworming Indicator */}
             <div className="flex items-center justify-between rounded-lg bg-muted/40 p-2 text-[11px]">
               <span className="font-medium text-muted-foreground">Deworming:</span>
               <span className="font-semibold text-foreground">
@@ -238,13 +232,12 @@ export function RecentClinicalSnapshot({
               onClick={onOpenMedsTab}
               className="w-full h-7 text-[11px] font-semibold text-primary hover:bg-primary/5 flex items-center justify-between"
             >
-              <span>View All Medications</span>
+              <span>View All Medications ({data.supplements?.length || 0})</span>
               <ArrowRight className="h-3 w-3" />
             </Button>
           </div>
         </Card>
 
-        {/* Card 3: Recent Diagnostic & Lab Screenings */}
         <Card className="border border-border/80 bg-card shadow-2xs flex flex-col justify-between">
           <CardHeader className="p-3.5 sm:p-4 pb-2">
             <div className="flex items-center justify-between">
@@ -252,19 +245,19 @@ export function RecentClinicalSnapshot({
                 <Microscope className="h-3.5 w-3.5 text-primary" />
                 Diagnostic & Lab Results
               </CardTitle>
-              <Badge variant="outline" className="text-[9px]">
-                {data.lab_screenings?.length || 0} Records
+              <Badge variant="outline" className="text-[9px] border-border/80 text-muted-foreground bg-transparent">
+                {data.lab_screenings?.length || 0} Total
               </Badge>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Blood, urinalysis & imaging scans
+              Showing most recent · {data.lab_screenings?.length || 0} total in record — see all laboratory scans below
             </p>
           </CardHeader>
 
           <CardContent className="p-3.5 sm:p-4 pt-1 space-y-2 flex-1 text-xs">
             {recentLabs.length === 0 ? (
               <div className="py-6 text-center text-muted-foreground text-xs">
-                No laboratory screenings attached.
+                No lab results attached.
               </div>
             ) : (
               recentLabs.map((lab, idx) => (
@@ -315,13 +308,12 @@ export function RecentClinicalSnapshot({
               onClick={onOpenLabsTab}
               className="w-full h-7 text-[11px] font-semibold text-primary hover:bg-primary/5 flex items-center justify-between"
             >
-              <span>View All Labs & Scans</span>
+              <span>View All Labs & Scans ({data.lab_screenings?.length || 0})</span>
               <ArrowRight className="h-3 w-3" />
             </Button>
           </div>
         </Card>
 
-        {/* Card 4: Recent Encounters & Care Continuity */}
         <Card className="border border-border/80 bg-card shadow-2xs flex flex-col justify-between">
           <CardHeader className="p-3.5 sm:p-4 pb-2">
             <div className="flex items-center justify-between">
@@ -329,17 +321,16 @@ export function RecentClinicalSnapshot({
                 <Calendar className="h-3.5 w-3.5 text-primary" />
                 Continuity & Encounters
               </CardTitle>
-              <Badge variant="outline" className="text-[9px]">
+              <Badge variant="outline" className="text-[9px] border-border/80 text-muted-foreground bg-transparent">
                 Timeline
               </Badge>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Encounters & previous transfers
+              Latest encounter prior to transfer · see longitudinal history below
             </p>
           </CardHeader>
 
           <CardContent className="p-3.5 sm:p-4 pt-1 space-y-2 flex-1 text-xs">
-            {/* Last Encounter */}
             <div className="rounded-lg border border-border/60 bg-muted/20 p-2 space-y-0.5">
               <span className="text-[10px] uppercase font-bold text-muted-foreground block">
                 Last Clinical Encounter
@@ -356,10 +347,9 @@ export function RecentClinicalSnapshot({
               </p>
             </div>
 
-            {/* Upcoming Appointment */}
             {recentAppointments.length > 0 ? (
               <div className="rounded-lg border border-border/60 bg-muted/20 p-2 space-y-0.5">
-                <span className="text-[10px] uppercase font-bold text-primary block">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground block">
                   Scheduled Appointment
                 </span>
                 <p className="font-semibold text-foreground text-xs">
@@ -369,7 +359,6 @@ export function RecentClinicalSnapshot({
               </div>
             ) : null}
 
-            {/* Previous Referrals */}
             {previousReferrals.length > 0 ? (
               <div className="rounded-lg border border-border/60 bg-muted/20 p-2 space-y-0.5">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground block flex items-center gap-1">
@@ -382,7 +371,7 @@ export function RecentClinicalSnapshot({
               </div>
             ) : (
               <div className="rounded-lg border border-border/60 bg-muted/20 p-2 text-[11px] text-muted-foreground">
-                First documented referral for this pregnancy.
+                First referral on record.
               </div>
             )}
           </CardContent>
@@ -390,7 +379,7 @@ export function RecentClinicalSnapshot({
           <div className="border-t border-border/60 px-3.5 py-2 bg-muted/10">
             <div className="text-[10px] text-muted-foreground flex items-center justify-between">
               <span>BMS Central Coordination</span>
-              <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">Active Handover</span>
+              <span className="font-mono text-muted-foreground font-medium">Active Handover</span>
             </div>
           </div>
         </Card>

@@ -16,6 +16,10 @@ import {
   WifiOff,
   CloudOff,
   ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -50,6 +54,8 @@ import {
   ReferralSuccessModal,
   type ReferralSuccessData,
 } from "./ReferralSuccessModal"
+import { Skeleton } from "@/components/ui/skeleton"
+import { UnifiedTableLoader } from "@/components/ui/unified-table-loader"
 import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
 import { referralRepository } from "@/lib/repositories/referralRepository"
 import type { LocalReferral } from "@/lib/db/bmsDatabase"
@@ -77,6 +83,8 @@ export function ReferralsPage() {
   const [referralToDelete, setReferralToDelete] =
     useState<LocalReferral | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
 
   const isMobile = useIsMobile()
   const { isOnline } = useNetworkStatus()
@@ -219,6 +227,15 @@ export function ReferralsPage() {
     })
   }, [referrals, activeTab, searchQuery, selectedRiskFilters])
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredReferrals.length / pageSize)
+  )
+  const paginatedReferrals = filteredReferrals.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
+
   const [touchStartPos, setTouchStartPos] = useState<{
     x: number
     y: number
@@ -262,9 +279,11 @@ export function ReferralsPage() {
 
       if (isLeftSwipe && currentIndex < tabs.length - 1) {
         setActiveTab(tabs[currentIndex + 1])
+        setCurrentPage(1)
       }
       if (isRightSwipe && currentIndex > 0) {
         setActiveTab(tabs[currentIndex - 1])
+        setCurrentPage(1)
       }
     }
   }
@@ -310,7 +329,10 @@ export function ReferralsPage() {
           <div className="-mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <Tabs
               value={activeTab}
-              onValueChange={setActiveTab}
+              onValueChange={(val) => {
+                setActiveTab(val)
+                setCurrentPage(1)
+              }}
               className="w-full md:w-max"
             >
               <TabsList className="h-9 w-full justify-start gap-1 rounded-md border border-border bg-muted p-1 *:flex-1 md:w-max md:*:flex-initial">
@@ -363,7 +385,10 @@ export function ReferralsPage() {
             <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto">
               <Input
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  setCurrentPage(1)
+                }}
                 placeholder="Search referrals..."
                 className="h-8.5 flex-1 min-w-[170px] border-border bg-card px-2.5 text-xs font-normal text-card-foreground sm:w-[250px] sm:flex-initial"
               />
@@ -394,6 +419,7 @@ export function ReferralsPage() {
                           id={`filter-risk-${option}`}
                           checked={selectedRiskFilters.includes(option)}
                           onCheckedChange={(checked) => {
+                            setCurrentPage(1)
                             if (checked)
                               setSelectedRiskFilters([
                                 ...selectedRiskFilters,
@@ -417,7 +443,10 @@ export function ReferralsPage() {
                   </div>
                   {selectedRiskFilters.length > 0 && (
                     <Button
-                      onClick={() => setSelectedRiskFilters([])}
+                      onClick={() => {
+                        setSelectedRiskFilters([])
+                        setCurrentPage(1)
+                      }}
                       className="h-7 w-full bg-primary text-xs text-primary-foreground"
                     >
                       Clear Filter
@@ -455,555 +484,718 @@ export function ReferralsPage() {
               </Button>
             </div>
           </div>
+
+          <div className="mt-2 flex w-full items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground md:hidden">
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage(1)}
+                className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+              >
+                <ChevronsLeft className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={currentPage >= totalPages}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
+                className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage(totalPages)}
+                className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+              >
+                <ChevronsRight className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col gap-4 p-4 pr-4 pb-24 pl-3 md:pt-0 md:pb-4">
-          {loading && (
-            <div className="flex items-center justify-center py-12 text-xs text-muted-foreground">
-              <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Loading online
-              referrals...
-            </div>
-          )}
+          <UnifiedTableLoader isLoading={loading} label="Loading referrals...">
+            {/* Mobile View */}
+            <div className="flex flex-col gap-4 md:hidden">
+              {loading && filteredReferrals.length === 0 ? (
+                [...Array(3)].map((_, i) => (
+                  <div
+                    key={`referral-skel-card-${i}`}
+                    className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 text-card-foreground"
+                  >
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-5 w-16 rounded-sm" />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-3/4" />
+                    </div>
+                  </div>
+                ))
+              ) : filteredReferrals.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center md:hidden">
+                  <FileSpreadsheet className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
+                  <h3 className="text-sm font-semibold text-card-foreground">
+                    No Referrals Found
+                  </h3>
+                  <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                    No active e-Referral transfers match your current filter
+                    criteria. Initiate a new inter-clinic referral to get started.
+                  </p>
+                  <Button
+                    onClick={() => setIsCreateOpen(true)}
+                    className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Initiate First Referral
+                  </Button>
+                </div>
+              ) : (
+                paginatedReferrals.map((ref) => {
+                  const motherName = ref.pregnancy?.mother
+                    ? `${ref.pregnancy.mother.first_name || ""} ${ref.pregnancy.mother.last_name || ""}`.trim()
+                    : ref.motherName || "Patient Record"
+                  const initiatedAt = ref.date_referred
+                    ? new Date(ref.date_referred).toLocaleString()
+                    : ref.initiatedAt || "N/A"
+                  const riskFlag = resolveRisk(ref)
+                  const riskLower = riskFlag.toLowerCase()
+                  const isHighRisk = riskLower.includes("high")
+                  const isMedRisk =
+                    riskLower.includes("med") || riskLower.includes("moderate")
 
-          {!loading && filteredReferrals.length === 0 && (
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center">
-              <FileSpreadsheet className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
-              <h3 className="text-sm font-semibold text-card-foreground">
-                No Referrals Found
-              </h3>
-              <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                No active e-Referral transfers match your current filter
-                criteria. Initiate a new inter-clinic referral to get started.
-              </p>
-              <Button
-                onClick={() => setIsCreateOpen(true)}
-                className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" /> Initiate First Referral
-              </Button>
-            </div>
-          )}
+                  const status = ref.status
+                    ? ref.status.charAt(0).toUpperCase() + ref.status.slice(1)
+                    : "Pending"
+                  const statusLower = (ref.status || "pending").toLowerCase()
+                  const transferCode = ref.shared_pin || ref.transferCode || "N/A"
+                  const destination =
+                    ref.toFacility?.facility_name ||
+                    ref.external_facility_name ||
+                    ref.destination ||
+                    "N/A"
 
-          {!loading && filteredReferrals.length > 0 && (
-            <div className="hidden overflow-x-auto rounded-md border border-border bg-card md:block">
-              <div className="min-w-[1100px]">
-                <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow className="border-border hover:bg-transparent">
-                      <TableHead className="w-12 pl-4 text-center">
-                        <Checkbox
-                          checked={
-                            selectedRowIds.size === filteredReferrals.length &&
-                            filteredReferrals.length > 0
-                          }
-                          onCheckedChange={toggleSelectAll}
-                          className="border-border"
-                        />
-                      </TableHead>
-                      <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                        Mother Name
-                      </TableHead>
-                      <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                        Initiated At
-                      </TableHead>
-                      <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                        Risk Flag
-                      </TableHead>
-                      <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                        Status
-                      </TableHead>
-                      <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                        Transfer Record Link
-                      </TableHead>
-                      <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                        Transfer Code
-                      </TableHead>
-                      <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
-                        Destination Facility
-                      </TableHead>
-                      <TableHead className="w-12"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredReferrals.map((ref) => {
-                      const motherUser = ref.pregnancy?.mother?.user
-                      const motherName = motherUser
-                        ? `${motherUser.first_name || ""} ${motherUser.last_name || ""}`.trim()
-                        : ref.pregnancy?.mother?.first_name
-                          ? `${ref.pregnancy.mother.first_name} ${ref.pregnancy.mother.last_name || ""}`.trim()
-                          : ref.motherName || "Patient Record"
-                      const initiatedAt = ref.date_referred
-                        ? new Date(ref.date_referred).toLocaleString()
-                        : ref.initiatedAt || "N/A"
-                      const riskFlag = resolveRisk(ref)
-                      const riskLower = riskFlag.toLowerCase()
-                      const isHighRisk = riskLower.includes("high")
-                      const isMedRisk =
-                        riskLower.includes("med") ||
-                        riskLower.includes("moderate")
+                  const isOrigin = Boolean(
+                    currentFacilityId &&
+                    ref.from_facility_id === currentFacilityId
+                  )
+                  const isDestination =
+                    currentUser?.role === "SystemAdmin" ||
+                    Boolean(
+                      currentFacilityId &&
+                      ref.to_facility_id === currentFacilityId
+                    )
 
-                      const status = ref.status
-                        ? ref.status.charAt(0).toUpperCase() +
-                          ref.status.slice(1)
-                        : "Pending"
-                      const statusLower = (
-                        ref.status || "pending"
-                      ).toLowerCase()
-                      const recordLink =
-                        ref.secure_link || ref.recordLink || "N/A"
-                      const transferCode =
-                        ref.shared_pin || ref.transferCode || "N/A"
-                      const destination =
-                        ref.toFacility?.facility_name ||
-                        ref.external_facility_name ||
-                        ref.destination ||
-                        "N/A"
-
-                      const isOrigin = Boolean(
-                        currentFacilityId &&
-                        ref.from_facility_id === currentFacilityId
-                      )
-                      const isDestination =
-                        currentUser?.role === "SystemAdmin" ||
-                        Boolean(
-                          currentFacilityId &&
-                          ref.to_facility_id === currentFacilityId
-                        )
-
-                      return (
-                        <TableRow
-                          key={ref.id}
-                          className={`group cursor-pointer border-border transition-colors ${selectedReferral?.id === ref.id ? "bg-accent" : "hover:bg-accent/50"}`}
-                          onClick={() => setSelectedReferral(ref)}
-                        >
-                          <TableCell
-                            className="pl-4"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Checkbox
-                              checked={selectedRowIds.has(ref.id)}
-                              onCheckedChange={() => toggleSelectRow(ref.id)}
-                              className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                            />
-                          </TableCell>
-                          <TableCell className="text-xs font-medium whitespace-nowrap text-card-foreground">
-                            <div className="flex items-center gap-2">
-                              <span>{motherName}</span>
-                              {isOrigin && (
-                                <span className="rounded bg-blue-500/10 px-1 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400">
-                                  Out
-                                </span>
-                              )}
-                              {isDestination && !isOrigin && (
-                                <span className="rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-medium text-emerald-600 dark:text-emerald-400">
-                                  In
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-xs whitespace-nowrap text-card-foreground">
-                            {initiatedAt}
-                          </TableCell>
-                          <TableCell>
-                            <div
-                              className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${
-                                isHighRisk
-                                  ? "bg-red-500/10 text-red-500"
-                                  : isMedRisk
-                                    ? "bg-amber-500/10 text-amber-500"
-                                    : "bg-green-500/10 text-green-500"
-                              }`}
-                            >
-                              {isHighRisk ? (
-                                <Activity className="h-3 w-3" />
-                              ) : isMedRisk ? (
-                                <AlertTriangle className="h-3 w-3" />
-                              ) : (
-                                <CheckCircle2 className="h-3 w-3" />
-                              )}
-                              {riskFlag}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col items-start gap-1">
-                              <div
-                                className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${
-                                  statusLower === "accepted" ||
-                                  statusLower === "completed"
-                                    ? "bg-green-500/10 text-green-500"
-                                    : statusLower === "pending"
-                                      ? "bg-amber-500/10 text-amber-500"
-                                      : statusLower === "rejected" ||
-                                          statusLower === "cancelled"
-                                        ? "bg-red-500/10 text-red-500"
-                                        : "bg-blue-500/10 text-blue-500"
-                                }`}
-                              >
-                                {statusLower === "accepted" ||
-                                statusLower === "completed" ? (
-                                  <CheckCircle2 className="h-3 w-3" />
-                                ) : statusLower === "pending" ? (
-                                  <Clock className="h-3 w-3" />
-                                ) : (
-                                  <Activity className="h-3 w-3" />
-                                )}
-                                {status}
-                              </div>
-                              {ref.sync_status &&
-                                ref.sync_status !== "synced" && (
-                                  <span className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400">
-                                    <CloudOff className="h-2.5 w-2.5" /> Pending
-                                    Sync
-                                  </span>
-                                )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-xs whitespace-nowrap text-card-foreground">
-                            {recordLink !== "N/A" ? (
-                              <div
-                                className="flex max-w-[170px] items-center gap-1.5"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <a
-                                  href={recordLink}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title={recordLink}
-                                  className="inline-flex max-w-[130px] items-center gap-1 truncate rounded bg-blue-500/10 px-2 py-1 text-[11px] font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400"
-                                >
-                                  <ExternalLink className="h-3 w-3 shrink-0" />
-                                  <span className="truncate">
-                                    {recordLink.replace(
-                                      /^https?:\/\/[^/]+/,
-                                      ""
-                                    ) || "View Link"}
-                                  </span>
-                                </a>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
-                                  title="Copy Referral Link"
-                                  onClick={(e) =>
-                                    handleCopyText(recordLink, "Link", e)
-                                  }
-                                >
-                                  <Copy className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                N/A
+                  return (
+                    <div
+                      key={ref.id}
+                      className={`flex cursor-pointer flex-col gap-4 rounded-xl border border-border bg-card p-4 transition-colors ${selectedReferral?.id === ref.id ? "ring-1 ring-ring" : "hover:bg-accent/50"}`}
+                      onClick={() => setSelectedReferral(ref)}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-semibold text-card-foreground">
+                              {motherName}
+                            </h3>
+                            {isOrigin && (
+                              <span className="rounded bg-blue-500/10 px-1 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400">
+                                Out
                               </span>
                             )}
-                          </TableCell>
-                          <TableCell className="font-mono text-xs whitespace-nowrap text-card-foreground">
-                            <div className="flex items-center gap-2">
-                              {transferCode}
-                              {transferCode !== "N/A" && (
-                                <Copy
-                                  className="h-3 w-3 cursor-pointer text-muted-foreground hover:text-foreground"
-                                  onClick={(e) =>
-                                    handleCopyText(transferCode, "PIN Code", e)
-                                  }
-                                />
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-xs whitespace-nowrap text-card-foreground">
+                            {isDestination && !isOrigin && (
+                              <span className="rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-medium text-emerald-600 dark:text-emerald-400">
+                                In
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {initiatedAt}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <div
+                            className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${
+                              isHighRisk
+                                ? "bg-red-500/10 text-red-500"
+                                : isMedRisk
+                                  ? "bg-amber-500/10 text-amber-500"
+                                  : "bg-green-500/10 text-green-500"
+                            }`}
+                          >
+                            {isHighRisk ? (
+                              <Activity className="h-3 w-3" />
+                            ) : isMedRisk ? (
+                              <AlertTriangle className="h-3 w-3" />
+                            ) : (
+                              <CheckCircle2 className="h-3 w-3" />
+                            )}
+                            {riskFlag}
+                          </div>
+                          <div
+                            className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${
+                              statusLower === "accepted" ||
+                              statusLower === "completed"
+                                ? "bg-green-500/10 text-green-500"
+                                : statusLower === "pending"
+                                  ? "bg-amber-500/10 text-amber-500"
+                                  : statusLower === "rejected" ||
+                                      statusLower === "cancelled"
+                                    ? "bg-red-500/10 text-red-500"
+                                    : "bg-blue-500/10 text-blue-500"
+                            }`}
+                          >
+                            {statusLower === "accepted" ||
+                            statusLower === "completed" ? (
+                              <CheckCircle2 className="h-3 w-3" />
+                            ) : statusLower === "pending" ? (
+                              <Clock className="h-3 w-3" />
+                            ) : (
+                              <Activity className="h-3 w-3" />
+                            )}
+                            {status}
+                          </div>
+                          {ref.sync_status && ref.sync_status !== "synced" && (
+                            <span className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400">
+                              <CloudOff className="h-2.5 w-2.5" /> Pending Sync
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">
+                            Destination
+                          </span>
+                          <span className="text-right text-xs text-card-foreground">
                             {destination}
-                          </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-foreground hover:bg-accent"
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">
+                            Transfer Code
+                          </span>
+                          <div className="flex items-center gap-2 text-right font-mono text-xs text-card-foreground">
+                            {transferCode}
+                            {transferCode !== "N/A" && (
+                              <Copy
+                                className="h-3 w-3 cursor-pointer text-muted-foreground"
+                                onClick={(e) =>
+                                  handleCopyText(transferCode, "PIN Code", e)
+                                }
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        className="flex items-center justify-end border-t border-border pt-3"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-foreground"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="w-[160px] rounded-xl border-border shadow-md"
+                          >
+                            <DropdownMenuItem
+                              onClick={() => setSelectedReferral(ref)}
+                              className="cursor-pointer rounded-md text-xs"
+                            >
+                              View Details
+                            </DropdownMenuItem>
+                            {isDestination &&
+                              !isOrigin &&
+                              statusLower === "pending" && (
+                                <DropdownMenuItem
+                                  onClick={async () => {
+                                    await referralRepository.respondToReferral(
+                                      ref.referral_id || ref.id,
+                                      { status: "accepted" }
+                                    )
+                                    loadReferrals()
+                                  }}
+                                  className="cursor-pointer rounded-md text-xs text-emerald-600 hover:!bg-emerald-500/10 hover:!text-emerald-600"
                                 >
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="end"
-                                className="w-[160px] rounded-xl border-border shadow-md"
+                                  Accept Transfer
+                                </DropdownMenuItem>
+                              )}
+                            {isOrigin && statusLower === "pending" && (
+                              <DropdownMenuItem
+                                onClick={async () => {
+                                  await referralRepository.respondToReferral(
+                                    ref.referral_id || ref.id,
+                                    { status: "cancelled" }
+                                  )
+                                  loadReferrals()
+                                }}
+                                className="cursor-pointer rounded-md text-xs text-amber-600 hover:!bg-amber-500/10 hover:!text-amber-600"
                               >
-                                <DropdownMenuItem
-                                  onClick={() => setSelectedReferral(ref)}
-                                  className="cursor-pointer rounded-md text-xs"
-                                >
-                                  View Details
-                                </DropdownMenuItem>
-                                {isDestination &&
-                                  !isOrigin &&
-                                  statusLower === "pending" && (
-                                    <DropdownMenuItem
-                                      onClick={async () => {
-                                        await referralRepository.respondToReferral(
-                                          ref.referral_id || ref.id,
-                                          { status: "accepted" }
-                                        )
-                                        loadReferrals()
-                                      }}
-                                      className="cursor-pointer rounded-md text-xs text-emerald-600 hover:!bg-emerald-500/10 hover:!text-emerald-600"
-                                    >
-                                      Accept Transfer
-                                    </DropdownMenuItem>
-                                  )}
-                                {isOrigin && statusLower === "pending" && (
-                                  <DropdownMenuItem
-                                    onClick={async () => {
-                                      await referralRepository.respondToReferral(
-                                        ref.referral_id || ref.id,
-                                        { status: "cancelled" }
-                                      )
-                                      loadReferrals()
-                                    }}
-                                    className="cursor-pointer rounded-md text-xs text-amber-600 hover:!bg-amber-500/10 hover:!text-amber-600"
-                                  >
-                                    Cancel Transfer
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem
-                                  onClick={() => setReferralToDelete(ref)}
-                                  className="cursor-pointer rounded-md text-xs text-red-500 hover:!bg-red-500/10 hover:!text-red-500"
-                                >
-                                  Delete Referral
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                                Cancel Transfer
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onClick={() => setReferralToDelete(ref)}
+                              className="cursor-pointer rounded-md text-xs text-red-500 hover:!bg-red-500/10 hover:!text-red-500"
+                            >
+                              Delete Referral
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
             </div>
-          )}
+
+            {/* Desktop View */}
+            <div className="hidden md:block">
+              {!loading && filteredReferrals.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-12 text-center">
+                  <FileSpreadsheet className="mb-3 h-8 w-8 text-muted-foreground opacity-50" />
+                  <h3 className="text-sm font-semibold text-card-foreground">
+                    No Referrals Found
+                  </h3>
+                  <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                    No active e-Referral transfers match your current filter
+                    criteria. Initiate a new inter-clinic referral to get started.
+                  </p>
+                  <Button
+                    onClick={() => setIsCreateOpen(true)}
+                    className="mt-4 h-8 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Initiate First Referral
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-border bg-card">
+                  <div className="min-w-[1100px]">
+                    <Table>
+                      <TableHeader className="bg-muted/50">
+                        <TableRow className="border-border hover:bg-transparent">
+                          <TableHead className="w-12 pl-4 text-center">
+                            <Checkbox
+                              checked={
+                                selectedRowIds.size === filteredReferrals.length &&
+                                filteredReferrals.length > 0
+                              }
+                              onCheckedChange={toggleSelectAll}
+                              className="border-border"
+                            />
+                          </TableHead>
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                            Mother Name
+                          </TableHead>
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                            Initiated At
+                          </TableHead>
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                            Risk Flag
+                          </TableHead>
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                            Status
+                          </TableHead>
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                            Transfer Record Link
+                          </TableHead>
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                            Transfer Code
+                          </TableHead>
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                            Destination Facility
+                          </TableHead>
+                          <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loading && filteredReferrals.length === 0 ? (
+                          [...Array(5)].map((_, i) => (
+                            <TableRow
+                              key={`referral-skel-${i}`}
+                              className="border-border"
+                            >
+                              <TableCell className="pl-4">
+                                <Skeleton className="h-4 w-4 rounded" />
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-4 w-32" />
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-4 w-28" />
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-5 w-20 rounded-sm" />
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-5 w-20 rounded-sm" />
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-4 w-24" />
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-4 w-20" />
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-4 w-32" />
+                              </TableCell>
+                              <TableCell>
+                                <Skeleton className="h-6 w-6 rounded-md" />
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          paginatedReferrals.map((ref) => {
+                            const motherUser = ref.pregnancy?.mother?.user
+                            const motherName = motherUser
+                              ? `${motherUser.first_name || ""} ${motherUser.last_name || ""}`.trim()
+                              : ref.pregnancy?.mother?.first_name
+                                ? `${ref.pregnancy.mother.first_name} ${ref.pregnancy.mother.last_name || ""}`.trim()
+                                : ref.motherName || "Patient Record"
+                            const initiatedAt = ref.date_referred
+                              ? new Date(ref.date_referred).toLocaleString()
+                              : ref.initiatedAt || "N/A"
+                            const riskFlag = resolveRisk(ref)
+                            const riskLower = riskFlag.toLowerCase()
+                            const isHighRisk = riskLower.includes("high")
+                            const isMedRisk =
+                              riskLower.includes("med") ||
+                              riskLower.includes("moderate")
+
+                            const status = ref.status
+                              ? ref.status.charAt(0).toUpperCase() +
+                                ref.status.slice(1)
+                              : "Pending"
+                            const statusLower = (
+                              ref.status || "pending"
+                            ).toLowerCase()
+                            const recordLink =
+                              ref.secure_link || ref.recordLink || "N/A"
+                            const transferCode =
+                              ref.shared_pin || ref.transferCode || "N/A"
+                            const destination =
+                              ref.toFacility?.facility_name ||
+                              ref.external_facility_name ||
+                              ref.destination ||
+                              "N/A"
+
+                            const isOrigin = Boolean(
+                              currentFacilityId &&
+                              ref.from_facility_id === currentFacilityId
+                            )
+                            const isDestination =
+                              currentUser?.role === "SystemAdmin" ||
+                              Boolean(
+                                currentFacilityId &&
+                                ref.to_facility_id === currentFacilityId
+                              )
+
+                            return (
+                              <TableRow
+                                key={ref.id}
+                                className={`group cursor-pointer border-border transition-colors ${selectedReferral?.id === ref.id ? "bg-accent" : "hover:bg-accent/50"}`}
+                                onClick={() => setSelectedReferral(ref)}
+                              >
+                                <TableCell
+                                  className="pl-4"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Checkbox
+                                    checked={selectedRowIds.has(ref.id)}
+                                    onCheckedChange={() => toggleSelectRow(ref.id)}
+                                    className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                                  />
+                                </TableCell>
+                                <TableCell className="text-xs font-medium whitespace-nowrap text-card-foreground">
+                                  <div className="flex items-center gap-2">
+                                    <span>{motherName}</span>
+                                    {isOrigin && (
+                                      <span className="rounded bg-blue-500/10 px-1 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400">
+                                        Out
+                                      </span>
+                                    )}
+                                    {isDestination && !isOrigin && (
+                                      <span className="rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-medium text-emerald-600 dark:text-emerald-400">
+                                        In
+                                      </span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-xs whitespace-nowrap text-card-foreground">
+                                  {initiatedAt}
+                                </TableCell>
+                                <TableCell>
+                                  <div
+                                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${
+                                      isHighRisk
+                                        ? "bg-red-500/10 text-red-500"
+                                        : isMedRisk
+                                          ? "bg-amber-500/10 text-amber-500"
+                                          : "bg-green-500/10 text-green-500"
+                                    }`}
+                                  >
+                                    {isHighRisk ? (
+                                      <Activity className="h-3 w-3" />
+                                    ) : isMedRisk ? (
+                                      <AlertTriangle className="h-3 w-3" />
+                                    ) : (
+                                      <CheckCircle2 className="h-3 w-3" />
+                                    )}
+                                    {riskFlag}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col items-start gap-1">
+                                    <div
+                                      className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${
+                                        statusLower === "accepted" ||
+                                        statusLower === "completed"
+                                          ? "bg-green-500/10 text-green-500"
+                                          : statusLower === "pending"
+                                            ? "bg-amber-500/10 text-amber-500"
+                                            : statusLower === "rejected" ||
+                                                statusLower === "cancelled"
+                                              ? "bg-red-500/10 text-red-500"
+                                              : "bg-blue-500/10 text-blue-500"
+                                      }`}
+                                    >
+                                      {statusLower === "accepted" ||
+                                      statusLower === "completed" ? (
+                                        <CheckCircle2 className="h-3 w-3" />
+                                      ) : statusLower === "pending" ? (
+                                        <Clock className="h-3 w-3" />
+                                      ) : (
+                                        <Activity className="h-3 w-3" />
+                                      )}
+                                      {status}
+                                    </div>
+                                    {ref.sync_status &&
+                                      ref.sync_status !== "synced" && (
+                                        <span className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400">
+                                          <CloudOff className="h-2.5 w-2.5" /> Pending
+                                          Sync
+                                        </span>
+                                      )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-xs whitespace-nowrap text-card-foreground">
+                                  {recordLink !== "N/A" ? (
+                                    <div
+                                      className="flex max-w-[170px] items-center gap-1.5"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <a
+                                        href={recordLink}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        title={recordLink}
+                                        className="inline-flex max-w-[130px] items-center gap-1 truncate rounded bg-blue-500/10 px-2 py-1 text-[11px] font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400"
+                                      >
+                                        <ExternalLink className="h-3 w-3 shrink-0" />
+                                        <span className="truncate">
+                                          {recordLink.replace(
+                                            /^https?:\/\/[^/]+/,
+                                            ""
+                                          ) || "View Link"}
+                                        </span>
+                                      </a>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+                                        title="Copy Referral Link"
+                                        onClick={(e) =>
+                                          handleCopyText(recordLink, "Link", e)
+                                        }
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      N/A
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="font-mono text-xs whitespace-nowrap text-card-foreground">
+                                  <div className="flex items-center gap-2">
+                                    {transferCode}
+                                    {transferCode !== "N/A" && (
+                                      <Copy
+                                        className="h-3 w-3 cursor-pointer text-muted-foreground hover:text-foreground"
+                                        onClick={(e) =>
+                                          handleCopyText(transferCode, "PIN Code", e)
+                                        }
+                                      />
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-xs whitespace-nowrap text-card-foreground">
+                                  {destination}
+                                </TableCell>
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-foreground hover:bg-accent"
+                                      >
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                      align="end"
+                                      className="w-[160px] rounded-xl border-border shadow-md"
+                                    >
+                                      <DropdownMenuItem
+                                        onClick={() => setSelectedReferral(ref)}
+                                        className="cursor-pointer rounded-md text-xs"
+                                      >
+                                        View Details
+                                      </DropdownMenuItem>
+                                      {isDestination &&
+                                        !isOrigin &&
+                                        statusLower === "pending" && (
+                                          <DropdownMenuItem
+                                            onClick={async () => {
+                                              await referralRepository.respondToReferral(
+                                                ref.referral_id || ref.id,
+                                                { status: "accepted" }
+                                              )
+                                              loadReferrals()
+                                            }}
+                                            className="cursor-pointer rounded-md text-xs text-emerald-600 hover:!bg-emerald-500/10 hover:!text-emerald-600"
+                                          >
+                                            Accept Transfer
+                                          </DropdownMenuItem>
+                                        )}
+                                      {isOrigin && statusLower === "pending" && (
+                                        <DropdownMenuItem
+                                          onClick={async () => {
+                                            await referralRepository.respondToReferral(
+                                              ref.referral_id || ref.id,
+                                              { status: "cancelled" }
+                                            )
+                                            loadReferrals()
+                                          }}
+                                          className="cursor-pointer rounded-md text-xs text-amber-600 hover:!bg-amber-500/10 hover:!text-amber-600"
+                                        >
+                                          Cancel Transfer
+                                        </DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuItem
+                                        onClick={() => setReferralToDelete(ref)}
+                                        className="cursor-pointer rounded-md text-xs text-red-500 hover:!bg-red-500/10 hover:!text-red-500"
+                                      >
+                                        Delete Referral
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </UnifiedTableLoader>
 
           {!loading && filteredReferrals.length > 0 && (
-            <div className="hidden flex-row items-center justify-between gap-4 text-xs text-muted-foreground md:flex">
+            <div className="mt-2 hidden flex-row items-center justify-between gap-4 text-xs text-muted-foreground md:flex">
               <div>
                 {selectedRowIds.size} of {filteredReferrals.length} row(s)
                 selected.
               </div>
 
               <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <span>Rows per page</span>
+                  <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-2 py-1">
+                    <span>{pageSize}</span>
+                  </div>
+                </div>
                 <div className="flex items-center gap-4">
-                  <span>Total Items: {filteredReferrals.length}</span>
+                  <span>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={currentPage <= 1}
+                      onClick={() => setCurrentPage(1)}
+                      className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+                    >
+                      <ChevronsLeft className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={currentPage <= 1}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
+                      className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+                    >
+                      <ChevronLeft className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={currentPage >= totalPages}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                      }
+                      className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+                    >
+                      <ChevronRight className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      disabled={currentPage >= totalPages}
+                      onClick={() => setCurrentPage(totalPages)}
+                      className="h-7 w-7 border-border bg-transparent disabled:opacity-50"
+                    >
+                      <ChevronsRight className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {!loading && filteredReferrals.length > 0 && (
-            <div className="flex flex-col gap-4 md:hidden">
-              {filteredReferrals.map((ref) => {
-                const motherName = ref.pregnancy?.mother
-                  ? `${ref.pregnancy.mother.first_name || ""} ${ref.pregnancy.mother.last_name || ""}`.trim()
-                  : ref.motherName || "Patient Record"
-                const initiatedAt = ref.date_referred
-                  ? new Date(ref.date_referred).toLocaleString()
-                  : ref.initiatedAt || "N/A"
-                const riskFlag = resolveRisk(ref)
-                const riskLower = riskFlag.toLowerCase()
-                const isHighRisk = riskLower.includes("high")
-                const isMedRisk =
-                  riskLower.includes("med") || riskLower.includes("moderate")
-
-                const status = ref.status
-                  ? ref.status.charAt(0).toUpperCase() + ref.status.slice(1)
-                  : "Pending"
-                const statusLower = (ref.status || "pending").toLowerCase()
-                const transferCode = ref.shared_pin || ref.transferCode || "N/A"
-                const destination =
-                  ref.toFacility?.facility_name ||
-                  ref.external_facility_name ||
-                  ref.destination ||
-                  "N/A"
-
-                const isOrigin = Boolean(
-                  currentFacilityId &&
-                  ref.from_facility_id === currentFacilityId
-                )
-                const isDestination =
-                  currentUser?.role === "SystemAdmin" ||
-                  Boolean(
-                    currentFacilityId &&
-                    ref.to_facility_id === currentFacilityId
-                  )
-
-                return (
-                  <div
-                    key={ref.id}
-                    className={`flex cursor-pointer flex-col gap-4 rounded-xl border border-border bg-card p-4 transition-colors ${selectedReferral?.id === ref.id ? "ring-1 ring-ring" : "hover:bg-accent/50"}`}
-                    onClick={() => setSelectedReferral(ref)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-semibold text-card-foreground">
-                            {motherName}
-                          </h3>
-                          {isOrigin && (
-                            <span className="rounded bg-blue-500/10 px-1 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400">
-                              Out
-                            </span>
-                          )}
-                          {isDestination && !isOrigin && (
-                            <span className="rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-medium text-emerald-600 dark:text-emerald-400">
-                              In
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {initiatedAt}
-                        </span>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <div
-                          className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${
-                            isHighRisk
-                              ? "bg-red-500/10 text-red-500"
-                              : isMedRisk
-                                ? "bg-amber-500/10 text-amber-500"
-                                : "bg-green-500/10 text-green-500"
-                          }`}
-                        >
-                          {isHighRisk ? (
-                            <Activity className="h-3 w-3" />
-                          ) : isMedRisk ? (
-                            <AlertTriangle className="h-3 w-3" />
-                          ) : (
-                            <CheckCircle2 className="h-3 w-3" />
-                          )}
-                          {riskFlag}
-                        </div>
-                        <div
-                          className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${
-                            statusLower === "accepted" ||
-                            statusLower === "completed"
-                              ? "bg-green-500/10 text-green-500"
-                              : statusLower === "pending"
-                                ? "bg-amber-500/10 text-amber-500"
-                                : statusLower === "rejected" ||
-                                    statusLower === "cancelled"
-                                  ? "bg-red-500/10 text-red-500"
-                                  : "bg-blue-500/10 text-blue-500"
-                          }`}
-                        >
-                          {statusLower === "accepted" ||
-                          statusLower === "completed" ? (
-                            <CheckCircle2 className="h-3 w-3" />
-                          ) : statusLower === "pending" ? (
-                            <Clock className="h-3 w-3" />
-                          ) : (
-                            <Activity className="h-3 w-3" />
-                          )}
-                          {status}
-                        </div>
-                        {ref.sync_status && ref.sync_status !== "synced" && (
-                          <span className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400">
-                            <CloudOff className="h-2.5 w-2.5" /> Pending Sync
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">
-                          Destination
-                        </span>
-                        <span className="text-right text-xs text-card-foreground">
-                          {destination}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">
-                          Transfer Code
-                        </span>
-                        <div className="flex items-center gap-2 text-right font-mono text-xs text-card-foreground">
-                          {transferCode}
-                          {transferCode !== "N/A" && (
-                            <Copy
-                              className="h-3 w-3 cursor-pointer text-muted-foreground"
-                              onClick={(e) =>
-                                handleCopyText(transferCode, "PIN Code", e)
-                              }
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      className="flex items-center justify-end border-t border-border pt-3"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-foreground"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-[160px] rounded-xl border-border shadow-md"
-                        >
-                          <DropdownMenuItem
-                            onClick={() => setSelectedReferral(ref)}
-                            className="cursor-pointer rounded-md text-xs"
-                          >
-                            View Details
-                          </DropdownMenuItem>
-                          {isDestination &&
-                            !isOrigin &&
-                            statusLower === "pending" && (
-                              <DropdownMenuItem
-                                onClick={async () => {
-                                  await referralRepository.respondToReferral(
-                                    ref.referral_id || ref.id,
-                                    { status: "accepted" }
-                                  )
-                                  loadReferrals()
-                                }}
-                                className="cursor-pointer rounded-md text-xs text-emerald-600 hover:!bg-emerald-500/10 hover:!text-emerald-600"
-                              >
-                                Accept Transfer
-                              </DropdownMenuItem>
-                            )}
-                          {isOrigin && statusLower === "pending" && (
-                            <DropdownMenuItem
-                              onClick={async () => {
-                                await referralRepository.respondToReferral(
-                                  ref.referral_id || ref.id,
-                                  { status: "cancelled" }
-                                )
-                                loadReferrals()
-                              }}
-                              className="cursor-pointer rounded-md text-xs text-amber-600 hover:!bg-amber-500/10 hover:!text-amber-600"
-                            >
-                              Cancel Transfer
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            onClick={() => setReferralToDelete(ref)}
-                            className="cursor-pointer rounded-md text-xs text-red-500 hover:!bg-red-500/10 hover:!text-red-500"
-                          >
-                            Delete Referral
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                )
-              })}
             </div>
           )}
         </div>

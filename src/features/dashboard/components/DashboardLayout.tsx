@@ -48,7 +48,7 @@ export function DashboardLayout() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="fixed right-6 bottom-6 z-50 h-14 w-14 rounded-full border bg-foreground p-0 text-background shadow-lg hover:bg-foreground/90 md:hidden">
+            <Button className="fixed right-6 bottom-6 z-50 h-14 w-14 rounded-full border border-primary/20 bg-primary p-0 text-primary-foreground shadow-lg shadow-primary/30 hover:bg-primary/90 md:hidden">
               <PlusCircle className="size-6" />
               <span className="sr-only">Quick Create</span>
             </Button>

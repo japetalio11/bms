@@ -311,7 +311,7 @@ export function AppSidebar() {
                 >
                   <Avatar className="h-8 w-8 shrink-0 rounded-lg">
                     <AvatarImage src={profileUrl} alt={userName} />
-                    <AvatarFallback className="rounded-lg text-xs font-semibold">
+                    <AvatarFallback className="rounded-lg border border-primary/20 bg-primary/10 text-xs font-semibold text-primary">
                       {userName.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>

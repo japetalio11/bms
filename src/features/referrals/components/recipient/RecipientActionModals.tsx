@@ -20,16 +20,13 @@ import {
   Printer,
   FileSignature,
   Microscope,
+  AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import type { PublicReferralData, DocumentModalData } from "./referralTypes"
-
-// ---------------------------------------------------------------------------
-// 1. Triage Decision Modal
-// ---------------------------------------------------------------------------
 
 interface TriageResponseModalProps {
   open: boolean
@@ -118,30 +115,55 @@ export function TriageResponseModal({
           </div>
         </div>
 
-        <div>
-          <label className="mb-1 block text-xs font-semibold text-foreground">
-            Clinical Response & Admission Instructions
-          </label>
-          <Textarea
-            placeholder="e.g. Patient evaluated in OB Triage. Admitted to High-Risk Antenatal Ward for continuous fetal monitoring..."
-            value={responseNotes}
-            onChange={(e) => onResponseNotesChange(e.target.value)}
-            rows={3}
-            className="resize-none text-xs"
-          />
-        </div>
+        {selectedAction === "rejected" && (
+          <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 space-y-1 text-xs">
+            <div className="flex items-center gap-1.5 font-bold text-red-600 dark:text-red-400">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>Irreversible Clinical Decision: Confirm Decline</span>
+            </div>
+            <p className="text-[11px] text-red-950/80 dark:text-red-200/90 leading-relaxed">
+              Declining this maternal transfer is an irreversible action. A documented clinical rationale (e.g., bed capacity exhausted, required subspecialty unavailable) is required and will be immediately communicated to the sending facility.
+            </p>
+          </div>
+        )}
 
         <div>
           <label className="mb-1 block text-xs font-semibold text-foreground">
-            Clinical Outcome / Disposition (Optional)
+            {selectedAction === "rejected" ? (
+              <span className="text-red-600 dark:text-red-400 font-bold">
+                Clinical Rationale for Declining (Required) *
+              </span>
+            ) : (
+              "Clinical Response & Admission Instructions"
+            )}
           </label>
-          <Input
-            placeholder="e.g. Admitted / Scheduled for Induction / Stabilized"
-            value={outcomeNotes}
-            onChange={(e) => onOutcomeNotesChange(e.target.value)}
-            className="h-9 text-xs"
+          <Textarea
+            placeholder={
+              selectedAction === "rejected"
+                ? "State clinical reason for declining (e.g., NICU/OB high-dependency unit at 100% capacity, emergency surgical team unavailable, redirected to alternate regional center)..."
+                : "e.g. Patient evaluated in OB Triage. Admitted to High-Risk Antenatal Ward for continuous fetal monitoring..."
+            }
+            value={responseNotes}
+            onChange={(e) => onResponseNotesChange(e.target.value)}
+            rows={3}
+            className={`resize-none text-xs ${selectedAction === "rejected" && !responseNotes.trim() ? "border-red-500/50" : ""}`}
+            required={selectedAction === "rejected"}
           />
         </div>
+
+        {selectedAction !== "rejected" && (
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-foreground">
+              Clinical Outcome / Disposition (Optional)
+            </label>
+            <Input
+              placeholder="e.g. Admitted / Scheduled for Induction / Stabilized"
+              value={outcomeNotes}
+              onChange={(e) => onOutcomeNotesChange(e.target.value)}
+              className="h-9 text-xs"
+            />
+          </div>
+        )}
 
         <div className="flex justify-end gap-2 border-t border-border pt-3">
           <Button
@@ -156,20 +178,24 @@ export function TriageResponseModal({
           <Button
             type="submit"
             size="sm"
-            disabled={loading}
-            className="h-9 font-semibold bg-primary"
+            disabled={loading || (selectedAction === "rejected" && !responseNotes.trim())}
+            className={`h-9 font-semibold ${
+              selectedAction === "rejected"
+                ? "bg-red-600 hover:bg-red-700 text-white"
+                : "bg-primary"
+            }`}
           >
-            {loading ? "Recording..." : "Transmit Decision"}
+            {loading
+              ? "Recording..."
+              : selectedAction === "rejected"
+                ? "Confirm & Decline Transfer"
+                : "Transmit Decision"}
           </Button>
         </div>
       </form>
     </ResponsiveModal>
   )
 }
-
-// ---------------------------------------------------------------------------
-// 2. Direct Facility Clarification / Inquiry Modal
-// ---------------------------------------------------------------------------
 
 interface ClarificationModalProps {
   open: boolean
@@ -224,7 +250,6 @@ export function ClarificationModal({
         </div>
       ) : (
         <div className="space-y-4 pt-1">
-          {/* Quick Contact Box */}
           <div className="rounded-xl border border-border/80 bg-muted/40 p-3 text-xs space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-foreground flex items-center gap-1.5 truncate">
@@ -259,7 +284,6 @@ export function ClarificationModal({
             </div>
           </div>
 
-          {/* Form */}
           <form onSubmit={onSubmit} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
@@ -351,10 +375,6 @@ export function ClarificationModal({
   )
 }
 
-// ---------------------------------------------------------------------------
-// 3. Fullscreen Document Lightbox & Image Viewer
-// ---------------------------------------------------------------------------
-
 interface DocumentLightboxProps {
   documentModal: DocumentModalData | null
   onClose: () => void
@@ -392,7 +412,6 @@ export function DocumentLightbox({
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-zinc-950/95 backdrop-blur-md text-zinc-100 select-none animate-in fade-in duration-200">
-      {/* Top Bar */}
       <div className="flex h-12 sm:h-14 shrink-0 items-center justify-between border-b border-white/10 bg-zinc-900/90 px-3 sm:px-6">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Button
@@ -413,7 +432,6 @@ export function DocumentLightbox({
           </div>
         </div>
 
-        {/* Center Zoom Controls */}
         <div className="flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-2 py-0.5 sm:px-2.5 sm:py-1">
           <Button
             variant="ghost"
@@ -446,7 +464,6 @@ export function DocumentLightbox({
           </Button>
         </div>
 
-        {/* Right Tools */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {documentModal.fileUrl && (
             <a
@@ -483,7 +500,6 @@ export function DocumentLightbox({
         </div>
       </div>
 
-      {/* Canvas */}
       <div className="flex-1 w-full overflow-auto flex items-start justify-center p-3 sm:p-8 md:p-12">
         {documentModal.fileUrl ? (
           isImage ? (
@@ -506,7 +522,6 @@ export function DocumentLightbox({
             />
           )
         ) : (
-          /* Clinical Document Record Sheet */
           <div
             style={{ transform: `scale(${zoomScale})`, transformOrigin: "top center" }}
             className="w-full max-w-[96vw] sm:w-[820px] bg-white text-zinc-900 rounded-2xl shadow-2xl p-4 sm:p-8 md:p-10 space-y-6 transition-transform duration-200 ease-out"

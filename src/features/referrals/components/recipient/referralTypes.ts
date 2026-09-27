@@ -1,7 +1,3 @@
-// ---------------------------------------------------------------------------
-// TypeScript Interfaces for Healthcare Referral Recipient Workflow
-// ---------------------------------------------------------------------------
-
 export interface PrenatalVisitItem {
   visit_id?: string
   pregnancy_id?: string
