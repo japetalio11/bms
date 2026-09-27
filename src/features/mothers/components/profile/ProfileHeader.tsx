@@ -14,6 +14,7 @@ import {
   Building2,
   UserCheck,
   UserX,
+  Printer,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -36,6 +37,7 @@ interface ProfileHeaderProps {
   onLogVitalsClick: () => void
   onAvatarClick: () => void
   onAssignStaffClick?: () => void
+  onExportChartClick?: () => void
   isAdmin?: boolean
 }
 
@@ -48,6 +50,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
     onLogVitalsClick,
     onAvatarClick,
     onAssignStaffClick,
+    onExportChartClick,
     isAdmin: propIsAdmin,
   }) => {
     const sessionUser = useLiveQuery(() => db.userSession.get("current_user"))
@@ -305,6 +308,17 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
               >
                 <UserCheck className="h-3.5 w-3.5" />
                 {assignedStaff ? "Change Staff" : "Assign Staff"}
+              </Button>
+            )}
+            {onExportChartClick && (
+              <Button
+                onClick={onExportChartClick}
+                variant="outline"
+                size="sm"
+                className="h-9 flex-1 gap-1.5 border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted md:flex-none"
+              >
+                <Printer className="h-3.5 w-3.5 text-primary" />
+                <span>Export / Print Chart</span>
               </Button>
             )}
             <Button

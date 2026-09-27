@@ -22,6 +22,7 @@ import { RegisterLabModal } from "./RegisterLabModal"
 import { RegisterSupplementModal } from "./RegisterSupplementModal"
 import { RecordDeliveryModal } from "./RecordDeliveryModal"
 import { AssignStaffModal } from "./AssignStaffModal"
+import { ExportMotherClinicalRecordModal } from "./ExportMotherClinicalRecordModal"
 import { DetailSideSheet } from "./DetailSideSheet"
 import { extractRiskLevel } from "@/lib/riskUtils"
 
@@ -36,6 +37,7 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
   const [avatarModalOpen, setAvatarModalOpen] = useState(false)
   const [logVitalsModalOpen, setLogVitalsModalOpen] = useState(false)
   const [assignStaffModalOpen, setAssignStaffModalOpen] = useState(false)
+  const [exportClinicalModalOpen, setExportClinicalModalOpen] = useState(false)
   const [registerPregnancyModalOpen, setRegisterPregnancyModalOpen] =
     useState(false)
   const [appointmentModalOpen, setAppointmentModalOpen] = useState(false)
@@ -219,6 +221,7 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
             onLogVitalsClick={() => setLogVitalsModalOpen(true)}
             onAvatarClick={() => setAvatarModalOpen(true)}
             onAssignStaffClick={() => setAssignStaffModalOpen(true)}
+            onExportChartClick={() => setExportClinicalModalOpen(true)}
           />
 
           <div className="sticky top-0 z-10 -mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto bg-background pt-2 pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
@@ -403,6 +406,18 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
         }
         motherName={motherName}
         onSuccess={refresh}
+      />
+      <ExportMotherClinicalRecordModal
+        open={exportClinicalModalOpen}
+        onOpenChange={setExportClinicalModalOpen}
+        motherData={fullMotherData}
+        pregnancyList={pregnancies}
+        prenatalVisits={prenatalVisits}
+        labRecords={labRecords}
+        supplements={supplements}
+        deliveries={deliveries}
+        newborns={newborns}
+        postpartumVisits={postpartumVisits}
       />
     </div>
   )
