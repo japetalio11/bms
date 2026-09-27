@@ -3,6 +3,9 @@ import type { LocalNotification } from "@/lib/db/bmsDatabase"
 import { apiClient } from "@/lib/apiClient"
 import { syncEngine } from "@/lib/sync/syncEngine"
 
+let lastNotificationFetchTime = 0
+const NOTIFICATION_CACHE_TTL_MS = 30000 // 30 seconds
+
 export const notificationRepository = {
   async getCurrentUserId(): Promise<string> {
     try {
@@ -23,7 +26,7 @@ export const notificationRepository = {
     return ""
   },
 
-  async getUserNotifications(): Promise<LocalNotification[]> {
+  async getUserNotifications(forceRefresh: boolean = false): Promise<LocalNotification[]> {
     const userId = await this.getCurrentUserId()
     if (!userId) return []
     let localList: LocalNotification[] = []
@@ -40,8 +43,15 @@ export const notificationRepository = {
       )
     }
 
+    const now = Date.now()
+    const isCacheFresh = now - lastNotificationFetchTime < NOTIFICATION_CACHE_TTL_MS
+    if (!forceRefresh && isCacheFresh && localList.length > 0) {
+      return localList
+    }
+
     if (syncEngine.isNetworkOnline()) {
       try {
+        lastNotificationFetchTime = now
         const response = await apiClient.get(
           `/api/v1/notification/get/user/${userId}`
         )

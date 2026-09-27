@@ -57,10 +57,10 @@ export function NotificationPopover({
   const [showOnlyUnread, setShowOnlyUnread] = useState(false)
   const [filterQuery, setFilterQuery] = useState("")
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (forceRefresh = false) => {
     setLoading(true)
     try {
-      const list = await notificationRepository.getUserNotifications()
+      const list = await notificationRepository.getUserNotifications(forceRefresh)
       setNotifications(list)
     } catch (err) {
       console.warn("[NotificationPopover] Error loading notifications:", err)
@@ -72,16 +72,24 @@ export function NotificationPopover({
   useEffect(() => {
     fetchNotifications()
 
+    // Controlled 45-second background polling when tab is active
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchNotifications(false)
+      }
+    }, 45000)
+
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
     const unsubscribe = syncEngine.subscribe((status: any) => {
       setIsOnline(status.isOnline)
       if (debounceTimer) clearTimeout(debounceTimer)
       debounceTimer = setTimeout(() => {
-        fetchNotifications()
-      }, 600)
+        fetchNotifications(false)
+      }, 1000)
     })
 
     return () => {
+      clearInterval(pollInterval)
       if (debounceTimer) clearTimeout(debounceTimer)
       unsubscribe()
     }
@@ -287,7 +295,7 @@ export function NotificationPopover({
               variant="ghost"
               size="icon"
               className="h-6 w-6 text-muted-foreground hover:text-foreground"
-              onClick={fetchNotifications}
+              onClick={() => fetchNotifications(true)}
               title="Refresh alerts"
             >
               <RefreshCw
