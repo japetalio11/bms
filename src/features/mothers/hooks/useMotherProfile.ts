@@ -227,6 +227,59 @@ export function useMotherProfile(targetId?: string): MotherProfileData {
           .map((p: any) => p.pregnancy_id || p.id)
           .filter(Boolean)
 
+        try {
+          const labRes = await apiClient.get(
+            `/api/v1/lab-screening/get/mother/${targetId}`
+          )
+          const labList = labRes.data?.data || labRes.data?.result || []
+          if (Array.isArray(labList)) {
+            for (const lab of labList) {
+              const labId = lab.screening_id || lab.id
+              if (labId) {
+                await db.labRecords.put({
+                  ...lab,
+                  id: labId,
+                  screening_id: labId,
+                  mother_id: targetId,
+                  pregnancy_id: lab.pregnancy_id,
+                  visit_id: lab.visit_id,
+                  file_url: lab.file_url,
+                  sync_status: "synced",
+                  updated_at: Date.now(),
+                })
+              }
+            }
+          }
+        } catch (labErr) {
+          console.warn("[useMotherProfile] Failed to fetch lab screenings:", labErr)
+        }
+
+        try {
+          const suppRes = await apiClient.get(
+            `/api/v1/supplement/get/mother/${targetId}`
+          )
+          const suppList = suppRes.data?.data || suppRes.data?.result || []
+          if (Array.isArray(suppList)) {
+            for (const supp of suppList) {
+              const suppId = supp.supplement_id || supp.id
+              if (suppId) {
+                await db.supplements.put({
+                  ...supp,
+                  id: suppId,
+                  supplement_id: suppId,
+                  mother_id: targetId,
+                  pregnancy_id: supp.pregnancy_id,
+                  visit_id: supp.visit_id,
+                  sync_status: "synced",
+                  updated_at: Date.now(),
+                })
+              }
+            }
+          }
+        } catch (suppErr) {
+          console.warn("[useMotherProfile] Failed to fetch supplements:", suppErr)
+        }
+
         for (const pid of pregIds) {
           try {
             const res = await apiClient.get(

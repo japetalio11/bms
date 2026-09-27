@@ -5,6 +5,9 @@ import {
   RefreshCw,
   PlusCircle,
   MoreVertical,
+  Paperclip,
+  ExternalLink,
+  FileText,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,6 +48,29 @@ export const LaboratoryTab: React.FC<LaboratoryTabProps> = React.memo(
     const [searchQuery, setSearchQuery] = useState("")
     const [currentPage, setCurrentPage] = useState(1)
     const pageSize = 5
+
+    const handleViewAttachment = (fileUrl: string) => {
+      if (!fileUrl) return
+      if (fileUrl.startsWith("data:")) {
+        try {
+          const parts = fileUrl.split(",")
+          const mime = parts[0].match(/:(.*?);/)?.[1] || "application/pdf"
+          const bstr = atob(parts[1])
+          let n = bstr.length
+          const u8arr = new Uint8Array(n)
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n)
+          }
+          const blob = new Blob([u8arr], { type: mime })
+          const blobUrl = URL.createObjectURL(blob)
+          window.open(blobUrl, "_blank")
+          return
+        } catch (e) {
+          console.error("Failed to convert base64 data to blob URL:", e)
+        }
+      }
+      window.open(fileUrl, "_blank")
+    }
 
     const filteredList = useMemo(() => {
       if (!searchQuery.trim()) return labRecordList
@@ -169,6 +195,9 @@ export const LaboratoryTab: React.FC<LaboratoryTabProps> = React.memo(
                     Result
                   </TableHead>
                   <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
+                    Attachment
+                  </TableHead>
+                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
                     Remarks
                   </TableHead>
                   <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
@@ -192,6 +221,26 @@ export const LaboratoryTab: React.FC<LaboratoryTabProps> = React.memo(
                     </TableCell>
                     <TableCell className="py-2 text-xs text-foreground dark:text-white">
                       {lab.result || "N/A"}
+                    </TableCell>
+                    <TableCell
+                      className="py-2 text-xs"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {lab.file_url ? (
+                        <button
+                          type="button"
+                          onClick={() => handleViewAttachment(lab.file_url)}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-500 hover:bg-blue-500/20 transition-colors"
+                        >
+                          <Paperclip className="h-3 w-3" />
+                          <span>View Doc</span>
+                          <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                        </button>
+                      ) : (
+                        <span className="text-muted-foreground/60 text-[11px]">
+                          -
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="py-2 text-xs text-muted-foreground">
                       {lab.remarks || "None"}
