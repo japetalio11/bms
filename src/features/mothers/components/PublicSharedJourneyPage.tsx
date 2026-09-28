@@ -200,19 +200,12 @@ export function PublicSharedJourneyPage() {
     setGeneralError("")
 
     const pinParam = pinToUse !== undefined ? pinToUse : enteredPin
-    console.log(
-      `[SharedJourney] 🔍 Fetching shared journey: token=${token}, pin=${pinParam || "(none)"}`
-    )
-    console.log(
-      `[SharedJourney] 🌐 Endpoint target: ${apiClient.defaults.baseURL}/api/v1/mother/shared/${token}`
-    )
 
     try {
       const res = await apiClient.get(`/api/v1/mother/shared/${token}`, {
         params: pinParam ? { pin: pinParam } : undefined,
       })
 
-      console.log(`[SharedJourney] ✅ Response status: ${res.status}`, res.data)
       const result: SharedJourneyResponse = res.data?.data || res.data
       setData(result)
 
@@ -220,25 +213,10 @@ export function PublicSharedJourneyPage() {
         const errMsg =
           result.pinError ||
           "Invalid 6-digit security PIN. Please request the current code from the mother."
-        console.warn(`[SharedJourney] ⚠️ PIN verification rejected: ${errMsg}`)
         setPinError(errMsg)
-      } else if (result.isPinVerified) {
-        console.log(
-          `[SharedJourney] 🎉 PIN Verified! Patient: ${result.patient?.name}`
-        )
       }
     } catch (err: any) {
-      console.error("[SharedJourney] ❌ Request failed:", {
-        message: err.message,
-        name: err.name,
-        code: err.code,
-        status: err.response?.status,
-        responseData: err.response?.data,
-        config: err.config,
-      })
-
       if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
-        console.warn("[SharedJourney] ⚠️ Request was canceled by browser.")
         setPinError("Request was canceled by the browser. Please try again.")
         return
       }
@@ -268,7 +246,6 @@ export function PublicSharedJourneyPage() {
     e.preventDefault()
     e.stopPropagation()
     const cleanPin = enteredPin.trim()
-    console.log(`[SharedJourney] 🚀 PIN submit triggered: "${cleanPin}"`)
 
     if (!cleanPin || cleanPin.length !== 6) {
       setPinError(

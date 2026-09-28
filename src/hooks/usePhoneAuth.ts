@@ -131,11 +131,8 @@ export function usePhoneAuth(options: UsePhoneAuthOptions = {}): UsePhoneAuthRet
 
     const newVerifier = new RecaptchaVerifier(auth, containerId, {
       size: recaptchaSize,
-      callback: () => {
-        console.log("✅ [reCAPTCHA] Verification Callback Fired");
-      },
+      callback: () => {},
       "expired-callback": () => {
-        console.warn("⚠️ [reCAPTCHA] Token Expired Callback Fired");
         if (verifierRef.current) {
           try {
             verifierRef.current.render().then((widgetId) => {
@@ -185,49 +182,18 @@ export function usePhoneAuth(options: UsePhoneAuthOptions = {}): UsePhoneAuthRet
       const isDev = import.meta.env.DEV || import.meta.env.MODE !== "production";
       const isTestNum = isTestPhoneNumber(formatted);
 
-      console.group("🔥 [Firebase Phone Auth Detailed Debug]");
-      console.log("📞 Target Input Phone:", phoneInput);
-      console.log("📱 Formatted E.164:", formatted);
-      console.log("🧪 Is Dev Environment:", isDev);
-      console.log("🎯 Is Recognized Test Number:", isTestNum);
-      console.log("⚙️ Firebase Project ID:", auth.app.options.projectId);
-      console.log("🔑 Firebase Auth Domain:", auth.app.options.authDomain);
-      console.log("🌐 Current Location Origin:", window.location.origin);
-      console.log("📦 Container ID Target:", containerId);
-
-      const containerEl = document.getElementById(containerId);
-      console.log("🖼️ Container Element in DOM:", containerEl);
-      if (containerEl) {
-        const computedStyle = window.getComputedStyle(containerEl);
-        console.log("📐 Container Dimensions & Style:", {
-          offsetWidth: containerEl.offsetWidth,
-          offsetHeight: containerEl.offsetHeight,
-          display: computedStyle.display,
-          visibility: computedStyle.visibility
-        });
-      }
-
       if (isDev && isTestNum) {
-        console.log("⚡ Enabling appVerificationDisabledForTesting = true (Bypassing reCAPTCHA for test number)");
         auth.settings.appVerificationDisabledForTesting = true;
       } else if (isDev) {
-        console.log("🛡️ Setting appVerificationDisabledForTesting = false (Executing real reCAPTCHA flow)");
         auth.settings.appVerificationDisabledForTesting = false;
       }
 
       try {
-        console.log("🔨 Initializing/Fetching RecaptchaVerifier...");
         const appVerifier = getOrInitRecaptcha();
-
-        console.log("🎨 Explicitly rendering RecaptchaVerifier widget in DOM...");
         await appVerifier.render();
 
-        console.log("🚀 Calling signInWithPhoneNumber(auth, formatted, appVerifier)...");
         const confirmationResult = await signInWithPhoneNumber(auth, formatted, appVerifier);
         confirmationResultRef.current = confirmationResult;
-
-        console.log("🎉 signInWithPhoneNumber SUCCESS! Verification Session ID:", confirmationResult.verificationId);
-        console.groupEnd();
 
         setIsOtpSent(true);
         setStatusType("success");
@@ -240,13 +206,6 @@ export function usePhoneAuth(options: UsePhoneAuthOptions = {}): UsePhoneAuthRet
         setCooldown(cooldownDuration);
         return true;
       } catch (error: any) {
-        console.groupEnd();
-        console.group("❌ [Firebase Phone Auth Error Trace]");
-        console.error("Code:", error?.code);
-        console.error("Message:", error?.message);
-        console.error("CustomData:", error?.customData);
-        console.error("Full Error Object:", error);
-        console.groupEnd();
 
         setLastError({
           code: error?.code || "unknown_error",

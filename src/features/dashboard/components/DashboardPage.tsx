@@ -329,10 +329,12 @@ export function DashboardPage() {
       )
     }
 
+    const displayedAppointments = appointments.slice(0, 3)
+
     return (
-      <>
+      <div className="space-y-3">
         <div className="flex flex-col gap-4 md:hidden">
-          {appointments.map((app, idx) => (
+          {displayedAppointments.map((app, idx) => (
             <div
               key={app.id || idx}
               className="flex cursor-pointer flex-col gap-4 rounded-[14px] border border-border bg-card p-6 shadow-xs transition-colors hover:border-foreground/20"
@@ -452,7 +454,7 @@ export function DashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {appointments.map((app, idx) => (
+              {displayedAppointments.map((app, idx) => (
                 <TableRow
                   key={app.id || idx}
                   className="cursor-pointer border-border hover:bg-muted/50"
@@ -535,7 +537,23 @@ export function DashboardPage() {
             </TableBody>
           </Table>
         </div>
-      </>
+
+        {appointments.length > 3 && (
+          <div className="flex items-center justify-between px-1 pt-1">
+            <span className="text-xs text-muted-foreground">
+              Showing 3 of {appointments.length} appointments
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/dashboard/appointments")}
+              className="h-7.5 px-3 text-xs font-semibold text-primary hover:bg-primary/10 border-primary/20"
+            >
+              View All
+            </Button>
+          </div>
+        )}
+      </div>
     )
   }
 

@@ -5,18 +5,9 @@ import {
   Microscope,
   Pill,
   Baby,
-  FileSpreadsheet,
-  Printer,
   Eye,
   CheckCircle2,
-  AlertTriangle,
-  Scale,
-  Building2,
   FileCheck2,
-  User,
-  AlertCircle,
-  Stethoscope,
-  FileSignature,
 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -146,17 +137,6 @@ export function ClinicalTabsSection({
                 {deliveryOutcomes.length}
               </span>
             )}
-          </TabsTrigger>
-
-          <TabsTrigger
-            value="form"
-            className="shrink-0 gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-3.5 py-1 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-primary/50 whitespace-nowrap border border-dashed border-border"
-          >
-            <FileSpreadsheet className="h-3.5 w-3.5 text-primary" />
-            <span>Official DOH Form</span>
-            <span className="rounded bg-primary/10 px-1 py-0.2 text-[9px] font-bold text-primary font-mono">
-              DOH
-            </span>
           </TabsTrigger>
         </TabsList>
 
@@ -686,158 +666,6 @@ export function ClinicalTabsSection({
               })}
             </div>
           )}
-        </TabsContent>
-
-        <TabsContent value="form" className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h2 className="text-sm sm:text-base font-bold text-foreground flex items-center gap-2">
-                <FileSpreadsheet className="h-4 w-4 text-primary" />
-                Standard Clinical Maternal Referral Form
-              </h2>
-              <p className="text-[11px] sm:text-xs text-muted-foreground">
-                Philippine Department of Health BEmONC / CEmONC Referral Handoff Sheet
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onPrint || (() => window.print())}
-                className="h-8 gap-1.5 text-xs font-semibold"
-              >
-                <Printer className="h-3.5 w-3.5 text-primary" />
-                Print Clinical Sheet
-              </Button>
-            </div>
-          </div>
-
-          <div className="w-full rounded-2xl border border-border bg-card p-4 sm:p-8 md:p-10 shadow-xs space-y-6 text-foreground">
-            <div className="border-b-2 border-primary/30 pb-4 sm:pb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="space-y-0.5 sm:space-y-1">
-                <span className="text-[9px] sm:text-[10px] font-bold tracking-widest text-primary uppercase block">
-                  Republic of the Philippines • Department of Health
-                </span>
-                <h1 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight text-foreground uppercase">
-                  Official Maternal Care Referral Form
-                </h1>
-                <p className="text-[11px] sm:text-xs text-muted-foreground">
-                  Regional Maternal & Neonatal Emergency Referral Network
-                </p>
-              </div>
-
-              <div className="text-left sm:text-right space-y-0.5">
-                <Badge variant="outline" className="font-mono text-[10px] sm:text-xs font-medium border-border/80 bg-muted/20 text-muted-foreground">
-                  REF #{data.referral_id.slice(-8).toUpperCase()}
-                </Badge>
-                <p className="text-[11px] font-mono text-muted-foreground">
-                  {new Date(data.date_referred).toLocaleString()}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-1 text-xs">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Building2 className="h-3.5 w-3.5 text-primary" /> Referring Facility (Origin)
-                </span>
-                <p className="text-sm font-bold text-foreground">{data.referring_facility.name}</p>
-                {data.referring_facility.address && <p className="text-muted-foreground">{data.referring_facility.address}</p>}
-                {data.referring_facility.contact && <p className="font-mono text-muted-foreground">Tel: {data.referring_facility.contact}</p>}
-              </div>
-
-              <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-1 text-xs">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Building2 className="h-3.5 w-3.5 text-blue-500" /> Destination Facility (Receiving)
-                </span>
-                <p className="text-sm font-bold text-foreground">{data.destination_facility.name}</p>
-                {data.destination_facility.address && <p className="text-muted-foreground">{data.destination_facility.address}</p>}
-                {data.destination_facility.contact && <p className="font-mono text-muted-foreground">Tel: {data.destination_facility.contact}</p>}
-              </div>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <h3 className="font-bold uppercase tracking-wider text-foreground border-b border-border pb-1 flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5 text-primary" /> Patient Demographics & Obstetric Baseline
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-muted/10 p-3 rounded-xl border border-border">
-                <div>
-                  <span className="text-muted-foreground text-[10px] block">Patient Name:</span>
-                  <span className="font-bold text-foreground text-sm">{patient?.name || "Confidential Patient"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground text-[10px] block">Age / Civil Status:</span>
-                  <span className="font-semibold text-foreground">{patient?.age ? `${patient.age} yrs` : "N/A"} • {patient?.civil_status || "N/A"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground text-[10px] block">Blood Type:</span>
-                  <span className="font-bold text-red-500">{patient?.blood_type || "Recorded"}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground text-[10px] block">Contact Phone:</span>
-                  <span className="font-mono text-foreground">{patient?.phone || "N/A"}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <h3 className="font-bold uppercase tracking-wider text-foreground border-b border-border pb-1 flex items-center gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5 text-primary" /> Clinical Indication & Assessment
-              </h3>
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-1">
-                <span className="font-bold text-foreground block">Primary Referral Reason:</span>
-                <p className="text-sm font-bold text-foreground">{parsed.chiefComplaint}</p>
-                {vitals?.danger_signs && (
-                  <p className="font-bold text-red-500 pt-1">Danger Signs: {vitals.danger_signs}</p>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <h3 className="font-bold uppercase tracking-wider text-foreground border-b border-border pb-1 flex items-center gap-1.5">
-                <Stethoscope className="h-3.5 w-3.5 text-primary" /> Examination Vitals at Transfer
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center">
-                <div className="rounded-lg border border-border p-2 bg-muted/20">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">BP</span>
-                  <span className="font-mono font-bold text-foreground text-sm">{vitals?.bp || "120/80"}</span>
-                </div>
-                <div className="rounded-lg border border-border p-2 bg-muted/20">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">Pulse</span>
-                  <span className="font-mono font-bold text-foreground text-sm">{vitals?.pulse_rate ? `${vitals.pulse_rate} bpm` : "80 bpm"}</span>
-                </div>
-                <div className="rounded-lg border border-border p-2 bg-muted/20">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">Temp</span>
-                  <span className="font-mono font-bold text-foreground text-sm">{vitals?.temp ? `${vitals.temp}°C` : "36.5°C"}</span>
-                </div>
-                <div className="rounded-lg border border-border p-2 bg-muted/20">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">Fundic Ht</span>
-                  <span className="font-mono font-bold text-foreground text-sm">{vitals?.fundic_height ? `${vitals.fundic_height} cm` : "28 cm"}</span>
-                </div>
-                <div className="rounded-lg border border-border p-2 bg-muted/20 col-span-2 sm:col-span-1">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">FHT</span>
-                  <span className="font-mono font-bold text-foreground text-sm">{vitals?.fetal_heart_tone ? `${vitals.fetal_heart_tone} bpm` : "140 bpm"}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t-2 border-border pt-6 grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs">
-              <div className="space-y-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Referring Health Worker</span>
-                <div className="border-b border-dashed border-foreground/40 pb-1 pt-6 font-semibold">
-                  Digitally Authenticated by {data.referring_facility.name}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase block">Receiving Triage Officer</span>
-                <div className="border-b border-dashed border-foreground/40 pb-1 pt-6 font-semibold">
-                  {data.status === "accepted" || data.status === "completed" || data.status === "in_progress"
-                    ? `Acknowledged by ${data.destination_facility.name}`
-                    : "Pending evaluation"}
-                </div>
-              </div>
-            </div>
-          </div>
         </TabsContent>
       </Tabs>
     </div>
