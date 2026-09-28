@@ -72,12 +72,23 @@ export function NotificationPopover({
   useEffect(() => {
     fetchNotifications()
 
-    // Controlled 45-second background polling when tab is active
+    const handleNewNotification = () => {
+      fetchNotifications(true)
+    }
+
+    const handleReadAll = () => {
+      fetchNotifications(true)
+    }
+
+    window.addEventListener("bms:notification:new", handleNewNotification)
+    window.addEventListener("bms:notification:read_all", handleReadAll)
+    window.addEventListener("bms:notification:updated", handleNewNotification)
+
     const pollInterval = setInterval(() => {
       if (document.visibilityState === "visible") {
         fetchNotifications(false)
       }
-    }, 45000)
+    }, 300000)
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
     const unsubscribe = syncEngine.subscribe((status: any) => {
@@ -89,6 +100,9 @@ export function NotificationPopover({
     })
 
     return () => {
+      window.removeEventListener("bms:notification:new", handleNewNotification)
+      window.removeEventListener("bms:notification:read_all", handleReadAll)
+      window.removeEventListener("bms:notification:updated", handleNewNotification)
       clearInterval(pollInterval)
       if (debounceTimer) clearTimeout(debounceTimer)
       unsubscribe()

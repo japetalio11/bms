@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { lazyWithRetry } from "@/lib/lazyWithRetry"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/features/auth/context/AuthContext"
+import { SocketProvider } from "@/context/SocketContext"
 import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute"
 import { PublicOnlyRoute } from "@/features/auth/components/PublicOnlyRoute"
 import { AuthForm } from "@/components/auth-form"
@@ -30,8 +31,9 @@ export function App() {
   return (
     <ThemeProvider defaultTheme="light">
       <AuthProvider>
-        <PinUnlockModal />
-        <BrowserRouter>
+        <SocketProvider>
+          <PinUnlockModal />
+          <BrowserRouter>
           <Suspense fallback={<UnifiedPageLoader />}>
             <Routes>
    
@@ -78,6 +80,7 @@ export function App() {
             </Routes>
           </Suspense>
         </BrowserRouter>
+        </SocketProvider>
       </AuthProvider>
     </ThemeProvider>
   )
