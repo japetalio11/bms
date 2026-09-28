@@ -23,7 +23,6 @@ const MotherProfilePage = lazyWithRetry(() => import("@/features/mothers/compone
 const ReferralsPage = lazyWithRetry(() => import("@/features/referrals/components/ReferralsPage"), "ReferralsPage")
 const MessagesPage = lazyWithRetry(() => import("@/features/messages/components/MessagesPage"), "MessagesPage")
 const EhrPage = lazyWithRetry(() => import("@/features/ehr/components/EhrPage"), "EhrPage")
-const TestSmsPage = lazyWithRetry(() => import("@/pages/TestSmsPage"), "TestSmsPage")
 const PublicReferralPage = lazyWithRetry(() => import("@/features/referrals/components/PublicReferralPage"), "PublicReferralPage")
 const PublicSharedJourneyPage = lazyWithRetry(() => import("@/features/mothers/components/PublicSharedJourneyPage"), "PublicSharedJourneyPage")
 
@@ -40,11 +39,6 @@ export function App() {
               <Route path="/referral/:id" element={<PublicReferralPage />} />
               <Route path="/shared-journey/:token" element={<PublicSharedJourneyPage />} />
               <Route path="/m/:token" element={<PublicSharedJourneyPage />} />
-
-              <Route path="/test-sms" element={<TestSmsPage />} />
-              <Route path="/test sms" element={<TestSmsPage />} />
-              <Route path="/test%20sms" element={<TestSmsPage />} />
-              <Route path="/sms-test" element={<TestSmsPage />} />
 
               <Route element={<PublicOnlyRoute />}>
                 <Route path="/" element={<AuthForm />} />

@@ -481,7 +481,6 @@ export function PublicReferralPage() {
             setIsRespondModalOpen(true)
           }}
           onOpenClarificationModal={() => setIsClarificationModalOpen(true)}
-          onOpenFormTab={() => setActiveTab("form")}
           onPrint={handlePrint}
         />
 

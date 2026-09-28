@@ -1,6 +1,5 @@
 import React from "react"
 import {
-  Building2,
   Check,
   XCircle,
   CheckCircle2,
@@ -12,8 +11,6 @@ import {
   Sun,
   Moon,
   MoreVertical,
-  Radio,
-  Share2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -37,7 +34,6 @@ interface ReferralTriageHeaderProps {
   copyNotice: string
   onOpenActionModal: (action: "acknowledged" | "accepted" | "in_progress" | "completed" | "rejected") => void
   onOpenClarificationModal: () => void
-  onOpenFormTab: () => void
   onPrint?: () => void
 }
 
@@ -49,7 +45,6 @@ export function ReferralTriageHeader({
   copyNotice,
   onOpenActionModal,
   onOpenClarificationModal,
-  onOpenFormTab,
   onPrint,
 }: ReferralTriageHeaderProps) {
   const statusConfig = formatStatusConfig(data?.status)
@@ -223,10 +218,6 @@ export function ReferralTriageHeader({
             <DropdownMenuItem onClick={onPrint || (() => window.print())} className="gap-2 cursor-pointer">
               <Printer className="h-3.5 w-3.5 text-muted-foreground" />
               <span>Print Referral Sheet</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onOpenFormTab} className="gap-2 cursor-pointer">
-              <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>Official DOH Form View</span>
             </DropdownMenuItem>
 
             {!isTerminal && (

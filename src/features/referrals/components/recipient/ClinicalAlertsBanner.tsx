@@ -46,13 +46,7 @@ export function ClinicalAlertsBanner({ data, parsed }: ClinicalAlertsBannerProps
   }
 
   return (
-    <Card
-      className={`border shadow-xs overflow-hidden transition-colors ${
-        hasCritical
-          ? "border-red-500/30 bg-red-500/[0.02]"
-          : "border-amber-500/30 bg-amber-500/[0.02]"
-      }`}
-    >
+    <Card className="border border-border/80 bg-card shadow-xs overflow-hidden transition-colors">
       <CardContent className="p-3.5 sm:p-4.5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
           <div className="flex items-center gap-2">
@@ -61,7 +55,7 @@ export function ClinicalAlertsBanner({ data, parsed }: ClinicalAlertsBannerProps
             ) : (
               <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
             )}
-            <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-foreground">
+            <h3 className="text-xs sm:text-sm font-semibold tracking-tight text-foreground">
               Clinical Alerts & Documented Risk Factors
             </h3>
           </div>
@@ -77,18 +71,17 @@ export function ClinicalAlertsBanner({ data, parsed }: ClinicalAlertsBannerProps
           {alerts.map((alert) => {
             const isCrit = alert.severity === "critical"
             const isWarn = alert.severity === "warning"
-            const isActionable = alert.type === "cdss" || alert.type === "danger" || isCrit
 
             const containerStyle = isCrit
-              ? "border-red-500/30 bg-red-500/5 text-red-950 dark:text-red-100"
+              ? "border-red-500/30 bg-red-500/[0.04] text-foreground"
               : isWarn
-                ? "border-amber-500/30 bg-amber-500/5 text-amber-950 dark:text-amber-100"
+                ? "border-amber-500/30 bg-amber-500/[0.04] text-foreground"
                 : "border-border/80 bg-muted/20 text-foreground"
 
             const badgeStyle = isCrit
-              ? "bg-red-600 text-white border-transparent font-bold shadow-xs"
-              : isActionable
-                ? "bg-amber-500 text-amber-950 border-transparent font-black shadow-xs"
+              ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 font-medium"
+              : isWarn
+                ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 font-medium"
                 : "bg-transparent text-muted-foreground border-border/80 font-medium"
 
             const typeLabel =
@@ -108,10 +101,10 @@ export function ClinicalAlertsBanner({ data, parsed }: ClinicalAlertsBannerProps
                 className={`rounded-xl border p-3 space-y-1 text-xs transition-all ${containerStyle}`}
               >
                 <div className="flex items-center justify-between gap-1">
-                  <span className="font-extrabold text-foreground truncate block">
+                  <span className="font-semibold text-foreground truncate block">
                     {alert.title}
                   </span>
-                  <Badge variant={isActionable ? "default" : "outline"} className={`text-[9px] uppercase shrink-0 ${badgeStyle}`}>
+                  <Badge variant="outline" className={`text-[9px] uppercase shrink-0 ${badgeStyle}`}>
                     {typeLabel}
                   </Badge>
                 </div>

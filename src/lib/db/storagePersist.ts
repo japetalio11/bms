@@ -3,20 +3,10 @@ export async function initStoragePersistence(): Promise<boolean> {
     try {
       const isPersisted = await navigator.storage.persisted()
       if (!isPersisted) {
-        const granted = await navigator.storage.persist()
-        console.log(
-          `[StoragePersist] Persistent storage request granted: ${granted}`
-        )
-        return granted
-      } else {
-        console.log("[StoragePersist] Storage is already persisted.")
-        return true
+        return await navigator.storage.persist()
       }
-    } catch (err) {
-      console.warn(
-        "[StoragePersist] Failed to request persistent storage:",
-        err
-      )
+      return true
+    } catch {
       return false
     }
   }

@@ -353,10 +353,10 @@ export function determineReferralUrgency(
   if (isEmergency) {
     return {
       tier: "emergency",
-      title: "EMERGENCY CLINICAL TRANSFER",
-      badgeText: "STAT / EMERGENCY",
-      containerClass: "border-red-500/40 bg-red-500/10 text-red-950 dark:text-red-100",
-      badgeClass: "bg-red-600 text-white font-black animate-pulse shadow-xs",
+      title: "Emergency Transfer",
+      badgeText: "Emergency",
+      containerClass: "border-border/60 bg-muted/30 text-foreground",
+      badgeClass: "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 font-medium",
       actionAdvice: "Immediate OB physician triage and emergency bed preparation required.",
     }
   }
@@ -372,10 +372,10 @@ export function determineReferralUrgency(
   if (isUrgent) {
     return {
       tier: "urgent",
-      title: "URGENT MATERNAL TRIAGE",
-      badgeText: "URGENT TRIAGE",
-      containerClass: "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100",
-      badgeClass: "bg-amber-500 text-amber-950 font-black shadow-xs",
+      title: "Urgent Referral",
+      badgeText: "Urgent Triage",
+      containerClass: "border-border/60 bg-muted/30 text-foreground",
+      badgeClass: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 font-medium",
       actionAdvice: "Requires prompt evaluation by attending obstetrician upon arrival.",
     }
   }
@@ -389,20 +389,20 @@ export function determineReferralUrgency(
   if (isPriority) {
     return {
       tier: "priority",
-      title: "PRIORITY SPECIALIST CONSULTATION",
-      badgeText: "PRIORITY CARE",
-      containerClass: "border-border/80 bg-muted/30 text-foreground",
-      badgeClass: "bg-transparent text-foreground border-border/80 font-bold",
+      title: "Priority Referral",
+      badgeText: "Priority",
+      containerClass: "border-border/60 bg-muted/30 text-foreground",
+      badgeClass: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium",
       actionAdvice: "Scheduled specialist assessment and diagnostic review recommended.",
     }
   }
 
   return {
     tier: "routine",
-    title: "ROUTINE CLINICAL REFERRAL",
-    badgeText: "ROUTINE CONTINUITY",
-    containerClass: "border-border/80 bg-muted/20 text-foreground",
-    badgeClass: "bg-transparent text-muted-foreground border-border/80 font-medium",
+    title: "Routine Referral",
+    badgeText: "Routine",
+    containerClass: "border-border/60 bg-muted/20 text-foreground",
+    badgeClass: "border-border/80 text-muted-foreground bg-muted/30 font-medium",
     actionAdvice: "Standard maternal outpatient continuity and prenatal follow-up.",
   }
 }
