@@ -7,12 +7,10 @@ import { useEffect, useState } from "react"
 import { motherRepository } from "@/lib/repositories/motherRepository"
 import { messageRepository } from "@/lib/repositories/messageRepository"
 import { db } from "@/lib/db/bmsDatabase"
-import { useNetworkStatus } from "@/hooks/useNetworkStatus"
 import { syncEngine } from "@/lib/sync/syncEngine"
 
 export function MessagesPage() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
-  const { isOnline } = useNetworkStatus()
 
   const loadAndSyncData = async () => {
     try {
@@ -22,7 +20,9 @@ export function MessagesPage() {
         if (stored) {
           try {
             currentUser = JSON.parse(stored)
-          } catch {}
+          } catch (e) {
+            console.warn("[MessagesPage] Failed to parse stored user:", e)
+          }
         }
       }
 
@@ -46,6 +46,12 @@ export function MessagesPage() {
   useEffect(() => {
     loadAndSyncData()
 
+    const handleNewMessage = () => {
+      loadAndSyncData()
+    }
+
+    window.addEventListener("bms:message:new", handleNewMessage)
+
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
     const unsubscribe = syncEngine.subscribe(() => {
       if (debounceTimer) clearTimeout(debounceTimer)
@@ -55,6 +61,7 @@ export function MessagesPage() {
     })
 
     return () => {
+      window.removeEventListener("bms:message:new", handleNewMessage)
       if (debounceTimer) clearTimeout(debounceTimer)
       unsubscribe()
     }
