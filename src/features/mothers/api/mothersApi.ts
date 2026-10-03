@@ -95,6 +95,7 @@ export const mothersApi = {
     let entityType: any = "custom_request"
     if (url.includes("/delivery-outcome/")) entityType = "delivery_outcome"
     else if (url.includes("/newborn/")) entityType = "newborn_record"
+    else if (url.includes("/postpartum-visit/")) entityType = "postpartum_visit"
     else if (url.includes("/pregnancy/")) entityType = "pregnancy"
     else if (url.includes("/prenatal-visit/")) entityType = "prenatal_visit"
     else if (url.includes("/appointment/")) entityType = "appointment"
@@ -138,6 +139,7 @@ export const mothersApi = {
     let entityType: any = "custom_request"
     if (url.includes("/delivery-outcome/")) entityType = "delivery_outcome"
     else if (url.includes("/newborn/")) entityType = "newborn_record"
+    else if (url.includes("/postpartum-visit/")) entityType = "postpartum_visit"
     else if (url.includes("/pregnancy/")) entityType = "pregnancy"
     else if (url.includes("/prenatal-visit/")) entityType = "prenatal_visit"
     else if (url.includes("/appointment/")) entityType = "appointment"
@@ -254,6 +256,9 @@ export const mothersApi = {
       duration_of_labor_hours: payload.duration_of_labor_hours,
       blood_loss_ml: payload.blood_loss_ml,
       delivery_complications: payload.delivery_complications,
+      birth_attendant: payload.birth_attendant,
+      maternal_outcome: payload.maternal_outcome,
+      immediate_breastfeeding: payload.immediate_breastfeeding,
       sync_status: "pending_create" as const,
       updated_at: Date.now(),
     }
@@ -295,5 +300,69 @@ export const mothersApi = {
     })
 
     return { success: true, offline: true, data: localDelivery }
+  },
+
+  async registerPostpartumVisit(payload: any) {
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const response = await apiClient.post("/api/v1/postpartum-visit/register", payload)
+        const pv = response.data?.data || response.data?.result || response.data?.postpartumVisit
+        if (pv) {
+          const pvId = pv.postpartum_visit_id || pv.id
+          await db.postpartumVisits.put({
+            ...pv,
+            id: pvId,
+            postpartum_visit_id: pvId,
+            delivery_id: payload.delivery_id,
+            sync_status: "synced",
+            updated_at: Date.now(),
+          })
+        }
+        return response.data
+      } catch (err) {
+        console.warn("[mothersApi] Online postpartum visit registration failed, queuing offline:", err)
+      }
+    }
+
+    const tempVisitId = `temp-pv-${Date.now()}`
+    const localVisit = {
+      id: tempVisitId,
+      postpartum_visit_id: tempVisitId,
+      delivery_id: payload.delivery_id,
+      visit_date: payload.visit_date || new Date().toISOString(),
+      visit_number: payload.visit_number || 1,
+      visit_timing: payload.visit_timing,
+      weight_kg: payload.weight_kg != null ? Number(payload.weight_kg) : undefined,
+      temperature_celsius: payload.temperature_celsius != null ? Number(payload.temperature_celsius) : undefined,
+      pulse_rate_bpm: payload.pulse_rate_bpm != null ? Number(payload.pulse_rate_bpm) : undefined,
+      bp_diastolic: payload.bp_diastolic != null ? Number(payload.bp_diastolic) : undefined,
+      bp_systolic: payload.bp_systolic != null ? Number(payload.bp_systolic) : undefined,
+      fundic_height_cm: payload.fundic_height_cm != null ? Number(payload.fundic_height_cm) : undefined,
+      chief_complaint: payload.chief_complaint,
+      danger_signs_observed: payload.danger_signs_observed,
+      foul_smelling_discharge: Boolean(payload.foul_smelling_discharge),
+      cord_condition_normal: payload.cord_condition_normal !== undefined ? Boolean(payload.cord_condition_normal) : true,
+      fp_method_accepted: payload.fp_method_accepted,
+      fp_quantity_given: payload.fp_quantity_given != null ? Number(payload.fp_quantity_given) : undefined,
+      fp_follow_up_date: payload.fp_follow_up_date,
+      risk_level_assessed: payload.risk_level_assessed,
+      vitamin_a_given: Boolean(payload.vitamin_a_given),
+      iron_supplement_given: Boolean(payload.iron_supplement_given),
+      sync_status: "pending_create" as const,
+      updated_at: Date.now(),
+    }
+
+    await db.postpartumVisits.put(localVisit)
+
+    await syncEngine.enqueueMutation({
+      entity_type: "postpartum_visit",
+      action: "CREATE",
+      endpoint: "/api/v1/postpartum-visit/register",
+      method: "POST",
+      payload,
+      temp_id: tempVisitId,
+    })
+
+    return { success: true, offline: true, data: localVisit }
   },
 }

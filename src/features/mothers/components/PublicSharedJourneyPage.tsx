@@ -70,13 +70,19 @@ export interface PostpartumVisitItem {
   postpartum_visit_id?: string
   delivery_id?: string
   visit_date: string
-  visit_number: number
+  visit_number?: number
+  visit_timing?: string
   weight_kg?: number
   temperature_celsius?: number
   pulse_rate_bpm?: number
   bp_diastolic?: number
   bp_systolic?: number
   fundic_height_cm?: number
+  foul_smelling_discharge?: boolean
+  cord_condition_normal?: boolean
+  fp_method_accepted?: string
+  fp_quantity_given?: number
+  fp_follow_up_date?: string
   chief_complaint?: string
   danger_signs_observed?: string
   risk_level_assessed?: string
@@ -90,6 +96,9 @@ export interface DeliveryOutcomeItem {
   delivery_date: string
   place_of_delivery: string
   mode_of_delivery: string
+  birth_attendant?: string
+  maternal_outcome?: string
+  immediate_breastfeeding?: boolean
   duration_of_labor_hours?: number
   blood_loss_ml?: number
   delivery_complications?: string
@@ -136,6 +145,18 @@ interface SharedJourneyResponse {
     date_of_registration: string
     lmp_date: string
     edd?: string | null
+    edd_date?: string | null
+    height_cm?: number | null
+    completed_8anc?: boolean
+    prev_caesarean?: boolean
+    consecutive_miscarriages?: boolean
+    stillbirth_history?: boolean
+    pph_history?: boolean
+    has_tb?: boolean
+    has_heart_disease?: boolean
+    has_diabetes?: boolean
+    has_asthma?: boolean
+    has_goiter?: boolean
     gestational_age_weeks?: number
     gravida?: number
     parity?: number
@@ -157,6 +178,11 @@ interface SharedJourneyResponse {
       weight_kg?: number
       fundic_height?: number
       fetal_heart_tone?: number
+      fetal_presentation?: string
+      has_vaginal_bleeding?: boolean
+      has_pallor?: boolean
+      has_edema?: boolean
+      has_fever?: boolean
       risk_level?: string
       danger_signs?: string
       chief_complaint?: string
@@ -661,8 +687,10 @@ export function PublicSharedJourneyPage() {
                 Est. Due Date (EDD)
               </span>
               <p className="mt-0.5 text-sm sm:text-base font-bold text-foreground">
-                {currentPregnancy?.edd
-                  ? new Date(currentPregnancy.edd).toLocaleDateString()
+                {currentPregnancy?.edd_date || currentPregnancy?.edd
+                  ? new Date(
+                      currentPregnancy.edd_date || currentPregnancy.edd!
+                    ).toLocaleDateString()
                   : "Pending Scan"}
               </p>
               <span className="text-[11px] text-muted-foreground">
@@ -834,9 +862,9 @@ export function PublicSharedJourneyPage() {
 
                   <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-4">
                     <span className="block text-xs font-bold text-foreground">
-                      Clinical History & Co-morbidities
+                      Clinical History & Antenatal Indicators
                     </span>
-                    <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 md:grid-cols-3">
                       <div>
                         <span className="block text-[11px] text-muted-foreground">
                           Co-morbidities / Risk Factors:
@@ -867,11 +895,54 @@ export function PublicSharedJourneyPage() {
                       </div>
                       <div>
                         <span className="block text-[11px] text-muted-foreground">
-                          BMI Category:
+                          Maternal Height / BMI:
                         </span>
                         <span className="font-medium text-foreground">
-                          {currentPregnancy?.bmi_category || "Normal"}
+                          {currentPregnancy?.height_cm ? `${currentPregnancy.height_cm} cm` : "Height N/A"} • {currentPregnancy?.bmi_category || "Normal"}
                         </span>
+                      </div>
+                      <div>
+                        <span className="block text-[11px] text-muted-foreground">
+                          ANC Benchmark Target:
+                        </span>
+                        <span className="font-medium text-foreground">
+                          {currentPregnancy?.completed_8anc ? "Achieved (≥8 visits)" : "Standard ANC"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="block text-[11px] text-muted-foreground">
+                          Clinical Risk History:
+                        </span>
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {(currentPregnancy?.prev_caesarean ||
+                            currentPregnancy?.consecutive_miscarriages ||
+                            currentPregnancy?.stillbirth_history ||
+                            currentPregnancy?.pph_history) && (
+                            <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[9px] text-red-500">
+                              Obstetric Risk
+                            </Badge>
+                          )}
+                          {(currentPregnancy?.has_heart_disease ||
+                            currentPregnancy?.has_diabetes ||
+                            currentPregnancy?.has_tb ||
+                            currentPregnancy?.has_asthma ||
+                            currentPregnancy?.has_goiter) && (
+                            <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[9px] text-amber-500">
+                              Chronic Condition
+                            </Badge>
+                          )}
+                          {!currentPregnancy?.prev_caesarean &&
+                            !currentPregnancy?.consecutive_miscarriages &&
+                            !currentPregnancy?.stillbirth_history &&
+                            !currentPregnancy?.pph_history &&
+                            !currentPregnancy?.has_heart_disease &&
+                            !currentPregnancy?.has_diabetes &&
+                            !currentPregnancy?.has_tb &&
+                            !currentPregnancy?.has_asthma &&
+                            !currentPregnancy?.has_goiter && (
+                            <span className="text-foreground">Unremarkable</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1191,7 +1262,7 @@ export function PublicSharedJourneyPage() {
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-4">
                           <div>
                             <span className="block text-[11px] text-muted-foreground">
                               Chief Complaint:
@@ -1203,16 +1274,42 @@ export function PublicSharedJourneyPage() {
                           </div>
                           <div>
                             <span className="block text-[11px] text-muted-foreground">
-                              Danger Signs Observed:
+                              Danger Signs:
                             </span>
-                            <span
-                              className={
-                                visit.danger_signs_observed
-                                  ? "font-bold text-red-500"
-                                  : "text-foreground"
-                              }
-                            >
-                              {visit.danger_signs_observed || "None"}
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {visit.vaginal_bleeding && (
+                                <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-600">
+                                  Bleeding
+                                </Badge>
+                              )}
+                              {visit.pallor && (
+                                <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-600">
+                                  Pallor
+                                </Badge>
+                              )}
+                              {visit.edema && (
+                                <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600">
+                                  Edema
+                                </Badge>
+                              )}
+                              {visit.fever && (
+                                <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-600">
+                                  Fever
+                                </Badge>
+                              )}
+                              {!visit.vaginal_bleeding && !visit.pallor && !visit.edema && !visit.fever && (
+                                <span className={visit.danger_signs_observed ? "font-bold text-red-500" : "text-foreground"}>
+                                  {visit.danger_signs_observed || "None"}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="block text-[11px] text-muted-foreground">
+                              Fetal Presentation:
+                            </span>
+                            <span className="font-medium text-foreground">
+                              {visit.fetal_presentation || "Not specified"}
                             </span>
                           </div>
                           <div>
@@ -1475,14 +1572,37 @@ export function PublicSharedJourneyPage() {
                       </CardHeader>
 
                       <CardContent className="space-y-5 pt-4">
-                        {/* Maternal Labor & Delivery Metrics */}
-                        <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-muted/30 p-3.5 text-xs sm:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-muted/30 p-3.5 text-xs sm:grid-cols-4 lg:grid-cols-7">
                           <div>
                             <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                               Place of Delivery
                             </span>
                             <span className="mt-0.5 font-semibold text-foreground">
                               {d.place_of_delivery || "Clinic / Hospital"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Attendant
+                            </span>
+                            <span className="mt-0.5 font-semibold text-foreground">
+                              {d.birth_attendant || "Skilled Attendant"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Outcome
+                            </span>
+                            <span className="mt-0.5 font-semibold text-foreground">
+                              {d.maternal_outcome || "Stable"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Breastfeeding
+                            </span>
+                            <span className="mt-0.5 font-semibold text-foreground">
+                              {d.immediate_breastfeeding ? "Initiated" : "No"}
                             </span>
                           </div>
                           <div>
@@ -1497,7 +1617,7 @@ export function PublicSharedJourneyPage() {
                           </div>
                           <div>
                             <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                              Estimated Blood Loss
+                              Blood Loss
                             </span>
                             <span className="mt-0.5 font-mono font-semibold text-foreground">
                               {d.blood_loss_ml
@@ -1522,7 +1642,6 @@ export function PublicSharedJourneyPage() {
                           </div>
                         </div>
 
-                        {/* Newborn Infant Records */}
                         <div className="space-y-3">
                           <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                             <Baby className="h-3.5 w-3.5 text-primary" />
@@ -1598,7 +1717,6 @@ export function PublicSharedJourneyPage() {
                           )}
                         </div>
 
-                        {/* Postpartum Care Visits */}
                         {linkedPostpartum.length > 0 && (
                           <div className="space-y-3 pt-2">
                             <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -1614,7 +1732,7 @@ export function PublicSharedJourneyPage() {
                                 <TableHeader>
                                   <TableRow className="border-border hover:bg-transparent">
                                     <TableHead className="text-xs font-semibold">
-                                      Visit Date / #
+                                      Visit Date / Timing
                                     </TableHead>
                                     <TableHead className="text-xs font-semibold">
                                       Blood Pressure
@@ -1624,6 +1742,9 @@ export function PublicSharedJourneyPage() {
                                     </TableHead>
                                     <TableHead className="text-xs font-semibold">
                                       Weight / Fundic
+                                    </TableHead>
+                                    <TableHead className="text-xs font-semibold">
+                                      Recovery / FP
                                     </TableHead>
                                     <TableHead className="text-xs font-semibold">
                                       Supplements
@@ -1641,9 +1762,16 @@ export function PublicSharedJourneyPage() {
                                         className="border-border"
                                       >
                                         <TableCell className="whitespace-nowrap text-xs font-medium">
-                                          <span className="font-bold text-foreground">
-                                            Visit #{pv.visit_number || pIdx + 1}
-                                          </span>
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="font-bold text-foreground">
+                                              Visit #{pv.visit_number || pIdx + 1}
+                                            </span>
+                                            {pv.visit_timing && (
+                                              <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                                {pv.visit_timing}
+                                              </Badge>
+                                            )}
+                                          </div>
                                           <span className="block text-[11px] text-muted-foreground">
                                             {new Date(
                                               pv.visit_date
@@ -1662,6 +1790,26 @@ export function PublicSharedJourneyPage() {
                                           {pv.fundic_height_cm
                                             ? ` • ${pv.fundic_height_cm} cm`
                                             : ""}
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                          <div className="space-y-0.5 text-[11px]">
+                                            {pv.fp_method_accepted && (
+                                              <div>
+                                                <span className="text-muted-foreground">FP: </span>
+                                                <span className="font-medium text-foreground">{pv.fp_method_accepted}</span>
+                                              </div>
+                                            )}
+                                            {pv.foul_smelling_discharge && (
+                                              <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[9px] text-red-500">
+                                                Foul Lochia
+                                              </Badge>
+                                            )}
+                                            {pv.cord_condition_normal === false && (
+                                              <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[9px] text-red-500">
+                                                Cord Issue
+                                              </Badge>
+                                            )}
+                                          </div>
                                         </TableCell>
                                         <TableCell className="text-xs">
                                           <div className="flex flex-wrap gap-1">

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -52,6 +53,11 @@ export function LogVitalsModal({
   const [bpDiastolic, setBpDiastolic] = React.useState<string>("")
   const [fundicHeightCm, setFundicHeightCm] = React.useState<string>("")
   const [fetalHeartToneBpm, setFetalHeartToneBpm] = React.useState<string>("")
+  const [fetalPresentation, setFetalPresentation] = React.useState<string>("Cephalic")
+  const [hasVaginalBleeding, setHasVaginalBleeding] = React.useState<boolean>(false)
+  const [hasPallor, setHasPallor] = React.useState<boolean>(false)
+  const [hasEdema, setHasEdema] = React.useState<boolean>(false)
+  const [hasFever, setHasFever] = React.useState<boolean>(false)
   const [chiefComplaint, setChiefComplaint] = React.useState<string>("")
   const [dangerSigns, setDangerSigns] = React.useState<string>("")
 
@@ -90,9 +96,24 @@ export function LogVitalsModal({
         ? Number(temperatureCelsius)
         : null,
       danger_signs_observed: dangerSigns,
+      has_vaginal_bleeding: hasVaginalBleeding,
+      has_pallor: hasPallor,
+      has_edema: hasEdema,
+      has_fever: hasFever,
+      fetal_presentation: fetalPresentation,
       mother_age: motherAge,
       parity: activePreg?.parity != null ? Number(activePreg.parity) : null,
       previous_delivery_history: activePreg?.previous_delivery_history || null,
+      prev_caesarean: activePreg?.prev_caesarean,
+      consecutive_miscarriages: activePreg?.consecutive_miscarriages,
+      stillbirth_history: activePreg?.stillbirth_history,
+      pph_history: activePreg?.pph_history,
+      has_tb: activePreg?.has_tb,
+      has_heart_disease: activePreg?.has_heart_disease,
+      has_diabetes: activePreg?.has_diabetes,
+      has_asthma: activePreg?.has_asthma,
+      has_goiter: activePreg?.has_goiter,
+      height_cm: activePreg?.height_cm,
       baseline_bp_systolic: baselineVisit?.bp_systolic
         ? Number(baselineVisit.bp_systolic)
         : null,
@@ -106,6 +127,11 @@ export function LogVitalsModal({
     pulseRateBpm,
     temperatureCelsius,
     dangerSigns,
+    hasVaginalBleeding,
+    hasPallor,
+    hasEdema,
+    hasFever,
+    fetalPresentation,
     motherData,
     pregnancyId,
     pregnancies,
@@ -170,7 +196,6 @@ export function LogVitalsModal({
       return
     }
 
-    // Validate clinical parameters
     const vitalsValidation = validatePrenatalVitals({
       trimester,
       visit_number: visitNumber,
@@ -234,6 +259,11 @@ export function LogVitalsModal({
         fetal_heart_tone_bpm: fetalHeartToneBpm
           ? Number(fetalHeartToneBpm)
           : null,
+        fetal_presentation: fetalPresentation || undefined,
+        has_vaginal_bleeding: hasVaginalBleeding,
+        has_pallor: hasPallor,
+        has_edema: hasEdema,
+        has_fever: hasFever,
         chief_complaint: chiefComplaint || undefined,
         danger_signs_observed: dangerSigns || undefined,
         risk_level_assessed: calculatedAssessment.risk_level,
@@ -278,34 +308,24 @@ export function LogVitalsModal({
           </Label>
           {pregnancies.length === 0 ? (
             <div className="rounded border border-border bg-muted/40 p-2 text-xs text-muted-foreground italic">
-              No pregnancy registered for this mother. Please create a pregnancy
-              record first.
+              No active pregnancy registered. Please add a pregnancy record first.
             </div>
           ) : (
             <Select value={pregnancyId} onValueChange={setPregnancyId}>
               <SelectTrigger className="!h-8 border-border bg-card text-xs text-card-foreground">
-                <SelectValue placeholder="Select Pregnancy" />
+                <SelectValue placeholder="Select pregnancy" />
               </SelectTrigger>
               <SelectContent>
-                {pregnancies.map((p: any, idx: number) => {
-                  const isLatest = idx === 0
-                  const pId = p.pregnancy_id || p._id || p.id || String(idx)
-                  return (
-                    <SelectItem key={pId} value={pId}>
-                      Pregnancy #{pregnancies.length - idx}{" "}
-                      {isLatest ? "(Latest)" : ""} -{" "}
-                      {p.pregnancy_status || "Active"} (LMP:{" "}
-                      {p.lmp_date
-                        ? new Date(p.lmp_date).toLocaleDateString()
-                        : p.date_of_registration
-                          ? new Date(
-                              p.date_of_registration
-                            ).toLocaleDateString()
-                          : "N/A"}
-                      )
-                    </SelectItem>
-                  )
-                })}
+                {pregnancies.map((p: any) => (
+                  <SelectItem
+                    key={p.pregnancy_id || p._id || p.id}
+                    value={p.pregnancy_id || p._id || p.id}
+                  >
+                    G{p.gravida || 1} P{p.parity || 0} - LMP:{" "}
+                    {p.lmp_date ? new Date(p.lmp_date).toLocaleDateString() : (p.lmp || "N/A")}{" "}
+                    ({p.pregnancy_status || "Active"})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           )}
@@ -315,47 +335,79 @@ export function LogVitalsModal({
           <div className="flex flex-col gap-1.5">
             <Label
               htmlFor="visitNumber"
-              className="text-xs font-medium text-foreground"
+              className={cn(
+                "text-xs font-medium",
+                fieldErrors.visit_number ? "text-destructive" : "text-foreground"
+              )}
             >
-              Visit No. *
+              Visit Number *
             </Label>
             <Input
               id="visitNumber"
               type="number"
-              min={1}
-              max={20}
+              min={CLINICAL_LIMITS.visit_number.min}
+              max={CLINICAL_LIMITS.visit_number.max}
               value={visitNumber}
-              onChange={(e) => setVisitNumber(Number(e.target.value))}
-              className="!h-8 border-border bg-card text-xs text-card-foreground"
+              onChange={(e) => {
+                setVisitNumber(Number(e.target.value))
+                if (fieldErrors.visit_number) {
+                  setFieldErrors((prev) => {
+                    const next = { ...prev }
+                    delete next.visit_number
+                    return next
+                  })
+                }
+              }}
+              className={cn(
+                "!h-8 border-border bg-card text-xs text-card-foreground",
+                fieldErrors.visit_number && "border-destructive focus-visible:ring-destructive"
+              )}
             />
           </div>
+
           <div className="flex flex-col gap-1.5">
             <Label
               htmlFor="gestationWeeks"
-              className="text-xs font-medium text-foreground"
+              className={cn(
+                "text-xs font-medium",
+                fieldErrors.age_of_gestation_weeks ? "text-destructive" : "text-foreground"
+              )}
             >
-              Gestation (Wks) *
+              AOG (Weeks) *
             </Label>
             <Input
               id="gestationWeeks"
               type="number"
-              min={1}
-              max={45}
+              min={CLINICAL_LIMITS.age_of_gestation_weeks.min}
+              max={CLINICAL_LIMITS.age_of_gestation_weeks.max}
               value={gestationWeeks}
-              onChange={(e) => handleGestationChange(e.target.value)}
-              className="!h-8 border-border bg-card text-xs text-card-foreground"
+              onChange={(e) => {
+                handleGestationChange(e.target.value)
+                if (fieldErrors.age_of_gestation_weeks) {
+                  setFieldErrors((prev) => {
+                    const next = { ...prev }
+                    delete next.age_of_gestation_weeks
+                    return next
+                  })
+                }
+              }}
+              className={cn(
+                "!h-8 border-border bg-card text-xs text-card-foreground",
+                fieldErrors.age_of_gestation_weeks && "border-destructive focus-visible:ring-destructive"
+              )}
             />
           </div>
+
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs font-medium text-foreground">
-              Trimester *
+              Trimester
             </Label>
             <Select
               value={String(trimester)}
               onValueChange={(val) => setTrimester(Number(val))}
             >
               <SelectTrigger className="!h-8 border-border bg-card text-xs text-card-foreground">
-                <SelectValue placeholder="Trimester" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="1">1st Trimester</SelectItem>
@@ -366,17 +418,14 @@ export function LogVitalsModal({
           </div>
         </div>
 
-        <div className="flex flex-col gap-3.5 rounded-xl border border-border bg-card p-4 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
-              Maternal Vital Signs
-            </span>
-            <span className="rounded border border-border bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              Standard Clinical Units
-            </span>
-          </div>
+        <div className="my-0.5 h-px bg-border" />
 
-          <div className="grid grid-cols-2 gap-3.5">
+        <div className="flex flex-col gap-3">
+          <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Physiological Measurements & Vitals
+          </span>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="bpSystolic"
@@ -555,7 +604,7 @@ export function LogVitalsModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 border-t border-border pt-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 border-t border-border pt-3">
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="tempCelsius"
@@ -689,6 +738,75 @@ export function LogVitalsModal({
                 </span>
               )}
             </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-semibold text-foreground">
+                Fetal Presentation
+              </Label>
+              <Select value={fetalPresentation} onValueChange={setFetalPresentation}>
+                <SelectTrigger className="!h-9 border-border bg-card text-xs text-card-foreground">
+                  <SelectValue placeholder="Presentation" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cephalic">Cephalic</SelectItem>
+                  <SelectItem value="Breech">Breech</SelectItem>
+                  <SelectItem value="Transverse">Transverse</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        <div className="my-0.5 h-px bg-border" />
+
+        <div className="flex flex-col gap-2.5">
+          <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Clinical Danger Signs Observed
+          </span>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="hasVaginalBleeding"
+                checked={hasVaginalBleeding}
+                onCheckedChange={(checked) => setHasVaginalBleeding(Boolean(checked))}
+              />
+              <Label htmlFor="hasVaginalBleeding" className="text-xs cursor-pointer text-destructive font-semibold">
+                Vaginal Bleeding
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="hasFever"
+                checked={hasFever}
+                onCheckedChange={(checked) => setHasFever(Boolean(checked))}
+              />
+              <Label htmlFor="hasFever" className="text-xs cursor-pointer font-medium">
+                Maternal Fever
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="hasEdema"
+                checked={hasEdema}
+                onCheckedChange={(checked) => setHasEdema(Boolean(checked))}
+              />
+              <Label htmlFor="hasEdema" className="text-xs cursor-pointer">
+                Edema (Facial/Hands/Feet)
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="hasPallor"
+                checked={hasPallor}
+                onCheckedChange={(checked) => setHasPallor(Boolean(checked))}
+              />
+              <Label htmlFor="hasPallor" className="text-xs cursor-pointer">
+                Severe Pallor
+              </Label>
+            </div>
           </div>
         </div>
 
@@ -743,11 +861,11 @@ export function LogVitalsModal({
             htmlFor="dangerSigns"
             className="text-xs font-medium text-foreground"
           >
-            Danger Signs Observed
+            Additional Danger Signs / Observations
           </Label>
           <Input
             id="dangerSigns"
-            placeholder="e.g. Severe headache, vaginal bleeding, vision disturbance"
+            placeholder="e.g. Severe headache, vision disturbance, epigastric pain"
             value={dangerSigns}
             onChange={(e) => setDangerSigns(e.target.value)}
             className="!h-8 border-border bg-card text-xs text-card-foreground"

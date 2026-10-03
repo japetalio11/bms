@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import {
   Select,
@@ -75,6 +76,9 @@ export function RecordDeliveryModal({
   const [durationOfLabor, setDurationOfLabor] = React.useState<string>("")
   const [bloodLossMl, setBloodLossMl] = React.useState<string>("")
   const [deliveryComplications, setDeliveryComplications] = React.useState<string>("")
+  const [birthAttendant, setBirthAttendant] = React.useState<string>("MD")
+  const [maternalOutcome, setMaternalOutcome] = React.useState<string>("Alive")
+  const [immediateBreastfeeding, setImmediateBreastfeeding] = React.useState<boolean>(true)
 
   const [newborns, setNewborns] = React.useState<NewbornEntry[]>([
     {
@@ -194,6 +198,9 @@ export function RecordDeliveryModal({
         duration_of_labor_hours: durationOfLabor ? parseFloat(durationOfLabor) : null,
         blood_loss_ml: bloodLossMl ? parseInt(bloodLossMl, 10) : null,
         delivery_complications: deliveryComplications.trim() || null,
+        birth_attendant: birthAttendant,
+        maternal_outcome: maternalOutcome,
+        immediate_breastfeeding: immediateBreastfeeding,
         newborns: newborns.map((nb) => ({
           sex: nb.sex,
           birth_weight_kg: parseFloat(nb.birth_weight_kg),
@@ -397,6 +404,47 @@ export function RecordDeliveryModal({
                   </span>
                 </div>
               </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Birth Attendant</Label>
+                <Select value={birthAttendant} onValueChange={setBirthAttendant}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Attendant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MD" className="text-xs">MD (Doctor)</SelectItem>
+                    <SelectItem value="RN" className="text-xs">RN (Nurse)</SelectItem>
+                    <SelectItem value="RMW" className="text-xs">RMW (Midwife)</SelectItem>
+                    <SelectItem value="TBA" className="text-xs">TBA (Traditional Birth Attendant)</SelectItem>
+                    <SelectItem value="Other" className="text-xs">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Maternal Outcome</Label>
+                <Select value={maternalOutcome} onValueChange={setMaternalOutcome}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Outcome" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Alive" className="text-xs">Alive</SelectItem>
+                    <SelectItem value="Complicated" className="text-xs">Complicated</SelectItem>
+                    <SelectItem value="Deceased" className="text-xs">Deceased</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox
+                id="immediateBreastfeeding"
+                checked={immediateBreastfeeding}
+                onCheckedChange={(checked) => setImmediateBreastfeeding(Boolean(checked))}
+              />
+              <Label htmlFor="immediateBreastfeeding" className="text-xs cursor-pointer">
+                Immediate breastfeeding initiated within 1 hour of birth
+              </Label>
             </div>
 
             <div className="space-y-1.5">

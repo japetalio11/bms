@@ -96,6 +96,9 @@ export const DeliveryNewbornTab: React.FC<DeliveryNewbornTabProps> = React.memo(
         "Delivery Date",
         "Place of Delivery",
         "Mode of Delivery",
+        "Birth Attendant",
+        "Maternal Outcome",
+        "Immediate Breastfeeding",
         "Labor Duration (hrs)",
         "Blood Loss (mL)",
         "Newborns Count",
@@ -113,6 +116,9 @@ export const DeliveryNewbornTab: React.FC<DeliveryNewbornTabProps> = React.memo(
           d.delivery_date ? formatDate(d.delivery_date) : "N/A",
           `"${(d.place_of_delivery || "").replace(/"/g, '""')}"`,
           `"${(d.mode_of_delivery || "").replace(/"/g, '""')}"`,
+          `"${(d.birth_attendant || "Registered Midwife").replace(/"/g, '""')}"`,
+          `"${(d.maternal_outcome || "Alive and Well").replace(/"/g, '""')}"`,
+          d.immediate_breastfeeding ? "Yes" : "No",
           d.duration_of_labor_hours ?? "N/A",
           d.blood_loss_ml ?? "N/A",
           linkedNewborns.length,
@@ -240,12 +246,22 @@ export const DeliveryNewbornTab: React.FC<DeliveryNewbornTabProps> = React.memo(
                             <span className="text-[11px] text-muted-foreground">
                               {d.place_of_delivery || "Rural Health Unit"}
                             </span>
+                            {d.birth_attendant && (
+                              <span className="text-[10px] text-muted-foreground">
+                                Attendant: {d.birth_attendant}
+                              </span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-0.5 text-muted-foreground text-[11px]">
                             <span>Labor: {d.duration_of_labor_hours ? `${d.duration_of_labor_hours} hrs` : "N/A"}</span>
                             <span>Loss: {d.blood_loss_ml ? `${d.blood_loss_ml} mL` : "N/A"}</span>
+                            {d.immediate_breastfeeding && (
+                              <span className="text-[10px] font-medium text-emerald-600">
+                                Immediate Breastfeeding
+                              </span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -275,9 +291,16 @@ export const DeliveryNewbornTab: React.FC<DeliveryNewbornTabProps> = React.memo(
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="text-muted-foreground text-[11px] line-clamp-1 max-w-[180px]">
-                            {d.delivery_complications || "None reported"}
-                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-muted-foreground text-[11px] line-clamp-1 max-w-[180px]">
+                              {d.delivery_complications || "None reported"}
+                            </span>
+                            {d.maternal_outcome && d.maternal_outcome !== "Alive and Well" && (
+                              <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-600 w-fit">
+                                {d.maternal_outcome}
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
@@ -404,6 +427,60 @@ export const DeliveryNewbornTab: React.FC<DeliveryNewbornTabProps> = React.memo(
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {Array.isArray(postpartumList) && postpartumList.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <HeartPulse className="h-3.5 w-3.5 text-primary" />
+                  <span>Postpartum Care & Recovery Visits ({postpartumList.length})</span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {postpartumList.map((pv: any, idx: number) => {
+                    const bp = pv.bp_systolic && pv.bp_diastolic ? `${pv.bp_systolic}/${pv.bp_diastolic} mmHg` : "N/A"
+                    return (
+                      <div
+                        key={pv.postpartum_visit_id || pv.id || idx}
+                        className="cursor-pointer flex flex-col justify-between rounded-lg border border-border bg-card p-3.5 space-y-3 shadow-2xs hover:border-primary/50 transition-colors"
+                        onClick={() => onViewRecord({ ...pv, _detailType: "postpartum" })}
+                      >
+                        <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                          <span className="font-semibold text-xs text-foreground">
+                            {pv.visit_timing || "Postpartum Visit"}
+                          </span>
+                          <Badge variant="outline" className="text-[10px]">
+                            {formatDate(pv.visit_date)}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-muted-foreground uppercase">BP</span>
+                            <span className="font-medium text-foreground">{bp}</span>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-muted-foreground uppercase">Pulse / Temp</span>
+                            <span className="font-medium text-foreground">
+                              {pv.pulse_rate_bpm ? `${pv.pulse_rate_bpm} bpm` : "—"} • {pv.temperature_celsius ? `${pv.temperature_celsius}°C` : "—"}
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-muted-foreground uppercase">Lochia / Discharge</span>
+                            <span className={pv.foul_smelling_discharge ? "font-semibold text-destructive" : "text-foreground"}>
+                              {pv.foul_smelling_discharge ? "Foul-smelling" : "Normal"}
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-muted-foreground uppercase">Family Planning</span>
+                            <span className="font-medium text-foreground truncate">
+                              {pv.fp_method_accepted || "None"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}

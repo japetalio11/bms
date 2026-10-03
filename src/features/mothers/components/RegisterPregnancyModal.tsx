@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -37,6 +38,9 @@ export function RegisterPregnancyModal({
   onSuccess,
 }: RegisterPregnancyModalProps) {
   const [lmpDate, setLmpDate] = React.useState<Date>()
+  const [eddDate, setEddDate] = React.useState<Date>()
+  const [heightCm, setHeightCm] = React.useState<string>("")
+  const [completed8Anc, setCompleted8Anc] = React.useState<boolean>(false)
   const [gravida, setGravida] = React.useState<number>(1)
   const [parity, setParity] = React.useState<number>(0)
   const [previousDeliveryHistory, setPreviousDeliveryHistory] =
@@ -47,6 +51,17 @@ export function RegisterPregnancyModal({
   const [bmiCategory, setBmiCategory] = React.useState<string>("Normal")
   const [pregnancyStatus, setPregnancyStatus] = React.useState<string>("Active")
 
+  const [prevCaesarean, setPrevCaesarean] = React.useState(false)
+  const [consecutiveMiscarriages, setConsecutiveMiscarriages] = React.useState(false)
+  const [stillbirthHistory, setStillbirthHistory] = React.useState(false)
+  const [pphHistory, setPphHistory] = React.useState(false)
+
+  const [hasTb, setHasTb] = React.useState(false)
+  const [hasHeartDisease, setHasHeartDisease] = React.useState(false)
+  const [hasDiabetes, setHasDiabetes] = React.useState(false)
+  const [hasAsthma, setHasAsthma] = React.useState(false)
+  const [hasGoiter, setHasGoiter] = React.useState(false)
+
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -55,6 +70,14 @@ export function RegisterPregnancyModal({
     motherData?.user_id ||
     motherData?._id ||
     motherData?.id
+
+  const handleSelectLmp = (date?: Date) => {
+    setLmpDate(date)
+    if (date) {
+      const calculated = new Date(date.getTime() + 280 * 24 * 60 * 60 * 1000)
+      setEddDate(calculated)
+    }
+  }
 
   const handleSubmit = async () => {
     setError(null)
@@ -71,6 +94,8 @@ export function RegisterPregnancyModal({
 
     const pregVal = validatePregnancyData({
       lmp_date: lmpDate.toISOString(),
+      edd_date: eddDate ? eddDate.toISOString() : undefined,
+      height_cm: heightCm ? Number(heightCm) : undefined,
       gravida: Number(gravida),
       parity: Number(parity),
       pregnancy_status: pregnancyStatus,
@@ -82,14 +107,14 @@ export function RegisterPregnancyModal({
     }
 
     setLoading(true)
-    const token = localStorage.getItem("token")
-    const baseUrl =
-      import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
 
     try {
       const payload = {
         motherId,
         lmp_date: lmpDate.toISOString(),
+        edd_date: eddDate ? eddDate.toISOString() : undefined,
+        height_cm: heightCm ? Number(heightCm) : undefined,
+        completed_8anc: completed8Anc,
         gravida: Number(gravida),
         parity: Number(parity),
         previous_delivery_history: previousDeliveryHistory || undefined,
@@ -100,6 +125,15 @@ export function RegisterPregnancyModal({
           : undefined,
         bmi_category: bmiCategory,
         pregnancy_status: pregnancyStatus,
+        prev_caesarean: prevCaesarean,
+        consecutive_miscarriages: consecutiveMiscarriages,
+        stillbirth_history: stillbirthHistory,
+        pph_history: pphHistory,
+        has_tb: hasTb,
+        has_heart_disease: hasHeartDisease,
+        has_diabetes: hasDiabetes,
+        has_asthma: hasAsthma,
+        has_goiter: hasGoiter,
       }
 
       await mothersApi.registerPregnancy(payload)
@@ -161,11 +195,58 @@ export function RegisterPregnancyModal({
                   <Calendar
                     mode="single"
                     selected={lmpDate}
-                    onSelect={setLmpDate}
+                    onSelect={handleSelectLmp}
                     disabled={(date) => date > new Date()}
                   />
                 </PopoverContent>
               </Popover>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-foreground">
+                Estimated Due Date (EDD)
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "!h-8 w-full justify-start border-border bg-card text-left text-xs font-normal",
+                      !eddDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    {eddDate ? (
+                      format(eddDate, "PPP")
+                    ) : (
+                      <span>Pick EDD Date</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={eddDate}
+                    onSelect={setEddDate}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-foreground">
+                Maternal Height (cm)
+              </Label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="e.g. 152.5"
+                value={heightCm}
+                onChange={(e) => setHeightCm(e.target.value)}
+                className="!h-8 border-border bg-card text-xs text-card-foreground"
+              />
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -239,13 +320,143 @@ export function RegisterPregnancyModal({
               </Select>
             </div>
           </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <Checkbox
+              id="completed8Anc"
+              checked={completed8Anc}
+              onCheckedChange={(checked) => setCompleted8Anc(Boolean(checked))}
+            />
+            <Label htmlFor="completed8Anc" className="text-xs cursor-pointer text-foreground">
+              Completed 8 ANC Visits benchmark
+            </Label>
+          </div>
         </div>
 
         <div className="my-1 h-px bg-border" />
 
         <div className="flex flex-col gap-3">
           <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            Clinical & Health Indicators
+            Obstetric High-Risk History
+          </h4>
+
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="prevCaesarean"
+                checked={prevCaesarean}
+                onCheckedChange={(checked) => setPrevCaesarean(Boolean(checked))}
+              />
+              <Label htmlFor="prevCaesarean" className="text-xs cursor-pointer">
+                Previous C-Section
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="consecutiveMiscarriages"
+                checked={consecutiveMiscarriages}
+                onCheckedChange={(checked) => setConsecutiveMiscarriages(Boolean(checked))}
+              />
+              <Label htmlFor="consecutiveMiscarriages" className="text-xs cursor-pointer">
+                Consecutive Miscarriages
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="stillbirthHistory"
+                checked={stillbirthHistory}
+                onCheckedChange={(checked) => setStillbirthHistory(Boolean(checked))}
+              />
+              <Label htmlFor="stillbirthHistory" className="text-xs cursor-pointer">
+                Stillbirth History
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="pphHistory"
+                checked={pphHistory}
+                onCheckedChange={(checked) => setPphHistory(Boolean(checked))}
+              />
+              <Label htmlFor="pphHistory" className="text-xs cursor-pointer">
+                PPH History
+              </Label>
+            </div>
+          </div>
+        </div>
+
+        <div className="my-1 h-px bg-border" />
+
+        <div className="flex flex-col gap-3">
+          <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Pre-existing & Chronic Conditions
+          </h4>
+
+          <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="hasHeartDisease"
+                checked={hasHeartDisease}
+                onCheckedChange={(checked) => setHasHeartDisease(Boolean(checked))}
+              />
+              <Label htmlFor="hasHeartDisease" className="text-xs cursor-pointer text-destructive font-medium">
+                Heart Disease
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="hasDiabetes"
+                checked={hasDiabetes}
+                onCheckedChange={(checked) => setHasDiabetes(Boolean(checked))}
+              />
+              <Label htmlFor="hasDiabetes" className="text-xs cursor-pointer">
+                Diabetes
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="hasTb"
+                checked={hasTb}
+                onCheckedChange={(checked) => setHasTb(Boolean(checked))}
+              />
+              <Label htmlFor="hasTb" className="text-xs cursor-pointer">
+                Tuberculosis
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="hasAsthma"
+                checked={hasAsthma}
+                onCheckedChange={(checked) => setHasAsthma(Boolean(checked))}
+              />
+              <Label htmlFor="hasAsthma" className="text-xs cursor-pointer">
+                Asthma
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="hasGoiter"
+                checked={hasGoiter}
+                onCheckedChange={(checked) => setHasGoiter(Boolean(checked))}
+              />
+              <Label htmlFor="hasGoiter" className="text-xs cursor-pointer">
+                Goiter
+              </Label>
+            </div>
+          </div>
+        </div>
+
+        <div className="my-1 h-px bg-border" />
+
+        <div className="flex flex-col gap-3">
+          <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Clinical & Nutrition Indicators
           </h4>
 
           <div className="grid grid-cols-2 gap-3">
@@ -290,11 +501,11 @@ export function RegisterPregnancyModal({
               htmlFor="coMorbidities"
               className="text-xs font-medium text-foreground"
             >
-              Co-morbidities
+              Other Co-morbidities
             </Label>
             <Input
               id="coMorbidities"
-              placeholder="e.g. Hypertension, Diabetes, Asthma"
+              placeholder="e.g. Chronic Kidney Disease, Epilepsy"
               value={coMorbidities}
               onChange={(e) => setCoMorbidities(e.target.value)}
               className="!h-8 border-border bg-card text-xs text-card-foreground"
@@ -306,7 +517,7 @@ export function RegisterPregnancyModal({
               htmlFor="previousDelivery"
               className="text-xs font-medium text-foreground"
             >
-              Previous Delivery History
+              Previous Delivery History Notes
             </Label>
             <Textarea
               id="previousDelivery"

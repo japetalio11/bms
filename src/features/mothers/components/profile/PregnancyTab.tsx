@@ -97,6 +97,8 @@ export const PregnancyTab: React.FC<PregnancyTabProps> = React.memo(
         "LMP",
         "EDD",
         "Gestational Age",
+        "Maternal Height",
+        "8 ANC Completed",
         "Status",
       ]
       const rows = filteredList.map((p: any) => {
@@ -104,17 +106,21 @@ export const PregnancyTab: React.FC<PregnancyTabProps> = React.memo(
         const gaWeeks = lmpVal
           ? calculateGAWeeks(lmpVal)
           : p.gestational_age_weeks || 0
-        const eddVal = lmpVal
-          ? calculateEDD(lmpVal)
-          : p.edd
-            ? formatDate(p.edd)
-            : "N/A"
+        const eddVal = p.edd_date
+          ? formatDate(p.edd_date)
+          : lmpVal
+            ? calculateEDD(lmpVal)
+            : p.edd
+              ? formatDate(p.edd)
+              : "N/A"
         return [
           p.gravida ?? 0,
           p.parity ?? 0,
           lmpVal ? formatDate(lmpVal) : "N/A",
           eddVal,
           gaWeeks > 0 ? `${gaWeeks} Weeks` : "N/A",
+          p.height_cm ? `${p.height_cm} cm` : "N/A",
+          p.completed_8anc ? "Yes" : "No",
           p.pregnancy_status || "Active",
         ]
       })
@@ -192,7 +198,10 @@ export const PregnancyTab: React.FC<PregnancyTabProps> = React.memo(
                     Gestational Age
                   </TableHead>
                   <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
-                    Status
+                    Height
+                  </TableHead>
+                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
+                    Status & Benchmarks
                   </TableHead>
                   <TableHead className="h-9 w-12 py-2"></TableHead>
                 </TableRow>
@@ -201,7 +210,7 @@ export const PregnancyTab: React.FC<PregnancyTabProps> = React.memo(
                 {filteredList.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="h-24 text-center text-xs text-muted-foreground"
                     >
                       No pregnancy history found
@@ -213,11 +222,23 @@ export const PregnancyTab: React.FC<PregnancyTabProps> = React.memo(
                     const gaWeeks = lmpVal
                       ? calculateGAWeeks(lmpVal)
                       : p.gestational_age_weeks || 0
-                    const eddVal = lmpVal
-                      ? calculateEDD(lmpVal)
-                      : p.edd
-                        ? formatDate(p.edd)
-                        : "N/A"
+                    const eddVal = p.edd_date
+                      ? formatDate(p.edd_date)
+                      : lmpVal
+                        ? calculateEDD(lmpVal)
+                        : p.edd
+                          ? formatDate(p.edd)
+                          : "N/A"
+                    const hasHighRisk =
+                      p.prev_caesarean ||
+                      p.consecutive_miscarriages ||
+                      p.stillbirth_history ||
+                      p.pph_history ||
+                      p.has_tb ||
+                      p.has_heart_disease ||
+                      p.has_diabetes ||
+                      p.has_asthma ||
+                      p.has_goiter
 
                     return (
                       <TableRow
@@ -237,10 +258,25 @@ export const PregnancyTab: React.FC<PregnancyTabProps> = React.memo(
                         <TableCell className="py-2 text-xs text-foreground dark:text-white">
                           {gaWeeks > 0 ? `${gaWeeks} Weeks` : "N/A"}
                         </TableCell>
+                        <TableCell className="py-2 text-xs text-foreground dark:text-white">
+                          {p.height_cm ? `${p.height_cm} cm` : "—"}
+                        </TableCell>
                         <TableCell className="py-2">
-                          <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-[#24a1de]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#24a1de] capitalize shadow-none">
-                            {p.pregnancy_status || "Active"}
-                          </Badge>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-[#24a1de]/10 px-1.5 py-0.5 text-[10px] font-medium text-[#24a1de] capitalize shadow-none">
+                              {p.pregnancy_status || "Active"}
+                            </Badge>
+                            {p.completed_8anc && (
+                              <Badge className="border-none bg-emerald-500/10 text-[10px] text-emerald-600">
+                                8 ANC Done
+                              </Badge>
+                            )}
+                            {hasHighRisk && (
+                              <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600">
+                                High Risk
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell
                           className="py-2 text-right"
