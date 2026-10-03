@@ -87,8 +87,10 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
         "Trimester",
         "Blood Pressure",
         "Fetal Heart Tone",
+        "Fetal Presentation",
         "Fundic Height",
         "Weight",
+        "Danger Signs",
         "Risk Level",
       ]
       const rows = filteredList.map((visit: any) => {
@@ -117,13 +119,21 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
           defaultRisk ||
           "Low Risk"
 
+        const signs = []
+        if (visit.has_vaginal_bleeding) signs.push("Bleeding")
+        if (visit.has_pallor) signs.push("Pallor")
+        if (visit.has_edema) signs.push("Edema")
+        if (visit.has_fever) signs.push("Fever")
+
         return [
           formatDate(visit.visit_date),
           trimesterDisplay,
           bpDisplay,
           fetalHeart,
+          visit.fetal_presentation || "Cephalic",
           fundicHeight,
           weightDisplay,
+          signs.length > 0 ? signs.join(", ") : "None",
           riskLevel,
         ]
       })
@@ -198,7 +208,7 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
                     Blood Pressure
                   </TableHead>
                   <TableHead className="h-9 w-[15%] py-2 text-xs font-medium text-foreground dark:text-white">
-                    Fetal Heart Tone
+                    FHT & Presentation
                   </TableHead>
                   <TableHead className="h-9 w-[15%] py-2 text-xs font-medium text-foreground dark:text-white">
                     Fundic Height
@@ -207,7 +217,7 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
                     Weight
                   </TableHead>
                   <TableHead className="h-9 w-[15%] py-2 text-xs font-medium text-foreground dark:text-white">
-                    Risk Level
+                    Risk & Symptoms
                   </TableHead>
                   <TableHead className="h-9 w-12 py-2"></TableHead>
                 </TableRow>
@@ -248,6 +258,12 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
                       ? `${visit.trimester}${visit.trimester === 1 ? "st" : visit.trimester === 2 ? "nd" : "rd"} Trimester`
                       : "N/A"
 
+                    const hasDangerSigns =
+                      visit.has_vaginal_bleeding ||
+                      visit.has_pallor ||
+                      visit.has_edema ||
+                      visit.has_fever
+
                     return (
                       <TableRow
                         key={visit.visit_id || visit.id || i}
@@ -264,7 +280,12 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
                           {bpDisplay}
                         </TableCell>
                         <TableCell className="py-2 text-xs text-foreground dark:text-white">
-                          {fetalHeart}
+                          <div>{fetalHeart}</div>
+                          {visit.fetal_presentation && (
+                            <span className="text-[10px] text-muted-foreground">
+                              {visit.fetal_presentation}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="py-2 text-xs text-foreground dark:text-white">
                           {fundicHeight}
@@ -273,13 +294,20 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
                           {weightDisplay}
                         </TableCell>
                         <TableCell className="py-2">
-                          <RiskBadge
-                            risk={
-                              visit.risk_level_assessed ||
-                              visit.risk_level ||
-                              defaultRisk
-                            }
-                          />
+                          <div className="flex flex-col items-start gap-1">
+                            <RiskBadge
+                              risk={
+                                visit.risk_level_assessed ||
+                                visit.risk_level ||
+                                defaultRisk
+                              }
+                            />
+                            {hasDangerSigns && (
+                              <span className="text-[10px] font-medium text-destructive">
+                                Danger Signs
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell
                           className="py-2 text-right"

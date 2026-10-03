@@ -5,6 +5,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { calculateOfflineTEWSRisk } from "@/lib/riskUtils"
 import {
   validatePrenatalVitals,
@@ -51,8 +58,11 @@ export function LogVitalsModal({
       headacheVision: false,
       puffiness: false,
       paleAnemic: false,
+      fever: false,
     }
   )
+
+  const [fetalPresentation, setFetalPresentation] = React.useState<string>("Cephalic")
 
   const [sys, setSys] = React.useState<string>("120")
   const [dia, setDia] = React.useState<string>("80")
@@ -89,6 +99,7 @@ export function LogVitalsModal({
       signs.push("severe headache and blurred vision")
     if (dangerSigns.puffiness) signs.push("facial and hand edema")
     if (dangerSigns.paleAnemic) signs.push("pallor and anemia")
+    if (dangerSigns.fever) signs.push("fever")
     return signs.join(", ")
   }
 
@@ -137,6 +148,11 @@ export function LogVitalsModal({
       pulse_rate_bpm: Number(hr),
       temperature_celsius: Number(temp),
       danger_signs_observed: dangerText,
+      has_vaginal_bleeding: Boolean(dangerSigns.vaginalBleeding),
+      has_pallor: Boolean(dangerSigns.paleAnemic),
+      has_edema: Boolean(dangerSigns.puffiness),
+      has_fever: Boolean(dangerSigns.fever),
+      fetal_presentation: fetalPresentation,
     })
 
     setAssessmentResult(result)
@@ -242,6 +258,11 @@ export function LogVitalsModal({
         bp_diastolic: numDia,
         fundic_height_cm: fundic ? Number(fundic) : null,
         fetal_heart_tone_bpm: fht ? Number(fht) : null,
+        fetal_presentation: fetalPresentation || undefined,
+        has_vaginal_bleeding: Boolean(dangerSigns.vaginalBleeding),
+        has_pallor: Boolean(dangerSigns.paleAnemic),
+        has_edema: Boolean(dangerSigns.puffiness),
+        has_fever: Boolean(dangerSigns.fever),
         danger_signs_observed: dangerText || undefined,
         risk_level_assessed: result.risk_level,
         visit_date: new Date().toISOString(),
@@ -299,9 +320,9 @@ export function LogVitalsModal({
       trigger={children}
       title="Log Vitals"
       description="Record the clinical measurements, run real-time CDSS risk triage, and save the prenatal visit record."
-      className="sm:max-w-[700px]"
+      className="sm:max-w-3xl lg:max-w-4xl"
     >
-      <div className="flex max-h-[75vh] flex-col gap-5 overflow-y-auto py-2 pr-1">
+      <div className="flex max-h-[85vh] flex-col gap-5 overflow-y-auto py-2 pr-1">
         <div className="flex flex-col gap-2.5">
           <h4 className="text-xs font-semibold tracking-wider text-red-500 uppercase">
             Clinical Danger Signs
@@ -375,6 +396,22 @@ export function LogVitalsModal({
                 className="cursor-pointer text-xs font-medium text-red-800 dark:text-red-200"
               >
                 Being pale or anemic
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="danger5"
+                checked={dangerSigns.fever}
+                onCheckedChange={(checked) =>
+                  setDangerSigns((prev) => ({ ...prev, fever: !!checked }))
+                }
+                className="border-red-300 data-[state=checked]:border-red-500 data-[state=checked]:bg-red-500"
+              />
+              <Label
+                htmlFor="danger5"
+                className="cursor-pointer text-xs font-medium text-red-800 dark:text-red-200"
+              >
+                Maternal fever / chills
               </Label>
             </div>
           </div>
@@ -560,6 +597,21 @@ export function LogVitalsModal({
                 onChange={(e) => setFundic(e.target.value)}
                 className="!h-8 border-sidebar-border bg-background text-xs dark:bg-black"
               />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Presentation
+              </Label>
+              <Select value={fetalPresentation} onValueChange={setFetalPresentation}>
+                <SelectTrigger className="!h-8 border-sidebar-border bg-background text-xs dark:bg-black">
+                  <SelectValue placeholder="Presentation" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cephalic">Cephalic</SelectItem>
+                  <SelectItem value="Breech">Breech</SelectItem>
+                  <SelectItem value="Transverse">Transverse</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>

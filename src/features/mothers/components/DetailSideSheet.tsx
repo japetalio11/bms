@@ -48,6 +48,7 @@ export interface DetailSideSheetProps {
     | "laboratory"
     | "prescription"
     | "delivery"
+    | "postpartum"
     | null
   data: any
   motherName?: string
@@ -106,9 +107,12 @@ export function DetailSideSheet({
       recordId = data.supplement_id || data.id || data._id
     } else if (type === "delivery") {
       recordId = data.delivery_id || data.id || data._id
+    } else if (type === "postpartum") {
+      recordId = data.postpartum_visit_id || data.visit_id || data.id || data._id
     } else {
       recordId =
         data.delivery_id ||
+        data.postpartum_visit_id ||
         data.visit_id ||
         data.pregnancy_id ||
         data.appointment_id ||
@@ -138,6 +142,9 @@ export function DetailSideSheet({
       } else if (type === "delivery") {
         await mothersApi.deleteRecord(`/api/v1/delivery-outcome/delete/${recordId}`)
         await db.deliveries.delete(recordId).catch(() => {})
+      } else if (type === "postpartum") {
+        await mothersApi.deleteRecord(`/api/v1/postpartum-visit/delete/${recordId}`)
+        await db.postpartumVisits.delete(recordId).catch(() => {})
       }
 
       toast.success("Record deleted successfully")
@@ -167,6 +174,8 @@ export function DetailSideSheet({
         return `${motherName} - Prescription`
       case "delivery":
         return `${motherName} - Delivery Outcome`
+      case "postpartum":
+        return `${motherName} - Postpartum Visit`
       default:
         return `${motherName} - Record Details`
     }
@@ -207,6 +216,12 @@ export function DetailSideSheet({
                 <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-500 capitalize shadow-none">
                   <Baby className="h-3 w-3" />
                   Delivered
+                </Badge>
+              )}
+              {type === "postpartum" && (
+                <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-600 capitalize shadow-none">
+                  <HeartPulse className="h-3 w-3" />
+                  {data.visit_timing || "Postpartum"}
                 </Badge>
               )}
               {type === "laboratory" && (
@@ -283,6 +298,39 @@ export function DetailSideSheet({
                     </div>
                     <span className="flex-1 text-xs text-foreground">
                       {data.place_of_delivery || "RHU / Birthing Clinic"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Stethoscope className="h-3.5 w-3.5" />
+                      <span className="text-xs">Birth Attendant</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.birth_attendant || "Registered Midwife"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Activity className="h-3.5 w-3.5" />
+                      <span className="text-xs">Maternal Outcome</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground font-medium">
+                      {data.maternal_outcome || "Alive and Well"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Baby className="h-3.5 w-3.5" />
+                      <span className="text-xs">Immediate Breastfeeding</span>
+                    </div>
+                    <span className="flex-1 text-xs">
+                      {data.immediate_breastfeeding ? (
+                        <Badge className="border-none bg-emerald-500/10 text-[10px] text-emerald-600">
+                          Initiated within 1 hr
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">Not recorded / Delayed</span>
+                      )}
                     </span>
                   </div>
                   <div className="flex items-center">
@@ -374,6 +422,41 @@ export function DetailSideSheet({
                   </div>
                   <div className="flex items-center">
                     <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span className="text-xs">Expected Due Date (EDD)</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground font-medium">
+                      {data.edd_date ? formatDate(data.edd_date) : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Ruler className="h-3.5 w-3.5" />
+                      <span className="text-xs">Maternal Height</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.height_cm ? `${data.height_cm} cm` : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span className="text-xs">8 ANC Benchmark</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.completed_8anc ? (
+                        <Badge className="border-none bg-emerald-500/10 text-[10px] text-emerald-600">
+                          Completed 8 Visits
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                          In Progress / Under 8
+                        </Badge>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
                       <Clock className="h-3.5 w-3.5" />
                       <span className="text-xs">Registration Date</span>
                     </div>
@@ -417,6 +500,72 @@ export function DetailSideSheet({
                       {data.previous_delivery_history || "None recorded"}
                     </span>
                   </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 border-b border-border p-4">
+                <h3 className="text-xs font-semibold text-foreground">
+                  High-Risk & Chronic Indicators
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {data.prev_caesarean && (
+                    <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600">
+                      Previous Caesarean
+                    </Badge>
+                  )}
+                  {data.consecutive_miscarriages && (
+                    <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600">
+                      3+ Miscarriages
+                    </Badge>
+                  )}
+                  {data.stillbirth_history && (
+                    <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-600">
+                      Stillbirth History
+                    </Badge>
+                  )}
+                  {data.pph_history && (
+                    <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-600">
+                      PPH History
+                    </Badge>
+                  )}
+                  {data.has_tb && (
+                    <Badge variant="outline" className="border-purple-500/30 bg-purple-500/10 text-[10px] text-purple-600">
+                      Tuberculosis
+                    </Badge>
+                  )}
+                  {data.has_heart_disease && (
+                    <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-600">
+                      Heart Disease
+                    </Badge>
+                  )}
+                  {data.has_diabetes && (
+                    <Badge variant="outline" className="border-purple-500/30 bg-purple-500/10 text-[10px] text-purple-600">
+                      Diabetes Mellitus
+                    </Badge>
+                  )}
+                  {data.has_asthma && (
+                    <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-600">
+                      Bronchial Asthma
+                    </Badge>
+                  )}
+                  {data.has_goiter && (
+                    <Badge variant="outline" className="border-purple-500/30 bg-purple-500/10 text-[10px] text-purple-600">
+                      Goiter / Thyroid
+                    </Badge>
+                  )}
+                  {!data.prev_caesarean &&
+                    !data.consecutive_miscarriages &&
+                    !data.stillbirth_history &&
+                    !data.pph_history &&
+                    !data.has_tb &&
+                    !data.has_heart_disease &&
+                    !data.has_diabetes &&
+                    !data.has_asthma &&
+                    !data.has_goiter && (
+                      <span className="text-xs text-muted-foreground">
+                        No high-risk history flags flagged
+                      </span>
+                    )}
                 </div>
               </div>
             </>
@@ -538,8 +687,255 @@ export function DetailSideSheet({
                         : "N/A"}
                     </span>
                   </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Stethoscope className="h-3.5 w-3.5" />
+                      <span className="text-xs">Fetal Presentation</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground font-medium">
+                      {data.fetal_presentation || "Cephalic"}
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              <div className="flex flex-col gap-3 border-b border-border p-4">
+                <h3 className="text-xs font-semibold text-foreground">
+                  Danger Signs & Clinical Symptoms
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {data.has_vaginal_bleeding && (
+                    <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-600">
+                      Vaginal Bleeding
+                    </Badge>
+                  )}
+                  {data.has_pallor && (
+                    <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600">
+                      Severe Pallor
+                    </Badge>
+                  )}
+                  {data.has_edema && (
+                    <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-600">
+                      Edema (Hands/Face)
+                    </Badge>
+                  )}
+                  {data.has_fever && (
+                    <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-600">
+                      High Fever
+                    </Badge>
+                  )}
+                  {!data.has_vaginal_bleeding &&
+                    !data.has_pallor &&
+                    !data.has_edema &&
+                    !data.has_fever && (
+                      <span className="text-xs text-muted-foreground">
+                        No acute danger signs reported
+                      </span>
+                    )}
+                </div>
+                {data.chief_complaint && (
+                  <div className="mt-2 flex flex-col gap-1">
+                    <span className="text-[11px] font-medium text-muted-foreground">
+                      Chief Complaint
+                    </span>
+                    <p className="text-xs text-foreground">{data.chief_complaint}</p>
+                  </div>
+                )}
+                {data.danger_signs_observed && (
+                  <div className="mt-1 flex flex-col gap-1">
+                    <span className="text-[11px] font-medium text-muted-foreground">
+                      Observations & Clinical Warnings
+                    </span>
+                    <p className="text-xs text-destructive">{data.danger_signs_observed}</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {type === "postpartum" && (
+            <>
+              <div className="flex flex-col gap-4 border-b border-border p-4">
+                <h3 className="text-xs font-semibold text-foreground">
+                  Postpartum Visit Details
+                </h3>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span className="text-xs">Visit Date</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {formatDate(data.visit_date)}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span className="text-xs">Visit Timing</span>
+                    </div>
+                    <span className="flex-1 text-xs font-medium text-foreground">
+                      {data.visit_timing || "Routine Postpartum"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 border-b border-border p-4">
+                <h3 className="text-xs font-semibold text-foreground">
+                  Postpartum Recovery Vitals
+                </h3>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <HeartPulse className="h-3.5 w-3.5" />
+                      <span className="text-xs">Blood Pressure</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.bp_systolic && data.bp_diastolic
+                        ? `${data.bp_systolic}/${data.bp_diastolic} mmHg`
+                        : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <ActivitySquare className="h-3.5 w-3.5" />
+                      <span className="text-xs">Pulse Rate</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.pulse_rate_bpm ? `${data.pulse_rate_bpm} bpm` : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Thermometer className="h-3.5 w-3.5" />
+                      <span className="text-xs">Body Temp</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.temperature_celsius ? `${data.temperature_celsius} °C` : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Weight className="h-3.5 w-3.5" />
+                      <span className="text-xs">Weight</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.weight_kg ? `${data.weight_kg} kg` : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Ruler className="h-3.5 w-3.5" />
+                      <span className="text-xs">Fundic Height</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.fundic_height_cm ? `${data.fundic_height_cm} cm` : "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 border-b border-border p-4">
+                <h3 className="text-xs font-semibold text-foreground">
+                  Clinical Assessments & Recovery
+                </h3>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <ShieldAlert className="h-3.5 w-3.5" />
+                      <span className="text-xs">Foul-Smelling Discharge</span>
+                    </div>
+                    <span className="flex-1 text-xs">
+                      {data.foul_smelling_discharge ? (
+                        <Badge className="border-none bg-red-500/10 text-[10px] text-red-600">
+                          Detected (Risk Flag)
+                        </Badge>
+                      ) : (
+                        <span className="text-foreground">Normal / Clear</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Baby className="h-3.5 w-3.5" />
+                      <span className="text-xs">Cord Condition</span>
+                    </div>
+                    <span className="flex-1 text-xs">
+                      {data.cord_condition_normal !== false ? (
+                        <Badge className="border-none bg-emerald-500/10 text-[10px] text-emerald-600">
+                          Normal & Clean
+                        </Badge>
+                      ) : (
+                        <Badge className="border-none bg-amber-500/10 text-[10px] text-amber-600">
+                          Abnormal / Needs Attention
+                        </Badge>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 border-b border-border p-4">
+                <h3 className="text-xs font-semibold text-foreground">
+                  Family Planning (FP) Counseling
+                </h3>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Pill className="h-3.5 w-3.5" />
+                      <span className="text-xs">Method Accepted</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground font-medium">
+                      {data.fp_method_accepted || "None recorded"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Activity className="h-3.5 w-3.5" />
+                      <span className="text-xs">Quantity Given</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.fp_quantity_given !== undefined && data.fp_quantity_given !== null
+                        ? data.fp_quantity_given
+                        : "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex w-[160px] shrink-0 items-center gap-2 text-muted-foreground">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span className="text-xs">Follow-Up Date</span>
+                    </div>
+                    <span className="flex-1 text-xs text-foreground">
+                      {data.fp_follow_up_date ? formatDate(data.fp_follow_up_date) : "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {(data.chief_complaint || data.danger_signs_observed) && (
+                <div className="flex flex-col gap-3 border-b border-border p-4">
+                  <h3 className="text-xs font-semibold text-foreground">
+                    Symptoms & Danger Signs
+                  </h3>
+                  {data.chief_complaint && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        Chief Complaint
+                      </span>
+                      <p className="text-xs text-foreground">{data.chief_complaint}</p>
+                    </div>
+                  )}
+                  {data.danger_signs_observed && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        Danger Signs Observed
+                      </span>
+                      <p className="text-xs text-destructive">{data.danger_signs_observed}</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 

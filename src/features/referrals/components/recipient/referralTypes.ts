@@ -17,6 +17,11 @@ export interface PrenatalVisitItem {
   fundic_height?: number | string
   fetal_heart_tone_bpm?: number
   fetal_heart_tone?: number
+  fetal_presentation?: string
+  has_vaginal_bleeding?: boolean
+  has_pallor?: boolean
+  has_edema?: boolean
+  has_fever?: boolean
   chief_complaint?: string
   danger_signs_observed?: string
   risk_level_assessed?: string
@@ -52,7 +57,7 @@ export interface CDSSAlertItem {
   visit_id?: string
   alert_type?: string
   alert_message: string
-  severity?: string // 'High', 'Moderate', 'Low'
+  severity?: string
   is_resolved?: boolean
   resolved_by?: string
   resolved_at?: string
@@ -73,6 +78,7 @@ export interface PostpartumVisitItem {
   delivery_id?: string
   visit_date: string
   visit_number: number
+  visit_timing?: string
   weight_kg?: number | string
   temperature_celsius?: number | string
   pulse_rate_bpm?: number
@@ -81,6 +87,11 @@ export interface PostpartumVisitItem {
   fundic_height_cm?: number | string
   chief_complaint?: string
   danger_signs_observed?: string
+  foul_smelling_discharge?: boolean
+  cord_condition_normal?: boolean
+  fp_method_accepted?: string
+  fp_quantity_given?: number
+  fp_follow_up_date?: string
   risk_level_assessed?: string
   vitamin_a_given?: boolean
   iron_supplement_given?: boolean
@@ -95,6 +106,9 @@ export interface DeliveryOutcomeItem {
   duration_of_labor_hours?: number | string
   blood_loss_ml?: number
   delivery_complications?: string
+  birth_attendant?: string
+  maternal_outcome?: string
+  immediate_breastfeeding?: boolean
   newbornRecords?: NewbornRecordItem[]
   postpartumVisits?: PostpartumVisitItem[]
 }
@@ -167,6 +181,18 @@ export interface PublicReferralData {
     gravida?: number
     parity?: number
     lmp_date?: string
+    edd_date?: string
+    height_cm?: number | string
+    completed_8anc?: boolean
+    prev_caesarean?: boolean
+    consecutive_miscarriages?: boolean
+    stillbirth_history?: boolean
+    pph_history?: boolean
+    has_tb?: boolean
+    has_heart_disease?: boolean
+    has_diabetes?: boolean
+    has_asthma?: boolean
+    has_goiter?: boolean
     age_group?: string
     bmi_category?: string
     pregnancy_status?: string

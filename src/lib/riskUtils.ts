@@ -309,6 +309,21 @@ export interface ClinicalVitalsInput {
   pulse_rate_bpm?: number | string | null
   temperature_celsius?: number | string | null
   danger_signs_observed?: string | null
+  has_vaginal_bleeding?: boolean | null
+  has_pallor?: boolean | null
+  has_edema?: boolean | null
+  has_fever?: boolean | null
+  fetal_presentation?: string | null
+  height_cm?: number | string | null
+  prev_caesarean?: boolean | null
+  consecutive_miscarriages?: boolean | null
+  stillbirth_history?: boolean | null
+  pph_history?: boolean | null
+  has_tb?: boolean | null
+  has_heart_disease?: boolean | null
+  has_diabetes?: boolean | null
+  has_asthma?: boolean | null
+  has_goiter?: boolean | null
   mother_age?: number | null
   parity?: number | null
   previous_delivery_history?: string | null
@@ -404,6 +419,13 @@ export function calculateOfflineTEWSRisk(input: ClinicalVitalsInput): {
     }
   }
 
+  if (input.has_fever) {
+    tempScore = Math.max(tempScore, 3)
+    if (!reasons.some((r) => r.includes("fever"))) {
+      reasons.push("Maternal fever danger sign observed")
+    }
+  }
+
   let dangerScore = 0
   if (dangerSigns.trim()) {
     const lower = dangerSigns.toLowerCase()
@@ -423,6 +445,19 @@ export function calculateOfflineTEWSRisk(input: ClinicalVitalsInput): {
     }
   }
 
+  if (input.has_vaginal_bleeding) {
+    dangerScore = Math.max(dangerScore, 3)
+    reasons.push("Vaginal bleeding reported")
+  }
+  if (input.has_pallor) {
+    dangerScore = Math.max(dangerScore, 2)
+    reasons.push("Severe pallor / clinical anemia observed")
+  }
+  if (input.has_edema) {
+    dangerScore = Math.max(dangerScore, 2)
+    reasons.push("Edema observed")
+  }
+
   const vitalScores = [sysScore, diaScore, hrScore, tempScore, dangerScore]
   const sumVitalScores = vitalScores.reduce((acc, curr) => acc + curr, 0)
   const maxVitalScore = Math.max(...vitalScores)
@@ -439,11 +474,54 @@ export function calculateOfflineTEWSRisk(input: ClinicalVitalsInput): {
     reasons.push(`Grand multiparity (Parity: ${input.parity})`)
   }
   if (
-    input.previous_delivery_history &&
-    input.previous_delivery_history.toLowerCase().includes("cesarean")
+    input.prev_caesarean ||
+    (input.previous_delivery_history &&
+      input.previous_delivery_history.toLowerCase().includes("cesarean"))
   ) {
     demographicWeight += 3
-    reasons.push("Previous cesarean delivery")
+    reasons.push("Previous cesarean section")
+  }
+  if (input.consecutive_miscarriages) {
+    demographicWeight += 2
+    reasons.push("Consecutive miscarriages history")
+  }
+  if (input.stillbirth_history) {
+    demographicWeight += 2
+    reasons.push("Previous stillbirth history")
+  }
+  if (input.pph_history) {
+    demographicWeight += 2
+    reasons.push("Postpartum hemorrhage (PPH) history")
+  }
+  if (input.height_cm != null && Number(input.height_cm) > 0 && Number(input.height_cm) < 145) {
+    demographicWeight += 2
+    reasons.push(`Short maternal stature (${input.height_cm} cm < 145 cm)`)
+  }
+
+  if (input.has_heart_disease) {
+    demographicWeight += 4
+    reasons.push("Chronic condition: Heart disease")
+  }
+  if (input.has_diabetes) {
+    demographicWeight += 2
+    reasons.push("Condition: Diabetes mellitus")
+  }
+  if (input.has_tb) {
+    demographicWeight += 2
+    reasons.push("Condition: Tuberculosis (TB)")
+  }
+  if (input.has_asthma) {
+    demographicWeight += 1
+    reasons.push("Condition: Bronchial asthma")
+  }
+  if (input.has_goiter) {
+    demographicWeight += 1
+    reasons.push("Condition: Goiter / Thyroid disorder")
+  }
+
+  if (input.fetal_presentation && ["Breech", "Transverse"].includes(input.fetal_presentation)) {
+    demographicWeight += 2
+    reasons.push(`Fetal malpresentation: ${input.fetal_presentation}`)
   }
 
   let velocityMultiplier = 0
@@ -471,7 +549,7 @@ export function calculateOfflineTEWSRisk(input: ClinicalVitalsInput): {
   let raw_level: "LOW" | "MODERATE" | "HIGH" = "LOW"
   let risk_level: "Low Risk" | "Moderate Risk" | "High Risk" = "Low Risk"
 
-  if (TEWS >= 6 || maxVitalScore >= 3) {
+  if (TEWS >= 6 || maxVitalScore >= 3 || input.has_heart_disease || input.has_vaginal_bleeding) {
     raw_level = "HIGH"
     risk_level = "High Risk"
   } else if (TEWS >= 4 || maxVitalScore === 2) {

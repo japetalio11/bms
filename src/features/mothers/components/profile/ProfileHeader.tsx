@@ -91,10 +91,11 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
           .join(" ") || "Healthcare Worker"
       )
     }, [assignedStaff])
-    const currentPregnancy = useMemo(
-      () => pregnancies[0] || motherData?.pregnancies?.[0] || null,
-      [pregnancies, motherData]
-    )
+    const currentPregnancy = useMemo(() => {
+      const list = (pregnancies && pregnancies.length > 0) ? pregnancies : (motherData?.pregnancies || [])
+      if (list.length === 0) return null
+      return list.find((p: any) => p.pregnancy_status?.toLowerCase() === "active") || list[0] || null
+    }, [pregnancies, motherData])
 
     const name = useMemo(() => {
       if (!motherData) return "Loading..."
@@ -128,25 +129,40 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
       return formatDate(edd)
     }
 
-    const getTrimesterFromGA = (weeks: number) => {
-      if (weeks === 0) return "N/A"
+    const getTrimesterFromGA = (weeks: number | null) => {
+      if (weeks == null || !currentPregnancy) return "N/A"
       if (weeks <= 12) return "1st Trimester"
       if (weeks <= 27) return "2nd Trimester"
       return "3rd Trimester"
     }
 
-    const lmpRaw = currentPregnancy?.lmp_date || currentPregnancy?.lmp
-    const calculatedGA = useMemo(
-      () =>
-        lmpRaw
-          ? calculateGAWeeks(lmpRaw)
-          : currentPregnancy?.gestational_age_weeks || 0,
-      [lmpRaw, currentPregnancy]
-    )
-    const progressPercent = Math.min(
-      100,
-      Math.max(0, Math.round((calculatedGA / 40) * 100))
-    )
+    const lmpRaw = currentPregnancy?.lmp_date || currentPregnancy?.lmp || currentPregnancy?.date_of_registration
+    const calculatedGA = useMemo(() => {
+      if (!currentPregnancy) return null
+      if (lmpRaw) {
+        return calculateGAWeeks(lmpRaw)
+      }
+      if (currentPregnancy?.gestational_age_weeks != null) {
+        return Number(currentPregnancy.gestational_age_weeks)
+      }
+      if (prenatalVisits && prenatalVisits.length > 0) {
+        const latestVisitWithGA = [...prenatalVisits]
+          .sort((a, b) => new Date(b.visit_date || 0).getTime() - new Date(a.visit_date || 0).getTime())
+          .find((v) => v.age_of_gestation_weeks != null)
+        if (latestVisitWithGA) {
+          return Number(latestVisitWithGA.age_of_gestation_weeks)
+        }
+      }
+      return 0
+    }, [lmpRaw, currentPregnancy, prenatalVisits])
+
+    const progressPercent = useMemo(() => {
+      if (calculatedGA == null) return 0
+      return Math.min(
+        100,
+        Math.max(0, Math.round((calculatedGA / 40) * 100))
+      )
+    }, [calculatedGA])
 
     const calculatedAge = useMemo(() => {
       if (motherData?.age) return motherData.age
@@ -352,7 +368,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
                 </span>
               </div>
               <span className="mt-1 text-2xl font-bold text-foreground">
-                {calculatedGA > 0 ? `${calculatedGA} Weeks` : "N/A"}
+                {calculatedGA != null ? `${calculatedGA} Weeks` : "N/A"}
               </span>
             </div>
 

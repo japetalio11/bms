@@ -360,6 +360,13 @@ class SyncEngine {
     if (responseData.supplement_record?.supplement_id)
       return responseData.supplement_record.supplement_id
 
+    if (responseData.delivery?.delivery_id)
+      return responseData.delivery.delivery_id
+    if (responseData.postpartumVisit?.postpartum_visit_id)
+      return responseData.postpartumVisit.postpartum_visit_id
+    if (responseData.postpartum_visit?.postpartum_visit_id)
+      return responseData.postpartum_visit.postpartum_visit_id
+
     const targetObj =
       responseData.result ||
       responseData.data ||
@@ -378,6 +385,9 @@ class SyncEngine {
         targetObj.supplement_id ||
         targetObj.referral_id ||
         targetObj.message_id ||
+        targetObj.delivery_id ||
+        targetObj.postpartum_visit_id ||
+        targetObj.newborn_id ||
         null
       )
     }

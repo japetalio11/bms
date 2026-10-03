@@ -161,6 +161,8 @@ export function validatePrenatalVitals(data: PrenatalVitalsInput): ClinicalValid
 
 export function validatePregnancyData(data: {
   lmp_date?: string | Date | null
+  edd_date?: string | Date | null
+  height_cm?: number | string | null
   gravida?: number | string | null
   parity?: number | string | null
   pregnancy_status?: string | null
@@ -183,6 +185,20 @@ export function validatePregnancyData(data: {
       addError("lmp_date", "Invalid LMP date provided.")
     } else if (lmp > new Date()) {
       addError("lmp_date", "LMP date cannot be in the future.")
+    }
+  }
+
+  if (data.edd_date) {
+    const edd = new Date(data.edd_date)
+    if (isNaN(edd.getTime())) {
+      addError("edd_date", "Invalid EDD date provided.")
+    }
+  }
+
+  if (data.height_cm !== undefined && data.height_cm !== null && data.height_cm !== "") {
+    const h = Number(data.height_cm)
+    if (isNaN(h) || h < 50 || h > 250) {
+      addError("height_cm", "Maternal height must be between 50 and 250 cm.")
     }
   }
 

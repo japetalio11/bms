@@ -32,10 +32,29 @@ export interface LocalPregnancy {
   id: string
   mother_id: string
   lmp?: string
+  lmp_date?: string
   edd?: string
+  edd_date?: string
   gravida?: number
   para?: number
   status?: string
+  pregnancy_status?: string
+  height_cm?: number
+  completed_8anc?: boolean
+  prev_caesarean?: boolean
+  consecutive_miscarriages?: boolean
+  stillbirth_history?: boolean
+  pph_history?: boolean
+  has_tb?: boolean
+  has_heart_disease?: boolean
+  has_diabetes?: boolean
+  has_asthma?: boolean
+  has_goiter?: boolean
+  age_group?: string
+  bmi_1st_trimester?: number
+  bmi_category?: string
+  co_morbidities?: string
+  previous_delivery_history?: string
   sync_status: "synced" | "pending_create" | "pending_update" | "error"
   updated_at: number
   [key: string]: any
@@ -44,11 +63,31 @@ export interface LocalPregnancy {
 export interface LocalPrenatalVisit {
   id: string
   mother_id: string
+  pregnancy_id?: string
+  health_worker_id?: string
   visit_date?: string
+  trimester?: number
+  visit_number?: number
+  age_of_gestation_weeks?: number
   gestational_age?: number
   weight?: number
+  weight_kg?: number
   blood_pressure?: string
+  bp_systolic?: number
+  bp_diastolic?: number
   heart_rate?: number
+  pulse_rate_bpm?: number
+  temperature_celsius?: number
+  fundic_height_cm?: number
+  fetal_heart_tone_bpm?: number
+  fetal_presentation?: string
+  has_vaginal_bleeding?: boolean
+  has_pallor?: boolean
+  has_edema?: boolean
+  has_fever?: boolean
+  chief_complaint?: string
+  danger_signs_observed?: string
+  risk_level_assessed?: string
   notes?: string
   sync_status: "synced" | "pending_create" | "pending_update" | "error"
   updated_at: number
@@ -183,6 +222,9 @@ export interface LocalDeliveryOutcome {
   duration_of_labor_hours?: number
   blood_loss_ml?: number
   delivery_complications?: string
+  birth_attendant?: string
+  maternal_outcome?: string
+  immediate_breastfeeding?: boolean
   sync_status: "synced" | "pending_create" | "pending_update" | "error"
   updated_at: number
   newbornRecords?: LocalNewbornRecord[]
@@ -209,6 +251,7 @@ export interface LocalPostpartumVisit {
   delivery_id: string
   visit_date?: string
   visit_number?: number
+  visit_timing?: string
   weight_kg?: number
   temperature_celsius?: number
   pulse_rate_bpm?: number
@@ -217,6 +260,11 @@ export interface LocalPostpartumVisit {
   fundic_height_cm?: number
   chief_complaint?: string
   danger_signs_observed?: string
+  foul_smelling_discharge?: boolean
+  cord_condition_normal?: boolean
+  fp_method_accepted?: string
+  fp_quantity_given?: number
+  fp_follow_up_date?: string
   risk_level_assessed?: string
   vitamin_a_given?: boolean
   iron_supplement_given?: boolean
