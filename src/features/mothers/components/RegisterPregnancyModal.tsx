@@ -156,20 +156,21 @@ export function RegisterPregnancyModal({
       onOpenChange={onOpenChange}
       title="Add New Pregnancy Record"
       description="Register a new pregnancy for this mother."
+      className="sm:max-w-3xl lg:max-w-4xl"
     >
-      <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-1 py-2">
+      <div className="flex max-h-[85vh] flex-col gap-4 overflow-y-auto px-1 py-2">
         {error && (
           <div className="rounded border border-destructive/50 bg-destructive/10 p-2.5 text-center text-xs font-medium text-destructive">
             {error}
           </div>
         )}
 
-        <div className="flex flex-col gap-3">
+        {/* Obstetric Baseline & Status */}
+        <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-card/50 p-3.5">
           <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             Obstetric Baseline & Status
           </h4>
-
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label className="text-xs font-medium text-foreground">
                 LMP Date *
@@ -232,9 +233,7 @@ export function RegisterPregnancyModal({
                 </PopoverContent>
               </Popover>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label className="text-xs font-medium text-foreground">
                 Maternal Height (cm)
@@ -267,9 +266,7 @@ export function RegisterPregnancyModal({
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-3 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="gravida"
@@ -319,213 +316,214 @@ export function RegisterPregnancyModal({
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2 pt-1">
-            <Checkbox
-              id="completed8Anc"
-              checked={completed8Anc}
-              onCheckedChange={(checked) => setCompleted8Anc(Boolean(checked))}
-            />
-            <Label htmlFor="completed8Anc" className="text-xs cursor-pointer text-foreground">
-              Completed 8 ANC Visits benchmark
-            </Label>
-          </div>
-        </div>
-
-        <div className="my-1 h-px bg-border" />
-
-        <div className="flex flex-col gap-3">
-          <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            Obstetric High-Risk History
-          </h4>
-
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 sm:pt-5">
               <Checkbox
-                id="prevCaesarean"
-                checked={prevCaesarean}
-                onCheckedChange={(checked) => setPrevCaesarean(Boolean(checked))}
+                id="completed8Anc"
+                checked={completed8Anc}
+                onCheckedChange={(checked) => setCompleted8Anc(Boolean(checked))}
               />
-              <Label htmlFor="prevCaesarean" className="text-xs cursor-pointer">
-                Previous C-Section
-              </Label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="consecutiveMiscarriages"
-                checked={consecutiveMiscarriages}
-                onCheckedChange={(checked) => setConsecutiveMiscarriages(Boolean(checked))}
-              />
-              <Label htmlFor="consecutiveMiscarriages" className="text-xs cursor-pointer">
-                Consecutive Miscarriages
-              </Label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="stillbirthHistory"
-                checked={stillbirthHistory}
-                onCheckedChange={(checked) => setStillbirthHistory(Boolean(checked))}
-              />
-              <Label htmlFor="stillbirthHistory" className="text-xs cursor-pointer">
-                Stillbirth History
-              </Label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="pphHistory"
-                checked={pphHistory}
-                onCheckedChange={(checked) => setPphHistory(Boolean(checked))}
-              />
-              <Label htmlFor="pphHistory" className="text-xs cursor-pointer">
-                PPH History
+              <Label htmlFor="completed8Anc" className="text-xs cursor-pointer text-foreground font-medium">
+                Completed 8 ANC Visits
               </Label>
             </div>
           </div>
         </div>
 
-        <div className="my-1 h-px bg-border" />
+        {/* 2 Column Layout for Risk History/Conditions & Clinical Indicators */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Left Column: Risk & Pre-existing Conditions */}
+          <div className="flex flex-col gap-4">
+            {/* Obstetric High-Risk History */}
+            <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-card/50 p-3.5">
+              <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                Obstetric High-Risk History
+              </h4>
+              <div className="grid grid-cols-2 gap-2.5 text-xs">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="prevCaesarean"
+                    checked={prevCaesarean}
+                    onCheckedChange={(checked) => setPrevCaesarean(Boolean(checked))}
+                  />
+                  <Label htmlFor="prevCaesarean" className="text-xs cursor-pointer">
+                    Previous C-Section
+                  </Label>
+                </div>
 
-        <div className="flex flex-col gap-3">
-          <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            Pre-existing & Chronic Conditions
-          </h4>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="consecutiveMiscarriages"
+                    checked={consecutiveMiscarriages}
+                    onCheckedChange={(checked) => setConsecutiveMiscarriages(Boolean(checked))}
+                  />
+                  <Label htmlFor="consecutiveMiscarriages" className="text-xs cursor-pointer">
+                    Consecutive Miscarriages
+                  </Label>
+                </div>
 
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="hasHeartDisease"
-                checked={hasHeartDisease}
-                onCheckedChange={(checked) => setHasHeartDisease(Boolean(checked))}
-              />
-              <Label htmlFor="hasHeartDisease" className="text-xs cursor-pointer text-destructive font-medium">
-                Heart Disease
-              </Label>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="stillbirthHistory"
+                    checked={stillbirthHistory}
+                    onCheckedChange={(checked) => setStillbirthHistory(Boolean(checked))}
+                  />
+                  <Label htmlFor="stillbirthHistory" className="text-xs cursor-pointer">
+                    Stillbirth History
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="pphHistory"
+                    checked={pphHistory}
+                    onCheckedChange={(checked) => setPphHistory(Boolean(checked))}
+                  />
+                  <Label htmlFor="pphHistory" className="text-xs cursor-pointer">
+                    PPH History
+                  </Label>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="hasDiabetes"
-                checked={hasDiabetes}
-                onCheckedChange={(checked) => setHasDiabetes(Boolean(checked))}
-              />
-              <Label htmlFor="hasDiabetes" className="text-xs cursor-pointer">
-                Diabetes
-              </Label>
-            </div>
+            {/* Pre-existing & Chronic Conditions */}
+            <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-card/50 p-3.5">
+              <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                Pre-existing & Chronic Conditions
+              </h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="hasHeartDisease"
+                    checked={hasHeartDisease}
+                    onCheckedChange={(checked) => setHasHeartDisease(Boolean(checked))}
+                  />
+                  <Label htmlFor="hasHeartDisease" className="text-xs cursor-pointer text-destructive font-medium">
+                    Heart Disease
+                  </Label>
+                </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="hasTb"
-                checked={hasTb}
-                onCheckedChange={(checked) => setHasTb(Boolean(checked))}
-              />
-              <Label htmlFor="hasTb" className="text-xs cursor-pointer">
-                Tuberculosis
-              </Label>
-            </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="hasDiabetes"
+                    checked={hasDiabetes}
+                    onCheckedChange={(checked) => setHasDiabetes(Boolean(checked))}
+                  />
+                  <Label htmlFor="hasDiabetes" className="text-xs cursor-pointer">
+                    Diabetes
+                  </Label>
+                </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="hasAsthma"
-                checked={hasAsthma}
-                onCheckedChange={(checked) => setHasAsthma(Boolean(checked))}
-              />
-              <Label htmlFor="hasAsthma" className="text-xs cursor-pointer">
-                Asthma
-              </Label>
-            </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="hasTb"
+                    checked={hasTb}
+                    onCheckedChange={(checked) => setHasTb(Boolean(checked))}
+                  />
+                  <Label htmlFor="hasTb" className="text-xs cursor-pointer">
+                    Tuberculosis
+                  </Label>
+                </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="hasGoiter"
-                checked={hasGoiter}
-                onCheckedChange={(checked) => setHasGoiter(Boolean(checked))}
-              />
-              <Label htmlFor="hasGoiter" className="text-xs cursor-pointer">
-                Goiter
-              </Label>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="hasAsthma"
+                    checked={hasAsthma}
+                    onCheckedChange={(checked) => setHasAsthma(Boolean(checked))}
+                  />
+                  <Label htmlFor="hasAsthma" className="text-xs cursor-pointer">
+                    Asthma
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="hasGoiter"
+                    checked={hasGoiter}
+                    onCheckedChange={(checked) => setHasGoiter(Boolean(checked))}
+                  />
+                  <Label htmlFor="hasGoiter" className="text-xs cursor-pointer">
+                    Goiter
+                  </Label>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="my-1 h-px bg-border" />
+          {/* Right Column: Clinical & Nutrition Indicators */}
+          <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-card/50 p-3.5">
+            <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+              Clinical & Nutrition Indicators
+            </h4>
 
-        <div className="flex flex-col gap-3">
-          <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            Clinical & Nutrition Indicators
-          </h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label
+                  htmlFor="bmi1st"
+                  className="text-xs font-medium text-foreground"
+                >
+                  1st Tri BMI
+                </Label>
+                <Input
+                  id="bmi1st"
+                  type="number"
+                  step="0.1"
+                  placeholder="e.g. 22.5"
+                  value={bmi1stTrimester}
+                  onChange={(e) => setBmi1stTrimester(e.target.value)}
+                  className="!h-8 border-border bg-card text-xs text-card-foreground"
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-medium text-foreground">
+                  BMI Category
+                </Label>
+                <Select value={bmiCategory} onValueChange={setBmiCategory}>
+                  <SelectTrigger className="!h-8 border-border bg-card text-xs text-card-foreground">
+                    <SelectValue placeholder="BMI Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Underweight">Underweight</SelectItem>
+                    <SelectItem value="Normal">Normal</SelectItem>
+                    <SelectItem value="Overweight">Overweight</SelectItem>
+                    <SelectItem value="Obese">Obese</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <Label
-                htmlFor="bmi1st"
+                htmlFor="coMorbidities"
                 className="text-xs font-medium text-foreground"
               >
-                1st Tri BMI
+                Other Co-morbidities
               </Label>
               <Input
-                id="bmi1st"
-                type="number"
-                step="0.1"
-                placeholder="e.g. 22.5"
-                value={bmi1stTrimester}
-                onChange={(e) => setBmi1stTrimester(e.target.value)}
+                id="coMorbidities"
+                placeholder="e.g. Chronic Kidney Disease, Epilepsy"
+                value={coMorbidities}
+                onChange={(e) => setCoMorbidities(e.target.value)}
                 className="!h-8 border-border bg-card text-xs text-card-foreground"
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground">
-                BMI Category
+              <Label
+                htmlFor="previousDelivery"
+                className="text-xs font-medium text-foreground"
+              >
+                Previous Delivery History Notes
               </Label>
-              <Select value={bmiCategory} onValueChange={setBmiCategory}>
-                <SelectTrigger className="!h-8 border-border bg-card text-xs text-card-foreground">
-                  <SelectValue placeholder="BMI Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Underweight">Underweight</SelectItem>
-                  <SelectItem value="Normal">Normal</SelectItem>
-                  <SelectItem value="Overweight">Overweight</SelectItem>
-                  <SelectItem value="Obese">Obese</SelectItem>
-                </SelectContent>
-              </Select>
+              <Textarea
+                id="previousDelivery"
+                placeholder="Notes on previous deliveries..."
+                value={previousDeliveryHistory}
+                onChange={(e) => setPreviousDeliveryHistory(e.target.value)}
+                className="h-[76px] resize-none border-border bg-card text-xs text-card-foreground"
+              />
             </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label
-              htmlFor="coMorbidities"
-              className="text-xs font-medium text-foreground"
-            >
-              Other Co-morbidities
-            </Label>
-            <Input
-              id="coMorbidities"
-              placeholder="e.g. Chronic Kidney Disease, Epilepsy"
-              value={coMorbidities}
-              onChange={(e) => setCoMorbidities(e.target.value)}
-              className="!h-8 border-border bg-card text-xs text-card-foreground"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label
-              htmlFor="previousDelivery"
-              className="text-xs font-medium text-foreground"
-            >
-              Previous Delivery History Notes
-            </Label>
-            <Textarea
-              id="previousDelivery"
-              placeholder="Notes on previous deliveries..."
-              value={previousDeliveryHistory}
-              onChange={(e) => setPreviousDeliveryHistory(e.target.value)}
-              className="h-[60px] resize-none border-border bg-card text-xs text-card-foreground"
-            />
           </div>
         </div>
 

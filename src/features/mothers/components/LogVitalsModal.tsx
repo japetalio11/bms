@@ -293,46 +293,46 @@ export function LogVitalsModal({
       onOpenChange={onOpenChange}
       title="Log Prenatal Vitals & Encounter"
       description="Record clinical vital signs and observations for this mother's visit."
-      className="sm:max-w-[560px]"
+      className="sm:max-w-3xl lg:max-w-4xl"
     >
-      <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-1 py-2">
+      <div className="flex max-h-[85vh] flex-col gap-4 overflow-y-auto px-1 py-2">
         {error && (
           <div className="rounded border border-destructive/50 bg-destructive/10 p-2.5 text-center text-xs font-medium text-destructive">
             {error}
           </div>
         )}
 
-        <div className="flex flex-col gap-1.5">
-          <Label className="text-xs font-medium text-foreground">
-            Target Pregnancy Record *
-          </Label>
-          {pregnancies.length === 0 ? (
-            <div className="rounded border border-border bg-muted/40 p-2 text-xs text-muted-foreground italic">
-              No active pregnancy registered. Please add a pregnancy record first.
-            </div>
-          ) : (
-            <Select value={pregnancyId} onValueChange={setPregnancyId}>
-              <SelectTrigger className="!h-8 border-border bg-card text-xs text-card-foreground">
-                <SelectValue placeholder="Select pregnancy" />
-              </SelectTrigger>
-              <SelectContent>
-                {pregnancies.map((p: any) => (
-                  <SelectItem
-                    key={p.pregnancy_id || p._id || p.id}
-                    value={p.pregnancy_id || p._id || p.id}
-                  >
-                    G{p.gravida || 1} P{p.parity || 0} - LMP:{" "}
-                    {p.lmp_date ? new Date(p.lmp_date).toLocaleDateString() : (p.lmp || "N/A")}{" "}
-                    ({p.pregnancy_status || "Active"})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 rounded-lg border border-border/60 bg-card/50 p-3.5">
+          <div className="flex flex-col gap-1.5 sm:col-span-2 md:col-span-2">
+            <Label className="text-xs font-medium text-foreground">
+              Target Pregnancy Record *
+            </Label>
+            {pregnancies.length === 0 ? (
+              <div className="rounded border border-border bg-muted/40 p-2 text-xs text-muted-foreground italic">
+                No active pregnancy registered.
+              </div>
+            ) : (
+              <Select value={pregnancyId} onValueChange={setPregnancyId}>
+                <SelectTrigger className="!h-8 w-full border-border bg-card text-xs text-card-foreground [&>span]:truncate [&>span]:block pr-7 overflow-hidden">
+                  <SelectValue placeholder="Select pregnancy" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pregnancies.map((p: any) => (
+                    <SelectItem
+                      key={p.pregnancy_id || p._id || p.id}
+                      value={p.pregnancy_id || p._id || p.id}
+                    >
+                      G{p.gravida || 1} P{p.parity || 0} - LMP:{" "}
+                      {p.lmp_date ? new Date(p.lmp_date).toLocaleDateString() : (p.lmp || "N/A")}{" "}
+                      ({p.pregnancy_status || "Active"})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 sm:col-span-1">
             <Label
               htmlFor="visitNumber"
               className={cn(
@@ -365,7 +365,7 @@ export function LogVitalsModal({
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 sm:col-span-1">
             <Label
               htmlFor="gestationWeeks"
               className={cn(
@@ -398,7 +398,7 @@ export function LogVitalsModal({
             />
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 sm:col-span-1">
             <Label className="text-xs font-medium text-foreground">
               Trimester
             </Label>
@@ -418,9 +418,7 @@ export function LogVitalsModal({
           </div>
         </div>
 
-        <div className="my-0.5 h-px bg-border" />
-
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-card/50 p-3.5">
           <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             Physiological Measurements & Vitals
           </span>
@@ -604,7 +602,7 @@ export function LogVitalsModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 border-t border-border pt-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 border-t border-border/60 pt-3">
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="tempCelsius"
@@ -757,135 +755,142 @@ export function LogVitalsModal({
           </div>
         </div>
 
-        <div className="my-0.5 h-px bg-border" />
-
-        <div className="flex flex-col gap-2.5">
-          <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            Clinical Danger Signs Observed
-          </span>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="hasVaginalBleeding"
-                checked={hasVaginalBleeding}
-                onCheckedChange={(checked) => setHasVaginalBleeding(Boolean(checked))}
-              />
-              <Label htmlFor="hasVaginalBleeding" className="text-xs cursor-pointer text-destructive font-semibold">
-                Vaginal Bleeding
-              </Label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="hasFever"
-                checked={hasFever}
-                onCheckedChange={(checked) => setHasFever(Boolean(checked))}
-              />
-              <Label htmlFor="hasFever" className="text-xs cursor-pointer font-medium">
-                Maternal Fever
-              </Label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="hasEdema"
-                checked={hasEdema}
-                onCheckedChange={(checked) => setHasEdema(Boolean(checked))}
-              />
-              <Label htmlFor="hasEdema" className="text-xs cursor-pointer">
-                Edema (Facial/Hands/Feet)
-              </Label>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="hasPallor"
-                checked={hasPallor}
-                onCheckedChange={(checked) => setHasPallor(Boolean(checked))}
-              />
-              <Label htmlFor="hasPallor" className="text-xs cursor-pointer">
-                Severe Pallor
-              </Label>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-muted/30 p-3.5">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
-              <Activity className="h-3.5 w-3.5 text-primary" />
-              System Clinical Risk Assessment (CDSS)
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-muted-foreground">
-                TEWS Score: {calculatedAssessment.tews_score}
+        {/* 2 Column Grid for Danger Signs + Risk CDSS & Notes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Left Column: Danger Signs + CDSS */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-card/50 p-3.5">
+              <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                Clinical Danger Signs Observed
               </span>
-              <Badge
-                className={cn(
-                  "inline-flex items-center gap-1 rounded border-none px-2 py-0.5 text-[11px] font-semibold shadow-none",
-                  calculatedAssessment.risk_level === "High Risk"
-                    ? "border-destructive/20 bg-destructive/15 text-destructive"
-                    : calculatedAssessment.risk_level === "Moderate Risk"
-                      ? "border-amber-500/20 bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                      : "border-emerald-500/20 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                )}
-              >
-                {calculatedAssessment.risk_level === "High Risk" ? (
-                  <ShieldAlert className="h-3 w-3" />
-                ) : calculatedAssessment.risk_level === "Moderate Risk" ? (
-                  <AlertTriangle className="h-3 w-3" />
+              <div className="grid grid-cols-2 gap-2.5 text-xs">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="hasVaginalBleeding"
+                    checked={hasVaginalBleeding}
+                    onCheckedChange={(checked) => setHasVaginalBleeding(Boolean(checked))}
+                  />
+                  <Label htmlFor="hasVaginalBleeding" className="text-xs cursor-pointer text-destructive font-semibold">
+                    Vaginal Bleeding
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="hasFever"
+                    checked={hasFever}
+                    onCheckedChange={(checked) => setHasFever(Boolean(checked))}
+                  />
+                  <Label htmlFor="hasFever" className="text-xs cursor-pointer font-medium">
+                    Maternal Fever
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="hasEdema"
+                    checked={hasEdema}
+                    onCheckedChange={(checked) => setHasEdema(Boolean(checked))}
+                  />
+                  <Label htmlFor="hasEdema" className="text-xs cursor-pointer">
+                    Edema (Facial/Hands/Feet)
+                  </Label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="hasPallor"
+                    checked={hasPallor}
+                    onCheckedChange={(checked) => setHasPallor(Boolean(checked))}
+                  />
+                  <Label htmlFor="hasPallor" className="text-xs cursor-pointer">
+                    Severe Pallor
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-muted/30 p-3.5">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+                  <Activity className="h-3.5 w-3.5 text-primary" />
+                  Clinical Risk Assessment (CDSS)
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    TEWS: {calculatedAssessment.tews_score}
+                  </span>
+                  <Badge
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded border-none px-2 py-0.5 text-[11px] font-semibold shadow-none",
+                      calculatedAssessment.risk_level === "High Risk"
+                        ? "border-destructive/20 bg-destructive/15 text-destructive"
+                        : calculatedAssessment.risk_level === "Moderate Risk"
+                          ? "border-amber-500/20 bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                          : "border-emerald-500/20 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    )}
+                  >
+                    {calculatedAssessment.risk_level === "High Risk" ? (
+                      <ShieldAlert className="h-3 w-3" />
+                    ) : calculatedAssessment.risk_level === "Moderate Risk" ? (
+                      <AlertTriangle className="h-3 w-3" />
+                    ) : (
+                      <CheckCircle2 className="h-3 w-3" />
+                    )}
+                    {calculatedAssessment.risk_level}
+                  </Badge>
+                </div>
+              </div>
+
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                {calculatedAssessment.reasons.length > 0 ? (
+                  <span>
+                    Triggered by: {calculatedAssessment.reasons.join(", ")}
+                  </span>
                 ) : (
-                  <CheckCircle2 className="h-3 w-3" />
+                  <span>
+                    All vital signs and physiological markers are within standard
+                    clinical baseline limits.
+                  </span>
                 )}
-                {calculatedAssessment.risk_level}
-              </Badge>
+              </p>
             </div>
           </div>
 
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
-            {calculatedAssessment.reasons.length > 0 ? (
-              <span>
-                Triggered by: {calculatedAssessment.reasons.join(", ")}
-              </span>
-            ) : (
-              <span>
-                All vital signs and physiological markers are within standard
-                clinical baseline limits.
-              </span>
-            )}
-          </p>
-        </div>
+          {/* Right Column: Additional Observations & Notes */}
+          <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-card/50 p-3.5">
+            <div className="flex flex-col gap-1.5">
+              <Label
+                htmlFor="dangerSigns"
+                className="text-xs font-medium text-foreground"
+              >
+                Additional Danger Signs / Observations
+              </Label>
+              <Input
+                id="dangerSigns"
+                placeholder="e.g. Severe headache, vision disturbance, epigastric pain"
+                value={dangerSigns}
+                onChange={(e) => setDangerSigns(e.target.value)}
+                className="!h-8 border-border bg-card text-xs text-card-foreground"
+              />
+            </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label
-            htmlFor="dangerSigns"
-            className="text-xs font-medium text-foreground"
-          >
-            Additional Danger Signs / Observations
-          </Label>
-          <Input
-            id="dangerSigns"
-            placeholder="e.g. Severe headache, vision disturbance, epigastric pain"
-            value={dangerSigns}
-            onChange={(e) => setDangerSigns(e.target.value)}
-            className="!h-8 border-border bg-card text-xs text-card-foreground"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label
-            htmlFor="chiefComplaint"
-            className="text-xs font-medium text-foreground"
-          >
-            Chief Complaint / Clinical Notes
-          </Label>
-          <Textarea
-            id="chiefComplaint"
-            placeholder="Enter reason for visit or clinical findings..."
-            value={chiefComplaint}
-            onChange={(e) => setChiefComplaint(e.target.value)}
-            className="h-[60px] resize-none border-border bg-card text-xs text-card-foreground"
-          />
+            <div className="flex flex-col gap-1.5">
+              <Label
+                htmlFor="chiefComplaint"
+                className="text-xs font-medium text-foreground"
+              >
+                Chief Complaint / Clinical Notes
+              </Label>
+              <Textarea
+                id="chiefComplaint"
+                placeholder="Enter reason for visit or clinical findings..."
+                value={chiefComplaint}
+                onChange={(e) => setChiefComplaint(e.target.value)}
+                className="h-[76px] resize-none border-border bg-card text-xs text-card-foreground"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="mt-1 flex justify-end gap-2 border-t border-border pt-3">

@@ -118,7 +118,7 @@ export const PregnancyTab: React.FC<PregnancyTabProps> = React.memo(
           p.parity ?? 0,
           lmpVal ? formatDate(lmpVal) : "N/A",
           eddVal,
-          gaWeeks > 0 ? `${gaWeeks} Weeks` : "N/A",
+          lmpVal || p.gestational_age_weeks != null ? `${gaWeeks} Weeks` : "N/A",
           p.height_cm ? `${p.height_cm} cm` : "N/A",
           p.completed_8anc ? "Yes" : "No",
           p.pregnancy_status || "Active",
@@ -256,7 +256,7 @@ export const PregnancyTab: React.FC<PregnancyTabProps> = React.memo(
                           {eddVal}
                         </TableCell>
                         <TableCell className="py-2 text-xs text-foreground dark:text-white">
-                          {gaWeeks > 0 ? `${gaWeeks} Weeks` : "N/A"}
+                          {lmpVal || p.gestational_age_weeks != null ? `${gaWeeks} Weeks` : "N/A"}
                         </TableCell>
                         <TableCell className="py-2 text-xs text-foreground dark:text-white">
                           {p.height_cm ? `${p.height_cm} cm` : "—"}
