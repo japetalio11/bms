@@ -293,7 +293,7 @@ export function LogVitalsModal({
       onOpenChange={onOpenChange}
       title="Log Prenatal Vitals & Encounter"
       description="Record clinical vital signs and observations for this mother's visit."
-      className="sm:max-w-3xl lg:max-w-4xl"
+      className="sm:max-w-xl md:max-w-2xl"
     >
       <div className="flex max-h-[85vh] flex-col gap-4 overflow-y-auto px-1 py-2">
         {error && (

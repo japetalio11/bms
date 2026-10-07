@@ -489,7 +489,10 @@ export function EditRecordModal({
       onOpenChange={onOpenChange}
       title={getTitle()}
       description="Update record details and click save to apply changes."
-      className="sm:max-w-3xl lg:max-w-4xl"
+      className={cn(
+        "sm:max-w-xl",
+        (type === "visitation" || type === "delivery" || type === "pregnancy") && "md:max-w-2xl"
+      )}
     >
       <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-1 py-2">
         {error && (

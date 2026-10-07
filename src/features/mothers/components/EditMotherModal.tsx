@@ -124,6 +124,7 @@ export function EditMotherModal({
       onOpenChange={onOpenChange}
       title="Edit Mother Profile"
       description="Update demographic and baseline medical details."
+      className="sm:max-w-lg md:max-w-xl"
     >
       <div className="flex flex-col gap-4 overflow-hidden py-2">
         {error && (
