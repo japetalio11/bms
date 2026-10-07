@@ -320,7 +320,7 @@ export function LogVitalsModal({
       trigger={children}
       title="Log Vitals"
       description="Record the clinical measurements, run real-time CDSS risk triage, and save the prenatal visit record."
-      className="sm:max-w-3xl lg:max-w-4xl"
+      className="sm:max-w-xl md:max-w-2xl"
     >
       <div className="flex max-h-[85vh] flex-col gap-5 overflow-y-auto py-2 pr-1">
         <div className="flex flex-col gap-2.5">
