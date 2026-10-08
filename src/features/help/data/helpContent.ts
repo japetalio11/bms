@@ -677,6 +677,20 @@ export const HELP_CATEGORIES: HelpCategory[] = [
             actionTarget: "Auto-Sync Engine",
             note: "Do NOT clear your browser history or site cookies while there are pending sync items. Wait until the badge turns green ('All Synced').",
             noteType: "warning"
+          },
+          {
+            stepNumber: 4,
+            title: "Resolving Concurrent Data Conflicts (MVCC)",
+            instruction: "If another worker updated a patient's chart while you were offline, BMS detects a version mismatch and flags it for manual review instead of silently overwriting vital clinical data.",
+            actionTarget: "Conflict Resolution Center",
+            substeps: [
+              "Click the amber 'Conflicts Review' badge in the header or open the Sync Drawer -> Conflicts tab.",
+              "Click 'Review & Resolve' to open the side-by-side visual diff viewer.",
+              "Choose 'Smart Auto-Merge' to combine non-overlapping fields, 'Keep Server Version', 'Keep My Changes', or 'Custom Field Picker' to select values field-by-field.",
+              "Click 'Resolve & Synchronize' to apply the resolution and update the central database."
+            ],
+            note: "In clinical settings, always double-check vital signs (BP, weight, gestational age) when merging conflicting visits.",
+            noteType: "tip"
           }
         ],
         screenshotMockup: {

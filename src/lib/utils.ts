@@ -77,3 +77,11 @@ export function sanitizeMediaUrl(url?: string | null): string {
   }
   return url
 }
+
+export function isDemoMode(): boolean {
+  const envStatus = import.meta.env.STATUS || import.meta.env.VITE_STATUS
+  return (
+    typeof envStatus === "string" &&
+    envStatus.trim().toLowerCase().replace(/['"]/g, "") === "demo"
+  )
+}
