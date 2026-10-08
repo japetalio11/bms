@@ -33,10 +33,7 @@ import {
   formatStatusConfig,
 } from "./recipient/referralClinicalUtils"
 import { ReferralTriageHeader } from "./recipient/ReferralTriageHeader"
-import { ReferralReasonCard } from "./recipient/ReferralReasonCard"
-import { MaternalSnapshotCard } from "./recipient/MaternalSnapshotCard"
-import { ClinicalAlertsBanner } from "./recipient/ClinicalAlertsBanner"
-import { RecentClinicalSnapshot } from "./recipient/RecentClinicalSnapshot"
+import { UnifiedReferralHandoffCard } from "./recipient/UnifiedReferralHandoffCard"
 import { ClinicalTabsSection } from "./recipient/ClinicalTabsSection"
 import {
   TriageResponseModal,
@@ -57,7 +54,7 @@ export function PublicReferralPage() {
   const [pinError, setPinError] = useState("")
   const [generalError, setGeneralError] = useState("")
 
-  const [activeTab, setActiveTab] = useState("narrative")
+  const [activeTab, setActiveTab] = useState("visits")
 
   const [isRespondModalOpen, setIsRespondModalOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<
@@ -491,42 +488,18 @@ export function PublicReferralPage() {
           </div>
         )}
 
-        <main className="mx-auto w-full max-w-7xl flex-1 space-y-4 sm:space-y-6 p-3 sm:p-6 lg:p-8 pb-28 md:pb-12">
-          <ReferralReasonCard
+        <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 p-3 sm:p-6 lg:p-8 pb-28 md:pb-12">
+          <UnifiedReferralHandoffCard
             data={data}
             parsed={parsedNotes}
             resolvedRiskLevel={resolvedRiskLevel}
+            onOpenActionModal={(action) => {
+              setSelectedAction(action)
+              setIsRespondModalOpen(true)
+            }}
             onOpenClarificationModal={() => setIsClarificationModalOpen(true)}
             onPrint={handlePrint}
-          />
-
-          <MaternalSnapshotCard
-            patient={data.patient}
-            obstetric={data.obstetric_info}
-            parsed={parsedNotes}
-            onPhotoClick={(photoUrl, name) => {
-              openDocument({
-                title: `${name} — Identification Photo`,
-                fileUrl: photoUrl,
-                file_url: photoUrl,
-                date: new Date().toISOString(),
-                type: "Clinical Photo ID",
-                remarks: "Patient identification photograph from official maternal health record.",
-              })
-            }}
-          />
-
-          <ClinicalAlertsBanner
-            data={data}
-            parsed={parsedNotes}
-          />
-
-          <RecentClinicalSnapshot
-            data={data}
-            onOpenDocument={openDocument}
-            onOpenVisitsTab={() => setActiveTab("visits")}
-            onOpenLabsTab={() => setActiveTab("labs")}
-            onOpenMedsTab={() => setActiveTab("supplements")}
+            onPhotoClick={openDocument}
           />
 
           <ClinicalTabsSection

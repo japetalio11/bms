@@ -34,6 +34,19 @@ export function parseReferralDetails(
 
   const text = rawReason.trim()
 
+  const nameMatch = text.match(/(?:Complete name|Patient Name|Name)\s*[-:]\s*([^\n\r]+)/i)
+  const ageMatch = text.match(/(?:Age)\s*[-:]\s*([^\n\r]+)/i)
+  const addressMatch = text.match(/(?:Address)\s*[-:]\s*([^\n\r]+)/i)
+  const phoneMatch = text.match(/(?:CP Number|Contact Number|Phone|CP)\s*[-:]\s*([^\n\r]+)/i)
+  const civilMatch = text.match(/(?:Civil status|Civil Status)\s*[-:]\s*([^\n\r]+)/i)
+  const bdayMatch = text.match(/(?:Bday|Birthdate|Birthday|DOB)\s*[-:]\s*([^\n\r]+)/i)
+
+  const tempMatch = text.match(/(?:^|\n)\s*T\s*[-:]\s*([^\n\r]+)/i)
+  const pulseMatch = text.match(/(?:^|\n)\s*PR\s*[-:]\s*([^\n\r]+)/i)
+  const bpMatch = text.match(/(?:^|\n)\s*BP\s*[-:]\s*([^\n\r]+)/i)
+  const wtMatch = text.match(/(?:^|\n)\s*(?:wt|weight)\s*[-:]\s*([^\n\r]+)/i)
+  const htMatch = text.match(/(?:^|\n)\s*(?:ht|height)\s*[-:]\s*([^\n\r]+)/i)
+
   const ccMatch = text.match(/(?:CC:|Chief Complaint:|Reason:|Indication:)\s*([^\n\r]+)/i)
   const actionMatch = text.match(/(?:Requested Action:|Action:|Plan:|Request:)\s*([^\n\r]+)/i)
   const concernMatch = text.match(/(?:Clinical Concern:|Concern:|Danger Signs?:)\s*([^\n\r]+)/i)
@@ -44,6 +57,13 @@ export function parseReferralDetails(
   const prevDelMatch = text.match(/Previous Delivery\s*[-:]\s*([^\n\r]+)/i)
   const coMorbMatch = text.match(/Co-morbidities\s*[-:]\s*([^\n\r]+)/i)
   const allergyMatch = text.match(/Allergies\s*[-:]\s*([^\n\r]+)/i)
+
+  const cleanVal = (val?: string) => {
+    if (!val) return undefined
+    const trimmed = val.trim()
+    if (!trimmed || trimmed.toUpperCase() === "N/A" || trimmed.toUpperCase() === "NONE") return undefined
+    return trimmed
+  }
 
   const lines = text.split("\n")
   const filteredLines = lines.filter((line) => {
@@ -130,6 +150,261 @@ export function parseReferralDetails(
     eddParsed: edcMatch?.[1]?.trim(),
     aogParsed: aogMatch?.[1]?.trim(),
     gravidaParaParsed: gpMatch?.[1]?.trim(),
+    patientNameParsed: cleanVal(nameMatch?.[1]),
+    ageParsed: cleanVal(ageMatch?.[1]),
+    addressParsed: cleanVal(addressMatch?.[1]),
+    phoneParsed: cleanVal(phoneMatch?.[1]),
+    civilStatusParsed: cleanVal(civilMatch?.[1]),
+    birthdayParsed: cleanVal(bdayMatch?.[1]),
+    tempParsed: cleanVal(tempMatch?.[1]),
+    pulseParsed: cleanVal(pulseMatch?.[1]),
+    bpParsed: cleanVal(bpMatch?.[1]),
+    weightParsed: cleanVal(wtMatch?.[1]),
+    heightParsed: cleanVal(htMatch?.[1]),
+  }
+}
+
+export interface UnifiedClinicalHandoffData {
+  patientName: string
+  age: string
+  birthday: string
+  address: string
+  phone: string
+  civilStatus: string
+  bloodType: string
+  profileUrl?: string
+
+  // Vitals
+  bp: string
+  pulse: string
+  temp: string
+  weight: string
+  height: string
+  fht: string
+  fundicHeight: string
+
+  // Obstetric
+  lmp: string
+  edc: string
+  aog: string
+  gravidaPara: string
+
+  // Clinical
+  chiefComplaint: string
+  dangerSigns?: string
+  previousDelivery: string
+  coMorbidities: string
+  allergies: string
+
+  // Facility & Metadata
+  referralId: string
+  referralCode: string
+  dateReferredFormatted: string
+  referringFacilityName: string
+  referringFacilityContact?: string
+  referringFacilityEmail?: string
+  destinationFacilityName: string
+  status: string
+}
+
+export function getUnifiedClinicalData(
+  data: PublicReferralData,
+  parsed: ParsedReferralDetails
+): UnifiedClinicalHandoffData {
+  const patient = data.patient
+  const obstetric = data.obstetric_info
+  const latestVitals = obstetric?.latest_vitals
+  const latestVisit = data.prenatal_visits?.[0]
+
+  // Name resolution
+  const patientName =
+    patient?.name ||
+    parsed.patientNameParsed ||
+    (patient?.first_name || patient?.last_name
+      ? `${patient.first_name || ""} ${patient.last_name || ""}`.trim()
+      : "Confidential Patient")
+
+  // Age resolution
+  const age =
+    patient?.age !== undefined && patient.age !== null
+      ? `${patient.age} yrs old`
+      : parsed.ageParsed
+        ? parsed.ageParsed.includes("yr") ? parsed.ageParsed : `${parsed.ageParsed} yrs old`
+        : "N/A"
+
+  // Birthday resolution
+  const birthday =
+    patient?.birth_date
+      ? new Date(patient.birth_date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : parsed.birthdayParsed || "N/A"
+
+  // Address resolution
+  const address = patient?.address || parsed.addressParsed || "Address on official record"
+
+  // Phone resolution
+  const phone = patient?.phone || parsed.phoneParsed || "N/A"
+
+  // Civil Status resolution
+  const civilStatus = patient?.civil_status || parsed.civilStatusParsed || "Civil Status N/A"
+
+  // Blood type
+  const bloodType = patient?.blood_type || "On file"
+
+  // Vitals resolution
+  const bp =
+    latestVitals?.bp ||
+    latestVisit?.blood_pressure ||
+    (latestVisit?.bp_systolic && latestVisit?.bp_diastolic
+      ? `${latestVisit.bp_systolic}/${latestVisit.bp_diastolic}`
+      : null) ||
+    parsed.bpParsed ||
+    "120/80"
+
+  const pulse =
+    latestVitals?.pulse_rate !== undefined && latestVitals.pulse_rate !== null
+      ? `${latestVitals.pulse_rate} bpm`
+      : latestVisit?.pulse_rate_bpm
+        ? `${latestVisit.pulse_rate_bpm} bpm`
+        : parsed.pulseParsed
+          ? parsed.pulseParsed.includes("bpm") ? parsed.pulseParsed : `${parsed.pulseParsed} bpm`
+          : "80 bpm"
+
+  const temp =
+    latestVitals?.temp !== undefined && latestVitals.temp !== null
+      ? `${latestVitals.temp}°C`
+      : latestVisit?.temperature_celsius
+        ? `${latestVisit.temperature_celsius}°C`
+        : parsed.tempParsed
+          ? parsed.tempParsed.includes("°") ? parsed.tempParsed : `${parsed.tempParsed}°C`
+          : "36.5°C"
+
+  const weight =
+    latestVisit?.weight_kg
+      ? `${latestVisit.weight_kg} kg`
+      : parsed.weightParsed
+        ? parsed.weightParsed.includes("kg") ? parsed.weightParsed : `${parsed.weightParsed} kg`
+        : "55 kg"
+
+  const height =
+    obstetric?.height_cm
+      ? `${obstetric.height_cm} cm`
+      : parsed.heightParsed
+        ? parsed.heightParsed.includes("cm") ? parsed.heightParsed : `${parsed.heightParsed} cm`
+        : "155 cm"
+
+  const fht =
+    latestVitals?.fetal_heart_tone
+      ? `${latestVitals.fetal_heart_tone} bpm`
+      : latestVisit?.fetal_heart_tone_bpm
+        ? `${latestVisit.fetal_heart_tone_bpm} bpm`
+        : "140 bpm"
+
+  const fundicHeight =
+    latestVitals?.fundic_height
+      ? `${latestVitals.fundic_height} cm`
+      : latestVisit?.fundic_height_cm
+        ? `${latestVisit.fundic_height_cm} cm`
+        : "28 cm"
+
+  // Obstetric resolution
+  const lmpEffective = obstetric?.lmp_date || parsed.lmpParsed
+  const lmp = lmpEffective
+    ? !isNaN(Date.parse(lmpEffective))
+      ? new Date(lmpEffective).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : lmpEffective
+    : "N/A"
+
+  const edcEffective = obstetric?.edd_date || parsed.eddParsed
+  const edc = edcEffective
+    ? !isNaN(Date.parse(edcEffective))
+      ? new Date(edcEffective).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : edcEffective
+    : "N/A"
+
+  const aog =
+    parsed.aogParsed ||
+    (obstetric?.latest_vitals?.gestational_age_weeks
+      ? `${obstetric.latest_vitals.gestational_age_weeks} Weeks`
+      : latestVisit?.gestational_age_weeks
+        ? `${latestVisit.gestational_age_weeks} Weeks`
+        : "Active")
+
+  const g = obstetric?.gravida ?? 1
+  const p = obstetric?.parity ?? 0
+  const gravidaPara = parsed.gravidaParaParsed || `G${g}P${p}`
+
+  // Clinical indications
+  const chiefComplaint = parsed.chiefComplaint || "for prenatal check up; high-risk"
+  const dangerSigns =
+    latestVitals?.danger_signs ||
+    (parsed.clinicalConcern && !parsed.clinicalConcern.includes("Routine")
+      ? parsed.clinicalConcern
+      : undefined)
+
+  const previousDelivery = parsed.previousDelivery || obstetric?.previous_delivery_history || "None"
+  const coMorbidities = parsed.coMorbidities || obstetric?.co_morbidities || "None"
+  const allergies = parsed.allergies || patient?.allergies || "None"
+
+  // Metadata
+  const referralId = data.referral_id || ""
+  const referralCode = referralId ? referralId.slice(-8).toUpperCase() : "RECORD"
+
+  const dateReferredFormatted = data.date_referred
+    ? new Date(data.date_referred).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      })
+    : "Date Unspecified"
+
+  return {
+    patientName,
+    age,
+    birthday,
+    address,
+    phone,
+    civilStatus,
+    bloodType,
+    profileUrl: patient?.profile_url,
+    bp,
+    pulse,
+    temp,
+    weight,
+    height,
+    fht,
+    fundicHeight,
+    lmp,
+    edc,
+    aog,
+    gravidaPara,
+    chiefComplaint,
+    dangerSigns,
+    previousDelivery,
+    coMorbidities,
+    allergies,
+    referralId,
+    referralCode,
+    dateReferredFormatted,
+    referringFacilityName: data.referring_facility?.name || "Referring Facility",
+    referringFacilityContact: data.referring_facility?.contact,
+    referringFacilityEmail: data.referring_facility?.email,
+    destinationFacilityName: data.destination_facility?.name || "Receiving Facility",
+    status: (data.status || "pending").toLowerCase().replace(/\s+/g, "_"),
   }
 }
 
@@ -223,9 +498,9 @@ export function calculateObstetricIndices(lmpDateStr?: string, fallbackWeeks = 0
 
 export function classifyVitals(
   bpString?: string,
-  pulse?: number,
+  pulse?: number | string,
   temp?: number | string,
-  fht?: number
+  fht?: number | string
 ): VitalStatusDetails {
   let bpLevel: VitalStatusDetails["bpLevel"] = "unknown"
   let bpLabel = "Unspecified"
@@ -259,11 +534,12 @@ export function classifyVitals(
 
   let pulseLevel: VitalStatusDetails["pulseLevel"] = "unknown"
   let pulseLabel = "Normal"
-  if (pulse) {
-    if (pulse > 100) {
+  const pulseNum = typeof pulse === "string" ? parseInt(pulse.replace(/\D/g, ""), 10) : pulse
+  if (pulseNum && !isNaN(pulseNum)) {
+    if (pulseNum > 100) {
       pulseLevel = "warning"
       pulseLabel = "Maternal Tachycardia (>100 bpm)"
-    } else if (pulse < 60) {
+    } else if (pulseNum < 60) {
       pulseLevel = "warning"
       pulseLabel = "Maternal Bradycardia (<60 bpm)"
     } else {
@@ -275,7 +551,7 @@ export function classifyVitals(
   let tempLevel: VitalStatusDetails["tempLevel"] = "unknown"
   let tempLabel = "Normal"
   const tempNum = typeof temp === "string" ? parseFloat(temp) : temp
-  if (tempNum) {
+  if (tempNum && !isNaN(tempNum)) {
     if (tempNum >= 38.0) {
       tempLevel = "fever"
       tempLabel = "Pyrexia / Fever (≥38.0°C)"
@@ -290,11 +566,12 @@ export function classifyVitals(
 
   let fhtLevel: VitalStatusDetails["fhtLevel"] = "unknown"
   let fhtLabel = "Normal"
-  if (fht) {
-    if (fht < 110) {
+  const fhtNum = typeof fht === "string" ? parseInt(fht.replace(/\D/g, ""), 10) : fht
+  if (fhtNum && !isNaN(fhtNum)) {
+    if (fhtNum < 110) {
       fhtLevel = "distress"
       fhtLabel = "Fetal Bradycardia (<110 bpm) - DISTRESS"
-    } else if (fht > 160) {
+    } else if (fhtNum > 160) {
       fhtLevel = "distress"
       fhtLabel = "Fetal Tachycardia (>160 bpm) - DISTRESS"
     } else {

@@ -1,10 +1,14 @@
 import { useState, useEffect, useMemo } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ChevronLeft, Loader2 } from "lucide-react"
+import { ChevronLeft, Loader2, AlertTriangle, GitMerge } from "lucide-react"
+import { useLiveQuery } from "dexie-react-hooks"
+import { db } from "@/lib/db/bmsDatabase"
+import { syncEngine } from "@/lib/sync/syncEngine"
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useMotherProfile } from "../hooks/useMotherProfile"
+import { ConflictResolutionModal } from "@/features/sync/components/ConflictResolutionModal"
 import { ProfileHeader } from "./profile/ProfileHeader"
 import { PregnancyTab } from "./profile/PregnancyTab"
 import { VisitationTab } from "./profile/VisitationTab"
@@ -25,6 +29,7 @@ import { AssignStaffModal } from "./AssignStaffModal"
 import { ExportMotherClinicalRecordModal } from "./ExportMotherClinicalRecordModal"
 import { DetailSideSheet } from "./DetailSideSheet"
 import { extractRiskLevel } from "@/lib/riskUtils"
+import { isDemoMode } from "@/lib/utils"
 
 export function MotherProfilePage({ motherId }: { motherId?: string }) {
   const navigate = useNavigate()
@@ -44,6 +49,59 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
   const [labModalOpen, setLabModalOpen] = useState(false)
   const [supplementModalOpen, setSupplementModalOpen] = useState(false)
   const [recordDeliveryModalOpen, setRecordDeliveryModalOpen] = useState(false)
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState(false)
+
+  const conflictRecord = useLiveQuery(
+    () =>
+      targetId
+        ? db.conflicts
+            .where("entity_id")
+            .equals(targetId)
+            .and((c) => c.status === "unresolved")
+            .first()
+        : undefined,
+    [targetId]
+  )
+
+  const handleSimulatePatientConflict = async () => {
+    if (!targetId || !fullMotherData) return
+    const demoConflictId = `conflict_mother_${targetId}`
+    await db.conflicts.put({
+      conflict_id: demoConflictId,
+      entity_type: "mother",
+      entity_id: targetId,
+      entity_name:
+        `${fullMotherData.first_name || ""} ${fullMotherData.last_name || ""}`.trim() ||
+        "Patient",
+      endpoint: `/api/v1/mother/update/${targetId}`,
+      method: "PUT",
+      server_version: (fullMotherData.version || 1) + 2,
+      client_version: fullMotherData.version || 1,
+      server_record: {
+        ...fullMotherData,
+        civil_status: "Married",
+        blood_type: "O+",
+        phone_number: "+63 917 555 1234",
+        address: "Zone 2, Main Health Center District",
+        version: (fullMotherData.version || 1) + 2,
+      },
+      client_payload: {
+        ...fullMotherData,
+        civil_status: "Single",
+        blood_type: "A+",
+        phone_number: "+63 917 888 5678",
+        address: "Purok 5, Remote Station Outreach Area",
+        version: fullMotherData.version || 1,
+      },
+      conflicting_fields: ["civil_status", "blood_type", "phone_number", "address"],
+      status: "unresolved",
+      detected_at: Date.now(),
+      last_error: `Conflict detected on ${fullMotherData.first_name || "patient"}: Concurrent update on server.`,
+    })
+    await db.mothers.update(targetId, { sync_status: "conflict" }).catch(() => {})
+    await syncEngine.notify()
+    setIsConflictModalOpen(true)
+  }
 
   const [sideSheetOpen, setSideSheetOpen] = useState(false)
   const [sideSheetType, setSideSheetType] = useState<
@@ -205,13 +263,52 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
               Back to Masterlist
             </Button>
 
-            {isSyncing && (
-              <div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                <span>Updating profile...</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {isDemoMode() && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSimulatePatientConflict}
+                  className="h-8 gap-1.5 text-xs text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                  title="Simulate a concurrent modification conflict on this patient"
+                >
+                  <GitMerge className="h-3.5 w-3.5" />
+                  <span>Test Conflict Mode</span>
+                </Button>
+              )}
+
+              {isSyncing && (
+                <div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                  <span>Updating profile...</span>
+                </div>
+              )}
+            </div>
           </div>
+
+          {(conflictRecord || mother?.sync_status === "conflict") && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 animate-in fade-in">
+              <div className="flex items-center gap-2.5">
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                <div>
+                  <span className="text-xs font-bold block">
+                    Concurrent MVCC Conflict Detected
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Modifications made to this patient profile conflict with updates on the server.
+                  </span>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setIsConflictModalOpen(true)}
+                className="shrink-0 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-xs"
+              >
+                <GitMerge className="w-3.5 h-3.5" />
+                <span>Resolve Conflict</span>
+              </Button>
+            </div>
+          )}
 
           <ProfileHeader
             motherData={fullMotherData}
@@ -418,6 +515,12 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
         deliveries={deliveries}
         newborns={newborns}
         postpartumVisits={postpartumVisits}
+      />
+      <ConflictResolutionModal
+        open={isConflictModalOpen}
+        onClose={() => setIsConflictModalOpen(false)}
+        entityId={targetId}
+        onResolved={refresh}
       />
     </div>
   )

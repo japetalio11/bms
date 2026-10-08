@@ -23,6 +23,7 @@ const MotherProfilePage = lazyWithRetry(() => import("@/features/mothers/compone
 const ReferralsPage = lazyWithRetry(() => import("@/features/referrals/components/ReferralsPage"), "ReferralsPage")
 const MessagesPage = lazyWithRetry(() => import("@/features/messages/components/MessagesPage"), "MessagesPage")
 const EhrPage = lazyWithRetry(() => import("@/features/ehr/components/EhrPage"), "EhrPage")
+const HelpPage = lazyWithRetry(() => import("@/features/help/components/HelpPage"), "HelpPage")
 const PublicReferralPage = lazyWithRetry(() => import("@/features/referrals/components/PublicReferralPage"), "PublicReferralPage")
 const PublicSharedJourneyPage = lazyWithRetry(() => import("@/features/mothers/components/PublicSharedJourneyPage"), "PublicSharedJourneyPage")
 
@@ -66,6 +67,8 @@ export function App() {
                   <Route path="settings" element={<SettingsPage />} />
 
                   <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path="help" element={<HelpPage />} />
+                  <Route path="guide" element={<HelpPage />} />
                   <Route path="feedback" element={<div className="flex-1 w-full h-full bg-white dark:bg-black" />} />
                 </Route>
               </Route>

@@ -70,6 +70,9 @@ export function AppHeader() {
         return "Settings"
       case "analytics":
         return "Analytics"
+      case "help":
+      case "guide":
+        return "Staff User Guide"
       default:
         return path.charAt(0).toUpperCase() + path.slice(1)
     }

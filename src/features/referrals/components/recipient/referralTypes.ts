@@ -235,6 +235,17 @@ export interface ParsedReferralDetails {
   eddParsed?: string
   aogParsed?: string
   gravidaParaParsed?: string
+  patientNameParsed?: string
+  ageParsed?: string
+  addressParsed?: string
+  phoneParsed?: string
+  civilStatusParsed?: string
+  birthdayParsed?: string
+  tempParsed?: string
+  pulseParsed?: string
+  bpParsed?: string
+  weightParsed?: string
+  heightParsed?: string
 }
 
 export interface VitalStatusDetails {

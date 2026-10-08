@@ -5,6 +5,7 @@ export interface NetworkSyncStatus {
   isOnline: boolean
   isSyncing: boolean
   pendingCount: number
+  conflictCount: number
   lastSyncedAt: number | null
   error: string | null
   forceSync: () => void
@@ -15,6 +16,7 @@ export function useNetworkStatus(): NetworkSyncStatus {
   const [syncState, setSyncState] = useState({
     isSyncing: false,
     pendingCount: 0,
+    conflictCount: 0,
     lastSyncedAt: null as number | null,
     error: null as string | null,
   })
@@ -30,7 +32,10 @@ export function useNetworkStatus(): NetworkSyncStatus {
       if (typeof state.isOnline === "boolean") {
         setIsOnline(state.isOnline)
       }
-      setSyncState(state)
+      setSyncState((prev) => ({
+        ...prev,
+        ...state,
+      }))
     })
 
     return () => {
@@ -48,6 +53,7 @@ export function useNetworkStatus(): NetworkSyncStatus {
     isOnline,
     isSyncing: syncState.isSyncing,
     pendingCount: syncState.pendingCount,
+    conflictCount: syncState.conflictCount,
     lastSyncedAt: syncState.lastSyncedAt,
     error: syncState.error,
     forceSync,

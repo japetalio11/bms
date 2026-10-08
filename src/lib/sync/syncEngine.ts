@@ -1,12 +1,14 @@
 import { db } from "@/lib/db/bmsDatabase"
-import type { OfflineQueueItem } from "@/lib/db/bmsDatabase"
+import type { OfflineQueueItem, SyncConflict } from "@/lib/db/bmsDatabase"
 import { apiClient } from "@/lib/apiClient"
 import { settingsStore } from "@/lib/settingsStore"
 import { validatePrenatalVitals } from "@/lib/clinicalValidation"
 
 type SyncListener = (status: {
+  isOnline: boolean
   isSyncing: boolean
   pendingCount: number
+  conflictCount: number
   lastSyncedAt: number | null
   error: string | null
 }) => void
@@ -82,16 +84,22 @@ class SyncEngine {
     }
   }
 
-  private async notify() {
-    const pendingCount = await db.offlineQueue.count()
+  public async notify() {
+    const pendingCount = await db.offlineQueue.count().catch(() => 0)
+    const conflictCount = await db.conflicts
+      .where("status")
+      .equals("unresolved")
+      .count()
+      .catch(() => 0)
     const status = {
       isOnline: this.isOnlineState,
       isSyncing: this.isSyncing,
       pendingCount,
+      conflictCount,
       lastSyncedAt: this.lastSyncedAt,
       error: this.lastError,
     }
-    this.listeners.forEach((listener) => listener(status as any))
+    this.listeners.forEach((listener) => listener(status))
   }
 
   public async getPendingCount(): Promise<number> {
@@ -230,6 +238,9 @@ class SyncEngine {
         this.lastError = errMsg
 
         const status = err?.response?.status
+        const isConflict =
+          status === 409 ||
+          err?.response?.data?.details?.strategyUsed === "MANUAL_REVIEW"
         const isTooLarge =
           status === 413 ||
           (typeof errMsg === "string" &&
@@ -271,8 +282,98 @@ class SyncEngine {
           postpartum_visit: db.postpartumVisits,
         }
 
-        const targetEntityId = item.temp_id || (item.endpoint ? item.endpoint.split("/").pop() : undefined)
-        if (targetEntityId) {
+        const targetEntityId =
+          item.temp_id || (item.endpoint ? item.endpoint.split("/").pop() : undefined)
+
+        if (isConflict && targetEntityId) {
+          const details = err?.response?.data?.details || {}
+          const serverRecord = details.record || details.serverRecord || {}
+          const clientPayload =
+            details.conflictPayload || details.clientPayload || item.payload || {}
+          const conflictingFields =
+            details.conflictingFields ||
+            Object.keys(clientPayload).filter(
+              (k) =>
+                !["version", "created_at", "updated_at", "sync_status"].includes(k) &&
+                serverRecord[k] !== undefined &&
+                serverRecord[k] !== clientPayload[k]
+            )
+          const serverVersion = details.serverVersion || serverRecord.version || 1
+          const clientVersion = details.clientVersion || clientPayload.version || 1
+          const conflictId = `conflict_${item.entity_type}_${targetEntityId}`
+
+          const existingConflict = await db.conflicts
+            .where("entity_id")
+            .equals(targetEntityId)
+            .first()
+
+          if (existingConflict && existingConflict.id) {
+            await db.conflicts.update(existingConflict.id, {
+              server_version: serverVersion,
+              client_version: clientVersion,
+              server_record: serverRecord,
+              client_payload: clientPayload,
+              conflicting_fields: conflictingFields,
+              status: "unresolved",
+              detected_at: Date.now(),
+              last_error: errMsg,
+              queue_item_id: item.id,
+            })
+          } else {
+            await db.conflicts.add({
+              conflict_id: conflictId,
+              entity_type: item.entity_type,
+              entity_id: targetEntityId,
+              entity_name:
+                clientPayload.name ||
+                (clientPayload.first_name
+                  ? `${clientPayload.first_name} ${clientPayload.last_name || ""}`.trim()
+                  : undefined),
+              queue_item_id: item.id,
+              endpoint: item.endpoint,
+              method: item.method,
+              server_version: serverVersion,
+              client_version: clientVersion,
+              server_record: serverRecord,
+              client_payload: clientPayload,
+              conflicting_fields: conflictingFields,
+              status: "unresolved",
+              detected_at: Date.now(),
+              last_error: errMsg,
+            })
+          }
+
+          const table = tableMap[item.entity_type]
+          if (table) {
+            await table
+              .update(targetEntityId, {
+                sync_status: "conflict",
+                last_error: errMsg,
+              })
+              .catch(() => {})
+          }
+
+          if (item.id) {
+            await db.offlineQueue.update(item.id, {
+              status: "conflict",
+              conflict_id: conflictId,
+              last_error: errMsg,
+            })
+          }
+
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(
+              new CustomEvent("bms:sync-conflict-detected", {
+                detail: {
+                  conflictId,
+                  entityType: item.entity_type,
+                  entityId: targetEntityId,
+                  conflictingFields,
+                },
+              })
+            )
+          }
+        } else if (targetEntityId) {
           const table = tableMap[item.entity_type]
           if (table) {
             await table
@@ -306,7 +407,7 @@ class SyncEngine {
           }
         }
 
-        if (item.id) {
+        if (item.id && !isConflict) {
           await db.offlineQueue.update(item.id, {
             retry_count: (item.retry_count || 0) + 1,
             last_error: errMsg,
@@ -1698,6 +1799,401 @@ class SyncEngine {
       }
     } catch (err) {
       console.warn("[SyncEngine] Failed to pre-cache EHR documents:", err)
+    }
+  }
+
+  public async getPendingConflicts(): Promise<SyncConflict[]> {
+    return await db.conflicts
+      .where("status")
+      .equals("unresolved")
+      .reverse()
+      .sortBy("detected_at")
+  }
+
+  public async getConflictCount(): Promise<number> {
+    return await db.conflicts
+      .where("status")
+      .equals("unresolved")
+      .count()
+      .catch(() => 0)
+  }
+
+  public async recordConflict(params: {
+    entityType: any
+    entityId: string
+    endpoint: string
+    method: string
+    err: any
+    payload?: any
+  }): Promise<void> {
+    const details = params.err?.response?.data?.details || {}
+    const serverRecord = details.record || details.serverRecord || {}
+    const clientPayload =
+      details.conflictPayload || details.clientPayload || params.payload || {}
+    const conflictingFields =
+      details.conflictingFields ||
+      Object.keys(clientPayload).filter(
+        (k) =>
+          !["version", "created_at", "updated_at", "sync_status"].includes(k) &&
+          serverRecord[k] !== undefined &&
+          serverRecord[k] !== clientPayload[k]
+      )
+    const serverVersion = details.serverVersion || serverRecord.version || 1
+    const clientVersion = details.clientVersion || clientPayload.version || 1
+    const conflictId = `conflict_${params.entityType}_${params.entityId}`
+    const errMsg =
+      params.err?.response?.data?.error ||
+      params.err?.message ||
+      "Conflict detected requiring manual review"
+
+    const existingConflict = await db.conflicts
+      .where("entity_id")
+      .equals(params.entityId)
+      .first()
+
+    if (existingConflict && existingConflict.id) {
+      await db.conflicts.update(existingConflict.id, {
+        server_version: serverVersion,
+        client_version: clientVersion,
+        server_record: serverRecord,
+        client_payload: clientPayload,
+        conflicting_fields: conflictingFields,
+        status: "unresolved",
+        detected_at: Date.now(),
+        last_error: errMsg,
+      })
+    } else {
+      await db.conflicts.add({
+        conflict_id: conflictId,
+        entity_type: params.entityType,
+        entity_id: params.entityId,
+        entity_name:
+          clientPayload.name ||
+          (clientPayload.first_name
+            ? `${clientPayload.first_name} ${clientPayload.last_name || ""}`.trim()
+            : undefined),
+        endpoint: params.endpoint,
+        method: params.method,
+        server_version: serverVersion,
+        client_version: clientVersion,
+        server_record: serverRecord,
+        client_payload: clientPayload,
+        conflicting_fields: conflictingFields,
+        status: "unresolved",
+        detected_at: Date.now(),
+        last_error: errMsg,
+      })
+    }
+
+    const tableMap: Record<string, any> = {
+      mother: db.mothers,
+      pregnancy: db.pregnancies,
+      prenatal_visit: db.prenatalVisits,
+      appointment: db.appointments,
+      lab_record: db.labRecords,
+      supplement: db.supplements,
+      referral: db.referrals,
+      custom_request: db.referrals,
+      message: db.messages,
+      ehr_doc: db.ehrDocuments,
+      delivery_outcome: db.deliveries,
+      newborn_record: db.newborns,
+      postpartum_visit: db.postpartumVisits,
+    }
+    const table = tableMap[params.entityType]
+    if (table) {
+      await table
+        .update(params.entityId, {
+          sync_status: "conflict",
+          last_error: errMsg,
+        })
+        .catch(() => {})
+    }
+
+    this.notify()
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("bms:sync-conflict-detected", {
+          detail: {
+            conflictId,
+            entityType: params.entityType,
+            entityId: params.entityId,
+            conflictingFields,
+          },
+        })
+      )
+    }
+  }
+
+  public async resolveConflict(
+    conflictId: string,
+    resolution: {
+      strategy: "SERVER_WINS" | "CLIENT_WINS" | "FIELD_MERGE" | "CUSTOM"
+      customPayload?: any
+    }
+  ): Promise<{ success: boolean; message?: string; record?: any }> {
+    const conflict =
+      (await db.conflicts.where("conflict_id").equals(conflictId).first()) ||
+      (await db.conflicts.where("entity_id").equals(conflictId).first())
+
+    if (!conflict) {
+      throw new Error(`Conflict record not found for ID: ${conflictId}`)
+    }
+
+    const tableMap: Record<string, any> = {
+      mother: db.mothers,
+      pregnancy: db.pregnancies,
+      prenatal_visit: db.prenatalVisits,
+      appointment: db.appointments,
+      lab_record: db.labRecords,
+      supplement: db.supplements,
+      referral: db.referrals,
+      custom_request: db.referrals,
+      message: db.messages,
+      ehr_doc: db.ehrDocuments,
+      ehr_document: db.ehrDocuments,
+      delivery_outcome: db.deliveries,
+      newborn_record: db.newborns,
+      postpartum_visit: db.postpartumVisits,
+    }
+
+    const entityToModelMap: Record<string, string> = {
+      mother: "mother",
+      pregnancy: "pregnancy",
+      prenatal_visit: "prenatalVisit",
+      appointment: "appointment",
+      lab_record: "lab_Screening",
+      supplement: "supplementation_Record",
+      referral: "online_Referral",
+      custom_request: "online_Referral",
+      delivery_outcome: "delivery_Outcome",
+      newborn_record: "newborn_Record",
+      postpartum_visit: "postpartum_visit",
+      user: "user",
+      notification: "notification",
+    }
+
+    const table = tableMap[conflict.entity_type]
+    const modelName =
+      entityToModelMap[conflict.entity_type] || conflict.entity_type
+
+    if (conflict.entity_id.startsWith("demo-")) {
+      const demoMergedData =
+        resolution.strategy === "SERVER_WINS"
+          ? conflict.server_record
+          : resolution.strategy === "CLIENT_WINS"
+          ? conflict.client_payload
+          : resolution.customPayload || {
+              ...(conflict.server_record || {}),
+              ...(conflict.client_payload || {}),
+            }
+
+      if (table) {
+        await table
+          .put({
+            id: conflict.entity_id,
+            ...demoMergedData,
+            sync_status: "synced",
+            updated_at: Date.now(),
+          })
+          .catch(() => {})
+      }
+
+      if (conflict.id) {
+        await db.conflicts.delete(conflict.id)
+      }
+
+      this.notify()
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("bms:sync-conflict-resolved", {
+            detail: {
+              conflictId: conflict.conflict_id,
+              entityId: conflict.entity_id,
+            },
+          })
+        )
+      }
+
+      return {
+        success: true,
+        message: "Demo conflict successfully merged and resolved!",
+        record: demoMergedData,
+      }
+    }
+
+    if (resolution.strategy === "SERVER_WINS") {
+      if (table && conflict.server_record) {
+        await table
+          .update(conflict.entity_id, {
+            ...conflict.server_record,
+            sync_status: "synced",
+            last_error: undefined,
+            updated_at: Date.now(),
+          })
+          .catch(() => {})
+      }
+
+      if (this.isNetworkOnline()) {
+        try {
+          await apiClient.post("/api/v1/sync/resolve-conflict", {
+            modelName,
+            recordId: conflict.entity_id,
+            strategy: "SERVER_WINS",
+          })
+        } catch (err) {
+          console.warn("[SyncEngine] Server wins audit call warning:", err)
+        }
+      }
+
+      if (conflict.queue_item_id) {
+        await db.offlineQueue.delete(conflict.queue_item_id).catch(() => {})
+      }
+      const matchingQueueItems = await db.offlineQueue
+        .filter(
+          (q) =>
+            q.conflict_id === conflict.conflict_id ||
+            q.temp_id === conflict.entity_id
+        )
+        .toArray()
+      for (const q of matchingQueueItems) {
+        if (q.id) await db.offlineQueue.delete(q.id)
+      }
+
+      if (conflict.id) {
+        await db.conflicts.delete(conflict.id)
+      }
+
+      this.notify()
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("bms:sync-conflict-resolved", {
+            detail: {
+              conflictId: conflict.conflict_id,
+              entityId: conflict.entity_id,
+            },
+          })
+        )
+      }
+      return {
+        success: true,
+        message: "Local changes discarded. Server version applied.",
+      }
+    }
+
+    if (this.isNetworkOnline()) {
+      try {
+        const response = await apiClient.post("/api/v1/sync/resolve-conflict", {
+          modelName,
+          recordId: conflict.entity_id,
+          strategy: resolution.strategy,
+          customData: resolution.customPayload || {},
+          clientRecord:
+            resolution.customPayload || conflict.client_payload || {},
+        })
+
+        const resolvedRecord = response.data?.record
+        if (table && resolvedRecord) {
+          await table
+            .update(conflict.entity_id, {
+              ...resolvedRecord,
+              sync_status: "synced",
+              last_error: undefined,
+              updated_at: Date.now(),
+            })
+            .catch(() => {})
+        }
+
+        if (conflict.queue_item_id) {
+          await db.offlineQueue.delete(conflict.queue_item_id).catch(() => {})
+        }
+        const matchingQueueItems = await db.offlineQueue
+          .filter(
+            (q) =>
+              q.conflict_id === conflict.conflict_id ||
+              q.temp_id === conflict.entity_id
+          )
+          .toArray()
+        for (const q of matchingQueueItems) {
+          if (q.id) await db.offlineQueue.delete(q.id)
+        }
+
+        if (conflict.id) {
+          await db.conflicts.delete(conflict.id)
+        }
+
+        this.notify()
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("bms:sync-conflict-resolved", {
+              detail: {
+                conflictId: conflict.conflict_id,
+                entityId: conflict.entity_id,
+              },
+            })
+          )
+        }
+        return {
+          success: true,
+          message:
+            response.data?.message || "Conflict resolved successfully.",
+          record: resolvedRecord,
+        }
+      } catch (err: any) {
+        console.error("[SyncEngine] Failed to resolve conflict on server:", err)
+        throw err
+      }
+    }
+
+    const stagedData =
+      resolution.customPayload || conflict.client_payload || {}
+    if (table) {
+      await table
+        .update(conflict.entity_id, {
+          ...stagedData,
+          sync_status: "pending_update",
+          updated_at: Date.now(),
+        })
+        .catch(() => {})
+    }
+
+    if (conflict.queue_item_id) {
+      await db.offlineQueue.update(conflict.queue_item_id, {
+        payload: { ...stagedData, strategy: resolution.strategy },
+        status: "pending",
+        last_error: undefined,
+        retry_count: 0,
+      })
+    } else {
+      await this.enqueueMutation({
+        entity_type: conflict.entity_type as any,
+        action: "UPDATE",
+        endpoint: conflict.endpoint,
+        method: conflict.method as any,
+        payload: { ...stagedData, strategy: resolution.strategy },
+        temp_id: conflict.entity_id,
+      })
+    }
+
+    if (conflict.id) {
+      await db.conflicts.delete(conflict.id)
+    }
+
+    this.notify()
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("bms:sync-conflict-resolved", {
+          detail: {
+            conflictId: conflict.conflict_id,
+            entityId: conflict.entity_id,
+          },
+        })
+      )
+    }
+
+    return {
+      success: true,
+      message: "Conflict resolution staged offline. Will sync when online.",
     }
   }
 }

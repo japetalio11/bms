@@ -10,7 +10,29 @@ const PIN_SALT_KEY = "bms_pin_salt"
 const PIN_HASH_KEY = "bms_pin_hash"
 const PIN_EXPIRY_KEY = "bms_pin_expiry"
 const PIN_SESSION_VAL_KEY = "bms_pin_session_val"
+const PIN_FAILED_ATTEMPTS_KEY = "bms_pin_failed_attempts"
+export const MAX_PIN_ATTEMPTS = 3
 const DURATION_24_HOURS_MS = 24 * 60 * 60 * 1000
+
+export function getPinFailedAttempts(): number {
+  if (typeof window === "undefined") return 0
+  const val = localStorage.getItem(PIN_FAILED_ATTEMPTS_KEY)
+  const parsed = parseInt(val || "0", 10)
+  return isNaN(parsed) ? 0 : parsed
+}
+
+export function incrementPinFailedAttempts(): number {
+  if (typeof window === "undefined") return 0
+  const current = getPinFailedAttempts()
+  const next = current + 1
+  localStorage.setItem(PIN_FAILED_ATTEMPTS_KEY, next.toString())
+  return next
+}
+
+export function resetPinFailedAttempts(): void {
+  if (typeof window === "undefined") return
+  localStorage.removeItem(PIN_FAILED_ATTEMPTS_KEY)
+}
 
 let activeCryptoKey: CryptoKey | null = null
 let sessionExpiryTime: number | null = null
@@ -120,6 +142,7 @@ export async function setupPin(pin: string): Promise<boolean> {
     sessionExpiryTime = expiry
     localStorage.setItem(PIN_EXPIRY_KEY, expiry.toString())
     sessionStorage.setItem(PIN_SESSION_VAL_KEY, pin)
+    resetPinFailedAttempts()
 
     notifyListeners()
     return true
@@ -153,6 +176,7 @@ export async function unlockWithPin(pin: string): Promise<boolean> {
     sessionExpiryTime = expiry
     localStorage.setItem(PIN_EXPIRY_KEY, expiry.toString())
     sessionStorage.setItem(PIN_SESSION_VAL_KEY, pin)
+    resetPinFailedAttempts()
 
     notifyListeners()
     return true
@@ -180,6 +204,7 @@ export function clearPinConfig(): void {
     localStorage.removeItem(PIN_HASH_KEY)
     localStorage.removeItem(PIN_EXPIRY_KEY)
     sessionStorage.removeItem(PIN_SESSION_VAL_KEY)
+    localStorage.removeItem(PIN_FAILED_ATTEMPTS_KEY)
   }
   notifyListeners()
 }

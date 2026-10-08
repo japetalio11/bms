@@ -75,10 +75,10 @@ export function ClinicalTabsSection({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
         <div>
           <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-foreground">
-            Detailed Medical Records & Audit Trails
+            Longitudinal Health Records & History
           </h3>
           <p className="text-[11px] text-muted-foreground font-medium">
-            Full longitudinal history — the cards above show only the most recent entry.
+            Past prenatal checkups, diagnostic labs, ultrasound scans, medications, and past pregnancy history.
           </p>
         </div>
       </div>
@@ -142,7 +142,7 @@ export function ClinicalTabsSection({
 
         <TabsContent value="narrative" className="space-y-4">
           <Card className="border border-border/80 bg-card shadow-xs">
-            <CardHeader className="p-4 sm:p-5 pb-3">
+            <CardHeader className="p-4 sm:p-6 pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xs sm:text-sm font-bold uppercase text-foreground flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary" />
@@ -154,7 +154,7 @@ export function ClinicalTabsSection({
               </div>
             </CardHeader>
 
-            <CardContent className="p-4 sm:p-5 pt-0 space-y-4">
+            <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
               <div className="space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                   Clinical Notes:
@@ -189,7 +189,7 @@ export function ClinicalTabsSection({
 
         <TabsContent value="visits" className="space-y-4">
           <Card className="border border-border/80 bg-card shadow-xs">
-            <CardHeader className="p-4 sm:p-5 pb-3">
+            <CardHeader className="p-4 sm:p-6 pb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-xs sm:text-sm font-bold uppercase text-foreground flex items-center gap-2">
@@ -263,55 +263,55 @@ export function ClinicalTabsSection({
                   </div>
 
                   <div className="hidden sm:block overflow-x-auto">
-                    <Table>
+                    <Table className="w-full">
                       <TableHeader>
-                        <TableRow className="border-border hover:bg-transparent">
-                          <TableHead className="text-xs font-bold">Date</TableHead>
-                          <TableHead className="text-xs font-bold">Trimester</TableHead>
-                          <TableHead className="text-xs font-bold">AOG</TableHead>
-                          <TableHead className="text-xs font-bold">BP / Temp</TableHead>
-                          <TableHead className="text-xs font-bold">Fundic / FHT</TableHead>
-                          <TableHead className="text-xs font-bold">Chief Complaint & Danger Signs</TableHead>
-                          <TableHead className="text-xs font-bold">Health Worker</TableHead>
+                        <TableRow className="border-border bg-muted/20 hover:bg-transparent">
+                          <TableHead className="w-[14%] min-w-[110px] pl-5 sm:pl-6 pr-4 py-3 text-xs font-bold">Date</TableHead>
+                          <TableHead className="w-[10%] min-w-[80px] px-4 py-3 text-xs font-bold">Trimester</TableHead>
+                          <TableHead className="w-[10%] min-w-[80px] px-4 py-3 text-xs font-bold">AOG</TableHead>
+                          <TableHead className="w-[18%] min-w-[140px] px-4 py-3 text-xs font-bold">BP / Temp</TableHead>
+                          <TableHead className="w-[16%] min-w-[130px] px-4 py-3 text-xs font-bold">Fundic / FHT</TableHead>
+                          <TableHead className="w-[18%] min-w-[160px] px-4 py-3 text-xs font-bold">Chief Complaint & Danger Signs</TableHead>
+                          <TableHead className="w-[14%] min-w-[130px] pl-4 pr-5 sm:pr-6 py-3 text-xs font-bold text-right sm:text-left">Health Worker</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {prenatalVisits.map((visit: PrenatalVisitItem, index: number) => (
-                          <TableRow key={visit.visit_id || index} className="border-border hover:bg-muted/30">
-                            <TableCell className="text-xs font-semibold whitespace-nowrap">
+                          <TableRow key={visit.visit_id || index} className="border-border hover:bg-muted/30 transition-colors">
+                            <TableCell className="pl-5 sm:pl-6 pr-4 py-3.5 text-xs font-semibold whitespace-nowrap text-foreground">
                               {new Date(visit.visit_date).toLocaleDateString(undefined, {
                                 year: "numeric",
                                 month: "short",
                                 day: "numeric",
                               })}
                             </TableCell>
-                            <TableCell className="text-xs">
+                            <TableCell className="px-4 py-3.5 text-xs">
                               Trim {visit.trimester || 1}
                             </TableCell>
-                            <TableCell className="text-xs font-bold text-primary font-mono">
+                            <TableCell className="px-4 py-3.5 text-xs font-bold text-primary font-mono">
                               {visit.age_of_gestation_weeks ? `${visit.age_of_gestation_weeks} wks` : "N/A"}
                             </TableCell>
-                            <TableCell className="font-mono text-xs whitespace-nowrap">
-                              <span className="font-bold">
+                            <TableCell className="px-4 py-3.5 font-mono text-xs whitespace-nowrap">
+                              <span className="font-bold text-foreground">
                                 {visit.bp_systolic || 120}/{visit.bp_diastolic || 80}
                               </span>{" "}
                               • {visit.temperature_celsius || 36.5}°C
                             </TableCell>
-                            <TableCell className="font-mono text-xs whitespace-nowrap">
+                            <TableCell className="px-4 py-3.5 font-mono text-xs whitespace-nowrap">
                               {visit.fundic_height_cm ? `${visit.fundic_height_cm} cm` : "-"} /{" "}
                               {visit.fetal_heart_tone_bpm ? `${visit.fetal_heart_tone_bpm} bpm` : "-"}
                             </TableCell>
-                            <TableCell className="max-w-[240px] text-xs">
-                              <p className="font-medium truncate">
+                            <TableCell className="px-4 py-3.5 text-xs">
+                              <p className="font-medium truncate max-w-[220px]">
                                 {visit.chief_complaint || "Routine prenatal consultation"}
                               </p>
                               {visit.danger_signs_observed && (
-                                <span className="mt-0.5 block truncate text-[10px] font-bold text-red-500">
+                                <span className="mt-0.5 block truncate max-w-[220px] text-[10px] font-bold text-red-500">
                                   Danger: {visit.danger_signs_observed}
                                 </span>
                               )}
                             </TableCell>
-                            <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                            <TableCell className="pl-4 pr-5 sm:pr-6 py-3.5 text-xs whitespace-nowrap text-muted-foreground text-right sm:text-left">
                               {visit.healthWorker
                                 ? `${visit.healthWorker.first_name || ""} ${visit.healthWorker.last_name || ""}`.trim()
                                 : "Healthcare Provider"}
@@ -329,7 +329,7 @@ export function ClinicalTabsSection({
 
         <TabsContent value="labs" className="space-y-4">
           <Card className="border border-border/80 bg-card shadow-xs">
-            <CardHeader className="p-4 sm:p-5 pb-3">
+            <CardHeader className="p-4 sm:p-6 pb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-xs sm:text-sm font-bold uppercase text-foreground flex items-center gap-2">
@@ -407,38 +407,38 @@ export function ClinicalTabsSection({
                   </div>
 
                   <div className="hidden sm:block overflow-x-auto">
-                    <Table>
+                    <Table className="w-full">
                       <TableHeader>
-                        <TableRow className="border-border hover:bg-transparent">
-                          <TableHead className="text-xs font-bold">Date</TableHead>
-                          <TableHead className="text-xs font-bold">Investigation Type</TableHead>
-                          <TableHead className="text-xs font-bold">Result Finding</TableHead>
-                          <TableHead className="text-xs font-bold">Clinical Remarks</TableHead>
-                          <TableHead className="text-xs font-bold">Document Viewer</TableHead>
+                        <TableRow className="border-border bg-muted/20 hover:bg-transparent">
+                          <TableHead className="w-[18%] min-w-[120px] pl-5 sm:pl-6 pr-4 py-3 text-xs font-bold">Date</TableHead>
+                          <TableHead className="w-[26%] min-w-[160px] px-4 py-3 text-xs font-bold">Investigation Type</TableHead>
+                          <TableHead className="w-[18%] min-w-[120px] px-4 py-3 text-xs font-bold">Result Finding</TableHead>
+                          <TableHead className="w-[24%] min-w-[160px] px-4 py-3 text-xs font-bold">Clinical Remarks</TableHead>
+                          <TableHead className="w-[14%] min-w-[140px] pl-4 pr-5 sm:pr-6 py-3 text-xs font-bold text-right">Document Viewer</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {labScreenings.map((lab: LabScreeningItem, index: number) => (
-                          <TableRow key={lab.screening_id || index} className="border-border hover:bg-muted/30">
-                            <TableCell className="text-xs font-semibold whitespace-nowrap">
+                          <TableRow key={lab.screening_id || index} className="border-border hover:bg-muted/30 transition-colors">
+                            <TableCell className="pl-5 sm:pl-6 pr-4 py-3.5 text-xs font-semibold whitespace-nowrap text-foreground">
                               {new Date(lab.date_of_screening).toLocaleDateString(undefined, {
                                 year: "numeric",
                                 month: "short",
                                 day: "numeric",
                               })}
                             </TableCell>
-                            <TableCell className="text-xs font-bold text-foreground">
+                            <TableCell className="px-4 py-3.5 text-xs font-bold text-foreground">
                               {lab.screening_type}
                             </TableCell>
-                            <TableCell className="text-xs">
+                            <TableCell className="px-4 py-3.5 text-xs">
                               <span className="rounded-md bg-muted/60 px-2.5 py-1 text-[11px] font-medium border border-border/80 text-foreground">
                                 {lab.result || "Completed"}
                               </span>
                             </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">
+                            <TableCell className="px-4 py-3.5 text-xs text-muted-foreground">
                               {lab.remarks || "Normal findings"}
                             </TableCell>
-                            <TableCell className="text-xs">
+                            <TableCell className="pl-4 pr-5 sm:pr-6 py-3.5 text-xs text-right">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -458,10 +458,10 @@ export function ClinicalTabsSection({
                                     },
                                   })
                                 }
-                                className="h-7 gap-1.5 text-xs font-medium border-primary/20 hover:bg-primary/10 hover:text-primary"
+                                className="h-8 gap-1.5 text-xs font-medium border-primary/20 hover:bg-primary/10 hover:text-primary ml-auto"
                               >
-                                <Eye className="h-3 w-3" />
-                                <span>Open Full Document</span>
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>Open Document</span>
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -477,7 +477,7 @@ export function ClinicalTabsSection({
 
         <TabsContent value="supplements" className="space-y-4">
           <Card className="border border-border/80 bg-card shadow-xs">
-            <CardHeader className="p-4 sm:p-5 pb-3">
+            <CardHeader className="p-4 sm:p-6 pb-3">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-xs sm:text-sm font-bold uppercase text-foreground flex items-center gap-2">
@@ -501,38 +501,38 @@ export function ClinicalTabsSection({
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table>
+                  <Table className="w-full">
                     <TableHeader>
-                      <TableRow className="border-border hover:bg-transparent">
-                        <TableHead className="text-xs font-bold">Date Dispensed</TableHead>
-                        <TableHead className="text-xs font-bold">Medication / Supplement</TableHead>
-                        <TableHead className="text-xs font-bold">Dosage & Quantity</TableHead>
-                        <TableHead className="text-xs font-bold">Status</TableHead>
-                        <TableHead className="text-xs font-bold">Slip</TableHead>
+                      <TableRow className="border-border bg-muted/20 hover:bg-transparent">
+                        <TableHead className="w-[20%] min-w-[130px] pl-5 sm:pl-6 pr-4 py-3 text-xs font-bold">Date Dispensed</TableHead>
+                        <TableHead className="w-[32%] min-w-[180px] px-4 py-3 text-xs font-bold">Medication / Supplement</TableHead>
+                        <TableHead className="w-[20%] min-w-[130px] px-4 py-3 text-xs font-bold">Dosage & Quantity</TableHead>
+                        <TableHead className="w-[15%] min-w-[110px] px-4 py-3 text-xs font-bold">Status</TableHead>
+                        <TableHead className="w-[13%] min-w-[100px] pl-4 pr-5 sm:pr-6 py-3 text-xs font-bold text-right">Slip</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {supplements.map((supp: SupplementItem, index: number) => (
-                        <TableRow key={supp.supplement_id || index} className="border-border hover:bg-muted/30">
-                          <TableCell className="text-xs font-semibold whitespace-nowrap">
+                        <TableRow key={supp.supplement_id || index} className="border-border hover:bg-muted/30 transition-colors">
+                          <TableCell className="pl-5 sm:pl-6 pr-4 py-3.5 text-xs font-semibold whitespace-nowrap text-foreground">
                             {new Date(supp.date_given).toLocaleDateString(undefined, {
                               year: "numeric",
                               month: "short",
                               day: "numeric",
                             })}
                           </TableCell>
-                          <TableCell className="text-xs font-bold text-foreground">
+                          <TableCell className="px-4 py-3.5 text-xs font-bold text-foreground">
                             {supp.supplement_type}
                           </TableCell>
-                          <TableCell className="font-mono text-xs font-medium text-foreground">
+                          <TableCell className="px-4 py-3.5 font-mono text-xs font-medium text-foreground">
                             {supp.tablets_given_count} units
                           </TableCell>
-                          <TableCell className="text-xs">
-                            <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-                              <CheckCircle2 className="h-3 w-3" /> Dispensed
+                          <TableCell className="px-4 py-3.5 text-xs">
+                            <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Dispensed
                             </span>
                           </TableCell>
-                          <TableCell className="text-xs">
+                          <TableCell className="pl-4 pr-5 sm:pr-6 py-3.5 text-xs text-right">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -551,7 +551,7 @@ export function ClinicalTabsSection({
                                   },
                                 })
                               }
-                              className="h-7 gap-1 text-xs text-muted-foreground hover:text-primary"
+                              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-primary ml-auto"
                             >
                               <FileCheck2 className="h-3.5 w-3.5" />
                               <span>View Slip</span>
@@ -588,7 +588,7 @@ export function ClinicalTabsSection({
 
                 return (
                   <Card key={d.delivery_id || idx} className="overflow-hidden border-border bg-card shadow-xs">
-                    <CardHeader className="border-b border-border/60 bg-muted/20 p-4 sm:p-5 pb-3">
+                    <CardHeader className="border-b border-border/60 bg-muted/20 p-4 sm:p-6 pb-3">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-2.5">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -614,7 +614,7 @@ export function ClinicalTabsSection({
                       </div>
                     </CardHeader>
 
-                    <CardContent className="p-4 sm:p-5 space-y-4">
+                    <CardContent className="p-4 sm:p-6 space-y-4">
                       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 rounded-xl border border-border bg-muted/30 p-3 text-xs sm:grid-cols-4">
                         <div>
                           <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-muted-foreground">Place</span>

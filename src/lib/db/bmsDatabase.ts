@@ -1,5 +1,7 @@
 import Dexie, { type Table } from "dexie"
 
+export type SyncStatus = "synced" | "pending_create" | "pending_update" | "error" | "conflict"
+
 export interface LocalMother {
   id: string
   first_name?: string
@@ -23,7 +25,8 @@ export interface LocalMother {
     }
   }>
   photo_url?: string
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   updated_at: number
   [key: string]: any
 }
@@ -55,7 +58,8 @@ export interface LocalPregnancy {
   bmi_category?: string
   co_morbidities?: string
   previous_delivery_history?: string
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   updated_at: number
   [key: string]: any
 }
@@ -89,7 +93,8 @@ export interface LocalPrenatalVisit {
   danger_signs_observed?: string
   risk_level_assessed?: string
   notes?: string
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   updated_at: number
   [key: string]: any
 }
@@ -103,7 +108,8 @@ export interface LocalAppointment {
   time_slot?: string
   type?: string
   status?: string
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   updated_at: number
   [key: string]: any
 }
@@ -115,7 +121,8 @@ export interface LocalLabRecord {
   result?: string
   file_url?: string
   temp_blob_id?: string
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   updated_at: number
   [key: string]: any
 }
@@ -126,7 +133,8 @@ export interface LocalSupplement {
   supplement_name?: string
   dosage?: string
   given_date?: string
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   updated_at: number
   [key: string]: any
 }
@@ -152,7 +160,8 @@ export interface LocalEhrDocument {
   file_url?: string
   fileUrl?: string
   temp_blob_id?: string
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   last_error?: string
   updated_at: number
   [key: string]: any
@@ -168,7 +177,8 @@ export interface LocalMessage {
   is_read?: boolean
   contact_name?: string
   contact_avatar?: string
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   updated_at: number
   [key: string]: any
 }
@@ -190,7 +200,8 @@ export interface LocalReferral {
   response_notes?: string
   outcome?: string
   date_responded?: string
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   last_error?: string
   updated_at: number
   pregnancy?: any
@@ -207,7 +218,8 @@ export interface LocalNotification {
   notification_message: string
   notification_date: string
   is_read: boolean
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   updated_at: number
   [key: string]: any
 }
@@ -225,7 +237,8 @@ export interface LocalDeliveryOutcome {
   birth_attendant?: string
   maternal_outcome?: string
   immediate_breastfeeding?: boolean
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   updated_at: number
   newbornRecords?: LocalNewbornRecord[]
   postpartumVisits?: LocalPostpartumVisit[]
@@ -240,7 +253,8 @@ export interface LocalNewbornRecord {
   birth_weight_kg: number
   status_at_birth: string
   apgar_score: number
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   updated_at: number
   [key: string]: any
 }
@@ -268,9 +282,44 @@ export interface LocalPostpartumVisit {
   risk_level_assessed?: string
   vitamin_a_given?: boolean
   iron_supplement_given?: boolean
-  sync_status: "synced" | "pending_create" | "pending_update" | "error"
+  sync_status: SyncStatus
+  version?: number
   updated_at: number
   [key: string]: any
+}
+
+export interface SyncConflict {
+  id?: number
+  conflict_id: string
+  entity_type:
+    | "mother"
+    | "pregnancy"
+    | "prenatal_visit"
+    | "appointment"
+    | "lab_record"
+    | "supplement"
+    | "ehr_doc"
+    | "message"
+    | "referral"
+    | "notification"
+    | "delivery_outcome"
+    | "newborn_record"
+    | "postpartum_visit"
+    | "custom_request"
+    | "user"
+  entity_id: string
+  entity_name?: string
+  queue_item_id?: number
+  endpoint: string
+  method: string
+  server_version: number
+  client_version: number
+  server_record: Record<string, any>
+  client_payload: Record<string, any>
+  conflicting_fields: string[]
+  status: "unresolved" | "resolving" | "resolved"
+  detected_at: number
+  last_error?: string
 }
 
 export interface OfflineQueueItem {
@@ -300,7 +349,8 @@ export interface OfflineQueueItem {
   blob_ids?: string[]
   retry_count: number
   last_error?: string
-  status?: "pending" | "processing" | "error"
+  status?: "pending" | "processing" | "error" | "conflict"
+  conflict_id?: string
   created_at: number
 }
 
@@ -326,6 +376,7 @@ export class BMSDatabase extends Dexie {
   newborns!: Table<LocalNewbornRecord, string>
   postpartumVisits!: Table<LocalPostpartumVisit, string>
   offlineQueue!: Table<OfflineQueueItem, number>
+  conflicts!: Table<SyncConflict, number>
   blobs!: Table<LocalBlob, string>
   userSession!: Table<any, string>
 
@@ -516,6 +567,40 @@ export class BMSDatabase extends Dexie {
       blobs: "id",
       userSession: "id",
     })
+
+    this.version(9).stores({
+      mothers:
+        "id, mother_id, user_id, facility_id, assigned_worker_id, created_by_id, phone_number, sync_status, updated_at",
+      pregnancies: "id, pregnancy_id, mother_id, sync_status, updated_at",
+      prenatalVisits:
+        "id, visit_id, pregnancy_id, mother_id, visit_date, sync_status, updated_at",
+      appointments:
+        "id, appointment_id, mother_id, user_id, facility_id, appointment_date, status, sync_status, updated_at",
+      labRecords:
+        "id, screening_id, pregnancy_id, mother_id, sync_status, updated_at",
+      supplements:
+        "id, supplement_id, pregnancy_id, mother_id, sync_status, updated_at",
+      ehrDocuments:
+        "id, document_id, mother_id, facility_id, sync_status, updated_at",
+      messages:
+        "id, sender_id, receiver_id, message_date, is_read, sync_status, updated_at",
+      referrals:
+        "id, referral_id, pregnancy_id, mother_id, from_facility_id, to_facility_id, status, sync_status, updated_at",
+      notifications:
+        "id, notification_id, user_id, notification_type, is_read, sync_status, updated_at",
+      deliveries:
+        "id, delivery_id, pregnancy_id, delivery_date, sync_status, updated_at",
+      newborns:
+        "id, newborn_id, delivery_id, sex, sync_status, updated_at",
+      postpartumVisits:
+        "id, postpartum_visit_id, delivery_id, visit_date, sync_status, updated_at",
+      conflicts:
+        "++id, conflict_id, entity_type, entity_id, status, detected_at",
+      offlineQueue:
+        "++id, client_mutation_id, entity_type, created_at, retry_count",
+      blobs: "id",
+      userSession: "id",
+    })
   }
 
   public async clearClinicalCache(
@@ -535,6 +620,7 @@ export class BMSDatabase extends Dexie {
       this.deliveries.clear(),
       this.newborns.clear(),
       this.postpartumVisits.clear(),
+      this.conflicts.clear(),
       this.blobs.clear(),
       this.userSession.clear(),
       ...(preserveUnsyncedQueue ? [] : [this.offlineQueue.clear()]),
