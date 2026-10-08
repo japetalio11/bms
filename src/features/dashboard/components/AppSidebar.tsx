@@ -34,6 +34,7 @@ import {
   LogOut,
   FileText,
   Lock,
+  BookOpen,
 } from "lucide-react"
 import logoLight from "@/assets/bms-logo-light.svg"
 import logoDark from "@/assets/bms-logo-dark.svg"
@@ -293,6 +294,31 @@ export function AppSidebar() {
                 >
                   <SlidersHorizontal className="mr-2" />
                   <span>Settings</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="relative overflow-hidden group-data-[collapsible=icon]:mt-0 group-data-[collapsible=icon]:opacity-100">
+            <span className="whitespace-nowrap transition-opacity duration-200 ease-linear group-data-[collapsible=icon]:opacity-0">
+              Support & Guide
+            </span>
+            <div className="absolute inset-x-2 top-1/2 h-px -translate-y-1/2 bg-sidebar-border opacity-0 transition-opacity duration-200 ease-linear group-data-[collapsible=icon]:opacity-100" />
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={
+                    location.pathname === "/dashboard/help" ||
+                    location.pathname === "/dashboard/guide"
+                  }
+                  onClick={() => handleNavigate("/dashboard/help")}
+                >
+                  <BookOpen className="mr-2" />
+                  <span>Staff User Guide</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
