@@ -740,7 +740,7 @@ export const FREQUENTLY_ASKED_QUESTIONS: FaqItem[] = [
     id: "faq-3",
     category: "PIN & Security",
     question: "What should I do if I forget my 4-digit quick-unlock PIN?",
-    answer: "If you forget your 4-digit PIN on the lock screen, simply click the text link below the keypad that says 'Sign in with full password' or log out. You can sign in using your regular email and password, then head to Settings -> Security to set a new 4-digit PIN.",
+    answer: "If you forget your 4-digit PIN on the lock screen, you can click 'Forgot your PIN? Re-login to reset' below the keypad. If you enter the wrong PIN 3 times, the system automatically locks the session and presents a re-login screen. Signing in afresh with your email and password resets your credentials and immediately prompts you to configure a new 4-digit offline PIN.",
     actionTip: "You can change your PIN at any time under Settings -> Security."
   },
   {
