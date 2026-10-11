@@ -293,9 +293,9 @@ export function LogVitalsModal({
       onOpenChange={onOpenChange}
       title="Log Prenatal Vitals & Encounter"
       description="Record clinical vital signs and observations for this mother's visit."
-      className="sm:max-w-xl md:max-w-2xl"
+      className="sm:max-w-xl md:max-w-[700px]"
     >
-      <div className="flex max-h-[85vh] flex-col gap-4 overflow-y-auto px-1 py-2">
+      <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-1 py-2">
         {error && (
           <div className="rounded border border-destructive/50 bg-destructive/10 p-2.5 text-center text-xs font-medium text-destructive">
             {error}
@@ -887,7 +887,7 @@ export function LogVitalsModal({
                 placeholder="Enter reason for visit or clinical findings..."
                 value={chiefComplaint}
                 onChange={(e) => setChiefComplaint(e.target.value)}
-                className="h-[76px] resize-none border-border bg-card text-xs text-card-foreground"
+                className="h-[74px] resize-none border-border bg-card text-xs text-card-foreground"
               />
             </div>
           </div>

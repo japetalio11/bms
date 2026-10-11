@@ -490,8 +490,8 @@ export function EditRecordModal({
       title={getTitle()}
       description="Update record details and click save to apply changes."
       className={cn(
-        "sm:max-w-xl",
-        (type === "visitation" || type === "delivery" || type === "pregnancy") && "md:max-w-2xl"
+        "sm:max-w-xl md:max-w-[630px]",
+        (type === "visitation" || type === "delivery") && "md:max-w-[700px]"
       )}
     >
       <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-1 py-2">
