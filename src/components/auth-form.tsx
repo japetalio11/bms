@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
-import { Eye, EyeOff, Building2, User } from "lucide-react"
+import { Eye, EyeOff, Building2, User, ChevronDown } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -899,19 +899,18 @@ export function AuthForm() {
                         <div className="grid grid-cols-2 gap-2">
                           <div className="grid gap-1.5">
                             <Label htmlFor="facilityType">Facility Type *</Label>
-                            <select
-                              id="facilityType"
-                              value={facilityType}
-                              onChange={(e) => setFacilityType(e.target.value)}
-                              className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            >
-                              <option value="RHU / Health Center">RHU / Health Center</option>
-                              <option value="Hospital">Hospital</option>
-                              <option value="Lying-In Clinic">Lying-In Clinic</option>
-                              <option value="Barangay Health Station (BHS)">BHS / Health Station</option>
-                              <option value="Private Clinic">Private Clinic</option>
-                              <option value="Other">Other</option>
-                            </select>
+                            <div className="relative">
+                              <select
+                                id="facilityType"
+                                value={facilityType}
+                                onChange={(e) => setFacilityType(e.target.value)}
+                                className="flex h-8 w-full appearance-none rounded-md border border-input bg-background pl-2.5 pr-8 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+                              >
+                                <option value="RHU / Health Center">RHU / Health Center</option>
+                                <option value="Barangay Health Station (BHS)">BHS / Health Station</option>
+                              </select>
+                              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground select-none" />
+                            </div>
                           </div>
 
                           <div className="grid gap-1.5">
