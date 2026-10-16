@@ -23,10 +23,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { formatDate, getEffectiveAppointmentStatus } from "@/lib/utils"
+import { formatDate, getEffectiveAppointmentStatus, isSameDay } from "@/lib/utils"
 
 interface AppointmentsTabProps {
   appointmentList: any[]
+  visitationList?: any[]
   onViewRecord: (record: any) => void
   onEditRecord?: (record: any) => void
   onDeleteRecord?: (record: any) => void
@@ -37,6 +38,7 @@ interface AppointmentsTabProps {
 export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
   ({
     appointmentList,
+    visitationList,
     onViewRecord,
     onEditRecord,
     onDeleteRecord,
@@ -47,15 +49,30 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
     const [currentPage, setCurrentPage] = useState(1)
     const pageSize = 5
 
+    const checkHasEncounter = React.useCallback(
+      (apptDate: any) => {
+        if (!visitationList || visitationList.length === 0 || !apptDate) return false
+        return visitationList.some((v: any) => {
+          const vDate = v.visit_date || v.created_at
+          return vDate && isSameDay(vDate, apptDate)
+        })
+      },
+      [visitationList]
+    )
+
     const filteredList = useMemo(() => {
       if (!searchQuery.trim()) return appointmentList
       const q = searchQuery.toLowerCase()
       return appointmentList.filter((p: any) => {
         const type = (p.appointment_type || p.type || "").toLowerCase()
         const reason = (p.reason || "").toLowerCase()
+        const apptDate =
+          p.appointment_date || p.appointmentDateTime || p.date
+        const hasEncounter = checkHasEncounter(apptDate)
         const status = getEffectiveAppointmentStatus(
           p.status || p.appointmentStatus,
-          p.appointment_date || p.appointmentDateTime || p.date
+          apptDate,
+          hasEncounter
         ).toLowerCase()
         const dateStr = p.appointment_date
           ? formatDate(p.appointment_date).toLowerCase()
@@ -88,10 +105,16 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
         p.appointment_time || "N/A",
         p.appointment_type || p.type || "Prenatal Visit",
         `"${(p.reason || "N/A").replace(/"/g, '""')}"`,
-        getEffectiveAppointmentStatus(
-          p.status || p.appointmentStatus,
-          p.appointment_date || p.appointmentDateTime || p.date
-        ),
+        (() => {
+          const apptDate =
+            p.appointment_date || p.appointmentDateTime || p.date
+          const hasEncounter = checkHasEncounter(apptDate)
+          return getEffectiveAppointmentStatus(
+            p.status || p.appointmentStatus,
+            apptDate,
+            hasEncounter
+          )
+        })(),
       ])
       const csvContent =
         "data:text/csv;charset=utf-8," +
@@ -200,9 +223,13 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
                   </TableRow>
                 ) : (
                   paginatedList.map((p: any, i: number) => {
+                    const apptDate =
+                      p.appointment_date || p.appointmentDateTime || p.date
+                    const hasEncounter = checkHasEncounter(apptDate)
                     const effectiveStatus = getEffectiveAppointmentStatus(
                       p.status || p.appointmentStatus,
-                      p.appointment_date || p.appointmentDateTime || p.date
+                      apptDate,
+                      hasEncounter
                     )
                     const recordWithStatus = { ...p, status: effectiveStatus }
 

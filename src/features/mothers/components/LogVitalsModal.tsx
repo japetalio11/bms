@@ -18,6 +18,7 @@ import {
   ShieldAlert,
   CheckCircle2,
   AlertTriangle,
+  Pencil,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -60,6 +61,9 @@ export function LogVitalsModal({
   const [hasFever, setHasFever] = React.useState<boolean>(false)
   const [chiefComplaint, setChiefComplaint] = React.useState<string>("")
   const [dangerSigns, setDangerSigns] = React.useState<string>("")
+  const [isRiskOverridden, setIsRiskOverridden] = React.useState<boolean>(false)
+  const [overriddenRisk, setOverriddenRisk] = React.useState<string>("High Risk")
+  const [overrideReason, setOverrideReason] = React.useState<string>("")
 
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -141,6 +145,8 @@ export function LogVitalsModal({
     if (open) {
       setError(null)
       setFieldErrors({})
+      setIsRiskOverridden(false)
+      setOverrideReason("")
       const existingVisits = motherData?.prenatalVisits || []
       setVisitNumber(existingVisits.length + 1)
 
@@ -243,6 +249,14 @@ export function LogVitalsModal({
         motherData?.id ||
         ""
 
+      const effectiveRiskLevel = isRiskOverridden ? overriddenRisk : calculatedAssessment.risk_level
+      const combinedDangerSigns = [
+        dangerSigns,
+        isRiskOverridden && overrideReason ? `Clinical Risk Override (${effectiveRiskLevel}): ${overrideReason}` : null,
+      ]
+        .filter(Boolean)
+        .join(" | ")
+
       const payload = {
         mother_id: motherId,
         pregnancy_id: pregnancyId,
@@ -265,13 +279,16 @@ export function LogVitalsModal({
         has_edema: hasEdema,
         has_fever: hasFever,
         chief_complaint: chiefComplaint || undefined,
-        danger_signs_observed: dangerSigns || undefined,
-        risk_level_assessed: calculatedAssessment.risk_level,
+        danger_signs_observed: combinedDangerSigns || undefined,
+        risk_level_assessed: effectiveRiskLevel,
+        override_reason: isRiskOverridden ? overrideReason : undefined,
       }
 
       await mothersApi.registerPrenatalVisit(payload)
       toast.success(
-        `Prenatal visit recorded. System assessed: ${calculatedAssessment.risk_level}`
+        isRiskOverridden
+          ? `Prenatal visit recorded. Clinical risk override: ${effectiveRiskLevel}`
+          : `Prenatal visit recorded. System assessed: ${calculatedAssessment.risk_level}`
       )
       onSuccess?.()
       onOpenChange(false)
@@ -293,9 +310,9 @@ export function LogVitalsModal({
       onOpenChange={onOpenChange}
       title="Log Prenatal Vitals & Encounter"
       description="Record clinical vital signs and observations for this mother's visit."
-      className="sm:max-w-xl md:max-w-[700px]"
+      className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-xl md:max-w-[700px]"
     >
-      <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-1 py-2">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-1 py-2">
         {error && (
           <div className="rounded border border-destructive/50 bg-destructive/10 p-2.5 text-center text-xs font-medium text-destructive">
             {error}
@@ -854,6 +871,60 @@ export function LogVitalsModal({
                   </span>
                 )}
               </p>
+
+              <div className="flex items-center justify-between border-t border-border/50 pt-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !isRiskOverridden
+                    setIsRiskOverridden(next)
+                    if (next && !overriddenRisk) {
+                      setOverriddenRisk(calculatedAssessment.risk_level === "High Risk" ? "Moderate Risk" : "High Risk")
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-medium text-primary hover:underline cursor-pointer"
+                >
+                  <Pencil className="h-3 w-3" />
+                  {isRiskOverridden ? "Revert to System Assessment" : "Override Risk Level"}
+                </button>
+                {isRiskOverridden && (
+                  <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                    Clinical Override Active
+                  </span>
+                )}
+              </div>
+
+              {isRiskOverridden && (
+                <div className="flex flex-col gap-2 rounded border border-amber-500/30 bg-amber-500/10 p-2.5">
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-[11px] font-semibold text-foreground">
+                      Staff Overridden Risk Level
+                    </Label>
+                    <Select value={overriddenRisk} onValueChange={setOverriddenRisk}>
+                      <SelectTrigger className="!h-8 border-border bg-card text-xs text-card-foreground">
+                        <SelectValue placeholder="Select Risk Level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="High Risk">High Risk (Critical Priority)</SelectItem>
+                        <SelectItem value="Moderate Risk">Moderate Risk (Close Monitoring)</SelectItem>
+                        <SelectItem value="Low Risk">Low Risk (Standard Monitoring)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="overrideReason" className="text-[11px] font-medium text-foreground">
+                      Reason for Clinical Override
+                    </Label>
+                    <Input
+                      id="overrideReason"
+                      placeholder="e.g. Clinical complication not captured in vitals"
+                      value={overrideReason}
+                      onChange={(e) => setOverrideReason(e.target.value)}
+                      className="!h-7 border-border bg-card text-xs text-card-foreground"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -892,23 +963,23 @@ export function LogVitalsModal({
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="mt-1 flex justify-end gap-2 border-t border-border pt-3">
-          <Button
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-            className="h-8 text-xs"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="h-8 bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            {loading ? "Recording..." : "Save Vitals Record"}
-          </Button>
-        </div>
+      <div className="flex shrink-0 justify-end gap-2 border-t border-border pt-3">
+        <Button
+          variant="ghost"
+          onClick={() => onOpenChange(false)}
+          className="h-8 text-xs"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="h-8 bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          {loading ? "Recording..." : "Save Vitals Record"}
+        </Button>
       </div>
     </ResponsiveModal>
   )

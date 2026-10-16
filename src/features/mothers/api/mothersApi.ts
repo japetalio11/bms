@@ -59,6 +59,16 @@ export const mothersApi = {
     return await motherRepository.registerPrenatalVisit(payload)
   },
 
+  async overrideRiskLevel(params: {
+    motherId: string
+    pregnancyId?: string
+    visitId?: string
+    newRiskLevel: string
+    overrideReason?: string
+  }) {
+    return await motherRepository.overrideRiskLevel(params)
+  },
+
   async getAppointmentsByUser(userId: string, motherId?: string) {
     const appointments = await appointmentRepository.getAppointmentsForMother(userId, motherId)
     return { result: appointments, data: appointments }

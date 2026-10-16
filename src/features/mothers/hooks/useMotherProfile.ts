@@ -4,6 +4,8 @@ import { db } from "@/lib/db/bmsDatabase"
 import { motherRepository } from "@/lib/repositories/motherRepository"
 import { apiClient } from "@/lib/apiClient"
 import { syncEngine } from "@/lib/sync/syncEngine"
+import { appointmentRepository } from "@/lib/repositories/appointmentRepository"
+import { isSameDay } from "@/lib/utils"
 
 export interface MotherProfileData {
   mother: any | null
@@ -157,11 +159,40 @@ export function useMotherProfile(targetId?: string): MotherProfileData {
     ;[...apptsByMother, ...apptsByUser].forEach((a) =>
       apptMap.set(a.id || a.appointment_id, a)
     )
-    const appointments = Array.from(apptMap.values()).sort(
-      (a: any, b: any) =>
-        new Date(b.appointment_date || 0).getTime() -
-        new Date(a.appointment_date || 0).getTime()
-    )
+    const appointments = Array.from(apptMap.values())
+      .map((a: any) => {
+        const lower = (a.status || "").toLowerCase()
+        if (
+          lower !== "completed" &&
+          lower !== "cancelled" &&
+          lower !== "canceled" &&
+          lower !== "rejected"
+        ) {
+          const apptDate =
+            a.appointment_date || a.appointmentDateTime || a.date
+          if (apptDate) {
+            const hasVisit = prenatalVisits.some((v: any) => {
+              const vDate = v.visit_date || v.created_at
+              return vDate && isSameDay(vDate, apptDate)
+            })
+            if (hasVisit) {
+              const apptId = a.id || a.appointment_id
+              if (apptId) {
+                appointmentRepository
+                  .completeAppointment(apptId)
+                  .catch(() => {})
+              }
+              return { ...a, status: "Completed" }
+            }
+          }
+        }
+        return a
+      })
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.appointment_date || 0).getTime() -
+          new Date(a.appointment_date || 0).getTime()
+      )
 
     const deliveryMap = new Map<string, any>()
     deliveries.forEach((d: any) => {

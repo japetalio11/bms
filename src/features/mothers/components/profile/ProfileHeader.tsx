@@ -15,6 +15,7 @@ import {
   UserCheck,
   UserX,
   Printer,
+  ShieldAlert,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -38,6 +39,7 @@ interface ProfileHeaderProps {
   onAvatarClick: () => void
   onAssignStaffClick?: () => void
   onExportChartClick?: () => void
+  onOverrideRiskClick?: () => void
   isAdmin?: boolean
 }
 
@@ -51,6 +53,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
     onAvatarClick,
     onAssignStaffClick,
     onExportChartClick,
+    onOverrideRiskClick,
     isAdmin: propIsAdmin,
   }) => {
     const sessionUser = useLiveQuery(() => db.userSession.get("current_user"))
@@ -281,7 +284,19 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
                 <h2 className="text-2xl leading-none font-bold text-foreground">
                   {name}
                 </h2>
-                {getRiskBadge(risk)}
+                <div className="flex items-center gap-1.5">
+                  {getRiskBadge(risk)}
+                  {onOverrideRiskClick && (
+                    <button
+                      type="button"
+                      onClick={onOverrideRiskClick}
+                      className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted/80 text-muted-foreground transition-all hover:bg-primary/20 hover:text-primary cursor-pointer"
+                      title="Change / Override Patient Risk Level"
+                    >
+                      <Pencil className="h-2.5 w-2.5" />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {assignedStaff ? (
@@ -335,6 +350,17 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
               >
                 <Printer className="h-3.5 w-3.5 text-primary" />
                 <span>Export / Print Chart</span>
+              </Button>
+            )}
+            {onOverrideRiskClick && (
+              <Button
+                onClick={onOverrideRiskClick}
+                variant="outline"
+                size="sm"
+                className="h-9 flex-1 gap-1.5 border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted md:flex-none"
+              >
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+                <span>Override Risk</span>
               </Button>
             )}
             <Button

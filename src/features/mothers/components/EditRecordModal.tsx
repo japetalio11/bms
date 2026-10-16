@@ -267,6 +267,30 @@ export function EditRecordModal({
         await db.prenatalVisits
           .update(visitId, { ...payload, updated_at: Date.now() })
           .catch(() => {})
+
+        if (payload.risk_level_assessed) {
+          if (payload.pregnancy_id) {
+            await db.pregnancies
+              .update(payload.pregnancy_id, {
+                risk_flag: payload.risk_level_assessed,
+                risk_level: payload.risk_level_assessed,
+                updated_at: Date.now(),
+              })
+              .catch(() => {})
+          }
+          if (motherId) {
+            await db.mothers
+              .where("id")
+              .equals(motherId)
+              .modify({
+                risk_flag: payload.risk_level_assessed,
+                risk_level: payload.risk_level_assessed,
+                risk: payload.risk_level_assessed,
+                updated_at: Date.now(),
+              })
+              .catch(() => {})
+          }
+        }
       } else if (type === "appointment") {
         let apptId = data.appointment_id || data._id || data.id
         if (apptId && apptId.startsWith("temp-")) {
@@ -959,6 +983,25 @@ export function EditRecordModal({
                 onChange={(e) => handleChange("danger_signs_observed", e.target.value)}
                 className="h-[60px] resize-none border-border bg-card text-xs text-card-foreground"
               />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-foreground">
+                Assessed Risk Level
+              </Label>
+              <Select
+                value={formData.risk_level_assessed || "Low Risk"}
+                onValueChange={(v) => handleChange("risk_level_assessed", v)}
+              >
+                <SelectTrigger className="!h-9 border-border bg-card text-xs text-card-foreground">
+                  <SelectValue placeholder="Risk Level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="High Risk">High Risk (Critical Priority)</SelectItem>
+                  <SelectItem value="Moderate Risk">Moderate Risk (Close Monitoring)</SelectItem>
+                  <SelectItem value="Low Risk">Low Risk (Standard Monitoring)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         )}

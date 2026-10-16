@@ -2,7 +2,7 @@ import * as React from "react"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatDate, getEffectiveAppointmentStatus } from "@/lib/utils"
+import { formatDate, getEffectiveAppointmentStatus, isSameDay } from "@/lib/utils"
 import {
   Calendar,
   Clock,
@@ -24,6 +24,7 @@ import {
   Trash2,
   Edit,
   ExternalLink,
+  Pencil,
 } from "lucide-react"
 import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
 import { toast } from "sonner"
@@ -52,7 +53,9 @@ export interface DetailSideSheetProps {
     | null
   data: any
   motherName?: string
+  visitationList?: any[]
   onSuccess?: () => void
+  onOverrideRiskClick?: (record: any) => void
 }
 
 export function DetailSideSheet({
@@ -61,7 +64,9 @@ export function DetailSideSheet({
   type,
   data,
   motherName = "Mother",
+  visitationList = [],
   onSuccess,
+  onOverrideRiskClick,
 }: DetailSideSheetProps) {
   const [deleting, setDeleting] = React.useState(false)
   const [editModalOpen, setEditModalOpen] = React.useState(false)
@@ -195,9 +200,16 @@ export function DetailSideSheet({
             </h2>
             <div className="flex items-center gap-2">
               {type === "appointment" && (() => {
+                const apptDate =
+                  data.appointment_date || data.appointmentDateTime || data.date
+                const hasEncounter = visitationList?.some((v: any) => {
+                  const vDate = v.visit_date || v.created_at
+                  return vDate && isSameDay(vDate, apptDate)
+                })
                 const effectiveStatus = getEffectiveAppointmentStatus(
                   data.status || data.appointmentStatus,
-                  data.appointment_date || data.appointmentDateTime || data.date
+                  apptDate,
+                  hasEncounter
                 )
                 const lower = effectiveStatus.toLowerCase()
                 const badgeColor =
@@ -262,12 +274,24 @@ export function DetailSideSheet({
                 const label = getRiskLabel(currentRisk)
                 const classes = getRiskBadgeClasses(currentRisk)
                 return (
-                  <Badge
-                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${classes.badge}`}
-                  >
-                    <Activity className="h-3 w-3" />
-                    {label}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge
+                      className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${classes.badge}`}
+                    >
+                      <Activity className="h-3 w-3" />
+                      {label}
+                    </Badge>
+                    {onOverrideRiskClick && (
+                      <button
+                        type="button"
+                        onClick={() => onOverrideRiskClick(data)}
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted/80 text-muted-foreground transition-all hover:bg-primary/20 hover:text-primary cursor-pointer"
+                        title="Override Risk Level"
+                      >
+                        <Pencil className="h-2.5 w-2.5" />
+                      </button>
+                    )}
+                  </div>
                 )
               })()}
             </div>
