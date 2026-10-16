@@ -16,3 +16,21 @@ This repository enforces strict security and coding standards for all AI coding 
 
 3. **ENVIRONMENT HYGIENE**
    - Keep `.env` files out of Git tracking (`.gitignore`).
+
+---
+
+## 🧹 Clean Code & No Comments Rule (STRICT)
+
+1. **NO UNNECESSARY CODE COMMENTS**
+   - Do NOT add explanatory comments, inline explanations, or narrative text describing what code does.
+   - Code must be clean, concise, and self-documenting through expressive naming conventions.
+
+2. **NO SECTION DIVIDERS OR DECORATIVE BANNERS**
+   - Do NOT add comment banners, ASCII lines, or section headers (e.g., `// --- Hooks ---`, `/* === Helpers === */`).
+
+3. **NO TODOs OR META COMMENTARY**
+   - Never leave `// TODO`, `// NOTE`, or AI self-referential notes in source files.
+
+4. **EXCEPTIONS ONLY WHEN MANDATORY**
+   - Only include comments if explicitly instructed by the user or strictly required for compiler directives (e.g., unavoidable `/* eslint-disable */` or `// @ts-expect-error`).
+
