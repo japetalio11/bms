@@ -33,6 +33,7 @@ import {
   getRiskVariant,
   getRiskLabel,
   getRiskBadgeClasses,
+  calculateOfflineTEWSRisk,
 } from "@/lib/riskUtils"
 import { mothersApi } from "../api"
 import { db } from "@/lib/db/bmsDatabase"
@@ -791,6 +792,58 @@ export function DetailSideSheet({
                   </div>
                 )}
               </div>
+
+              {(() => {
+                const analysis = calculateOfflineTEWSRisk({
+                  bp_systolic: data.bp_systolic,
+                  bp_diastolic: data.bp_diastolic,
+                  pulse_rate_bpm: data.pulse_rate_bpm,
+                  temperature_celsius: data.temperature_celsius,
+                  danger_signs_observed: data.danger_signs_observed,
+                  has_vaginal_bleeding: data.has_vaginal_bleeding,
+                  has_pallor: data.has_pallor,
+                  has_edema: data.has_edema,
+                  has_fever: data.has_fever,
+                })
+                const effectiveRisk = data.risk_level_assessed || data.risk_level || analysis.risk_level
+                const badge = getRiskBadgeClasses(effectiveRisk)
+
+                return (
+                  <div className="flex flex-col gap-3 border-b border-border p-4 bg-muted/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <ShieldAlert className="h-4 w-4 text-primary" />
+                        <h3 className="text-xs font-semibold text-foreground">
+                          CDSS Early Warning & Guidance
+                        </h3>
+                      </div>
+                      <span className={`inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-[11px] font-semibold ${badge.badge}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} />
+                        {getRiskLabel(effectiveRisk)}
+                      </span>
+                    </div>
+
+                    {analysis.reasons.length > 0 && (
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                          Identified Physiological Triggers
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {analysis.reasons.map((r, i) => (
+                            <Badge
+                              key={i}
+                              variant="outline"
+                              className="border-border bg-background text-[10px] font-normal text-foreground"
+                            >
+                              {r}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </>
           )}
 

@@ -24,26 +24,35 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { formatDate } from "@/lib/utils"
 import { RiskBadge } from "./RiskBadge"
+import { CdssClinicalProtocolCard } from "./CdssClinicalProtocolCard"
 
 interface VisitationTabProps {
   visitationList: any[]
   defaultRisk?: string
+  pregnancy?: any
+  mother?: any
   onViewRecord: (record: any) => void
   onEditRecord?: (record: any) => void
   onDeleteRecord?: (record: any) => void
   onNewRecord: () => void
   onRefresh: () => void
+  onOverrideRiskClick?: () => void
+  onInitiateReferral?: () => void
 }
 
 export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
   ({
     visitationList,
     defaultRisk,
+    pregnancy,
+    mother,
     onViewRecord,
     onEditRecord,
     onDeleteRecord,
     onNewRecord,
     onRefresh,
+    onOverrideRiskClick,
+    onInitiateReferral,
   }) => {
     const [searchQuery, setSearchQuery] = useState("")
     const [currentPage, setCurrentPage] = useState(1)
@@ -152,8 +161,28 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
       document.body.removeChild(link)
     }
 
+    const latestVisit = useMemo(() => {
+      if (!visitationList || visitationList.length === 0) return null
+      return [...visitationList].sort((a, b) => {
+        const dateA = new Date(a.visit_date || 0).getTime()
+        const dateB = new Date(b.visit_date || 0).getTime()
+        if (dateA !== dateB) return dateB - dateA
+        return (Number(b.visit_number) || 0) - (Number(a.visit_number) || 0)
+      })[0]
+    }, [visitationList])
+
     return (
       <div className="mt-2 flex flex-col gap-4">
+        <CdssClinicalProtocolCard
+          latestVisit={latestVisit}
+          pregnancy={pregnancy}
+          mother={mother}
+          allVisits={visitationList}
+          onInitiateReferral={onInitiateReferral}
+          onOverrideRisk={onOverrideRiskClick}
+          onLogVitals={onNewRecord}
+        />
+
         <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
           <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto">
             <div className="relative w-[200px]">

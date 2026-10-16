@@ -16,6 +16,7 @@ import { AppointmentsTab } from "./profile/AppointmentsTab"
 import { LaboratoryTab } from "./profile/LaboratoryTab"
 import { PrescriptionsTab } from "./profile/PrescriptionsTab"
 import { DeliveryNewbornTab } from "./profile/DeliveryNewbornTab"
+import { MaternalVitalsTrajectoryChart } from "./profile/MaternalVitalsTrajectoryChart"
 
 import { EditMotherModal } from "./EditMotherModal"
 import { UploadAvatarModal } from "./UploadAvatarModal"
@@ -28,6 +29,7 @@ import { RecordDeliveryModal } from "./RecordDeliveryModal"
 import { AssignStaffModal } from "./AssignStaffModal"
 import { ExportMotherClinicalRecordModal } from "./ExportMotherClinicalRecordModal"
 import { OverrideRiskModal } from "./OverrideRiskModal"
+import { CreateReferralModal } from "@/features/referrals/components/CreateReferralModal"
 import { DetailSideSheet } from "./DetailSideSheet"
 import { extractRiskLevel } from "@/lib/riskUtils"
 import { isDemoMode } from "@/lib/utils"
@@ -51,6 +53,7 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
   const [supplementModalOpen, setSupplementModalOpen] = useState(false)
   const [recordDeliveryModalOpen, setRecordDeliveryModalOpen] = useState(false)
   const [overrideRiskModalOpen, setOverrideRiskModalOpen] = useState(false)
+  const [createReferralModalOpen, setCreateReferralModalOpen] = useState(false)
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false)
 
   const conflictRecord = useLiveQuery(
@@ -337,6 +340,9 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
                 <TabsTrigger value="encounters" className={tabTriggerClass}>
                   Visitation
                 </TabsTrigger>
+                <TabsTrigger value="trends" className={tabTriggerClass}>
+                  Clinical Trends
+                </TabsTrigger>
                 <TabsTrigger value="delivery" className={tabTriggerClass}>
                   Delivery & Newborns
                 </TabsTrigger>
@@ -369,12 +375,25 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
               <VisitationTab
                 visitationList={prenatalVisits}
                 defaultRisk={defaultRisk}
+                pregnancy={pregnancies?.[0]}
+                mother={fullMotherData}
                 onViewRecord={(v) => openSideSheet("visitation", v)}
                 onEditRecord={(v) => openSideSheet("visitation", v)}
                 onDeleteRecord={(v) => openSideSheet("visitation", v)}
                 onNewRecord={() => setLogVitalsModalOpen(true)}
                 onRefresh={refresh}
+                onOverrideRiskClick={() => setOverrideRiskModalOpen(true)}
+                onInitiateReferral={() => setCreateReferralModalOpen(true)}
               />
+            )}
+
+            {activeTab === "trends" && (
+              <div className="mt-2">
+                <MaternalVitalsTrajectoryChart
+                  visitationList={prenatalVisits}
+                  pregnancy={pregnancies?.[0]}
+                />
+              </div>
             )}
 
             {activeTab === "delivery" && (
@@ -527,6 +546,12 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
         onOpenChange={setOverrideRiskModalOpen}
         motherData={fullMotherData}
         onSuccess={refresh}
+      />
+      <CreateReferralModal
+        open={createReferralModalOpen}
+        onOpenChange={setCreateReferralModalOpen}
+        initialMotherId={targetId}
+        onCreated={refresh}
       />
       <ConflictResolutionModal
         open={isConflictModalOpen}
