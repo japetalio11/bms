@@ -85,3 +85,51 @@ export function isDemoMode(): boolean {
     envStatus.trim().toLowerCase().replace(/['"]/g, "") === "demo"
   )
 }
+
+export function getEffectiveAppointmentStatus(
+  status?: string | null,
+  dateInput?: string | Date | number | null
+): string {
+  const rawStatus = (status || "").toString().trim()
+  const lowerStatus = rawStatus.toLowerCase()
+
+  if (lowerStatus === "completed" || lowerStatus === "done") {
+    return "Completed"
+  }
+  if (
+    lowerStatus === "cancelled" ||
+    lowerStatus === "canceled" ||
+    lowerStatus === "rejected"
+  ) {
+    return "Cancelled"
+  }
+  if (lowerStatus === "missed") {
+    return "Missed"
+  }
+
+  if (dateInput) {
+    const appDate = new Date(dateInput)
+    if (!isNaN(appDate.getTime())) {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (appDate < today) {
+        return "Missed"
+      }
+    }
+  }
+
+  if (
+    lowerStatus === "confirmed" ||
+    lowerStatus === "active" ||
+    lowerStatus === "scheduled"
+  ) {
+    return "Scheduled"
+  }
+
+  if (lowerStatus === "pending") {
+    return "Pending"
+  }
+
+  return rawStatus ? rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1) : "Scheduled"
+}
+

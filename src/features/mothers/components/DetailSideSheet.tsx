@@ -2,7 +2,7 @@ import * as React from "react"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatDate } from "@/lib/utils"
+import { formatDate, getEffectiveAppointmentStatus } from "@/lib/utils"
 import {
   Calendar,
   Clock,
@@ -194,12 +194,29 @@ export function DetailSideSheet({
               {getHeaderTitle()}
             </h2>
             <div className="flex items-center gap-2">
-              {type === "appointment" && (
-                <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-500 capitalize shadow-none">
-                  <CheckCircle2 className="h-3 w-3" />
-                  {data.status || "Scheduled"}
-                </Badge>
-              )}
+              {type === "appointment" && (() => {
+                const effectiveStatus = getEffectiveAppointmentStatus(
+                  data.status || data.appointmentStatus,
+                  data.appointment_date || data.appointmentDateTime || data.date
+                )
+                const lower = effectiveStatus.toLowerCase()
+                const badgeColor =
+                  lower.includes("completed") || lower.includes("done")
+                    ? "bg-green-500/10 text-green-500"
+                    : lower.includes("cancel") || lower.includes("missed")
+                      ? "bg-red-500/10 text-red-500"
+                      : lower.includes("pending")
+                        ? "bg-yellow-500/10 text-yellow-500"
+                        : "bg-blue-500/10 text-blue-500"
+                return (
+                  <Badge
+                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium capitalize shadow-none ${badgeColor}`}
+                  >
+                    <CheckCircle2 className="h-3 w-3" />
+                    {effectiveStatus}
+                  </Badge>
+                )
+              })()}
               {type === "visitation" && (
                 <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-500 shadow-none">
                   <Clock className="h-3 w-3" />

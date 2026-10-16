@@ -1020,6 +1020,7 @@ export function EditRecordModal({
                 <SelectContent>
                   <SelectItem value="scheduled">Scheduled</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="missed">Missed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
