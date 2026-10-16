@@ -80,11 +80,13 @@ export function CreateReferralModal({
   onOpenChange,
   onCreated,
   onSuccessCreated,
+  initialMotherId,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated?: () => void
   onSuccessCreated?: (data: ReferralSuccessData) => void
+  initialMotherId?: string
 }) {
   const [localSuccessOpen, setLocalSuccessOpen] = useState<boolean>(false)
   const [localSuccessData, setLocalSuccessData] =
@@ -214,6 +216,12 @@ export function CreateReferralModal({
 
     loadModalData()
   }, [open, userFacilityId, isSysAdmin])
+
+  useEffect(() => {
+    if (open && initialMotherId) {
+      setSelectedMotherId(initialMotherId)
+    }
+  }, [open, initialMotherId])
 
   const bmcFacility = useMemo(() => {
     return (

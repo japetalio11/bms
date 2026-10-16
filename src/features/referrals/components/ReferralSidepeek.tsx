@@ -20,10 +20,15 @@ import {
   Wind,
   Gauge,
   Baby,
+  Printer,
+  FileCheck,
+  Truck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { referralRepository } from "@/lib/repositories/referralRepository"
 import { extractRiskLevel } from "@/lib/riskUtils"
+import { printClinicalReferralSlip } from "@/lib/exportUtils"
+import { CloseReferralModal } from "./CloseReferralModal"
 
 export function ReferralSidepeek({
   referral,
@@ -37,6 +42,7 @@ export function ReferralSidepeek({
 }) {
   const [copySuccess, setCopySuccess] = useState<string>("")
   const [actionLoading, setActionLoading] = useState<boolean>(false)
+  const [closeModalOpen, setCloseModalOpen] = useState<boolean>(false)
 
   const currentUser = useMemo(() => {
     try {
@@ -180,7 +186,6 @@ export function ReferralSidepeek({
         ? `${referral.oxygen_saturation} %`
         : "N/A"
 
-  // Mock danger signs for demonstration if none exist, normally extracted from complications
   const dangerSigns = referral.pregnancy?.complications 
     ? referral.pregnancy.complications.split(',').map((s: string) => s.trim())
     : []
@@ -288,6 +293,90 @@ export function ReferralSidepeek({
       </div>
 
       <div className="flex flex-1 flex-col overflow-y-auto">
+        {statusLower === "rejected" || statusLower === "cancelled" ? (
+          <div className="border-b border-border bg-red-500/5 p-4">
+            <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-600 dark:text-red-400">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="font-medium">
+                Transfer {statusLower === "rejected" ? "Declined by Receiving Facility" : "Cancelled by Origin RHU"}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 border-b border-border bg-muted/20 p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Transfer Lifecycle Handshake
+              </span>
+              <span className="text-[10px] font-medium text-muted-foreground">
+                {statusLower === "completed"
+                  ? "Closed Loop"
+                  : statusLower === "accepted"
+                    ? "In Receiving Care"
+                    : "Awaiting Intake"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2">
+              <div className="flex flex-col items-center gap-1 text-center">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[10px] font-semibold text-foreground">Dispatched</span>
+                <span className="text-[9px] text-muted-foreground">RHU Sent</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-1 text-center">
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full border ${
+                    statusLower === "accepted" || statusLower === "completed"
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "border-primary/30 bg-primary/10 text-primary animate-pulse"
+                  }`}
+                >
+                  <Truck className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[10px] font-semibold text-foreground">In Transit</span>
+                <span className="text-[9px] text-muted-foreground">
+                  {statusLower === "accepted" || statusLower === "completed" ? "Arrived" : "Dispatched"}
+                </span>
+              </div>
+
+              <div className="flex flex-col items-center gap-1 text-center">
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full border ${
+                    statusLower === "accepted" || statusLower === "completed"
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "border-border bg-muted text-muted-foreground"
+                  }`}
+                >
+                  <Building2 className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[10px] font-semibold text-foreground">Hospital Intake</span>
+                <span className="text-[9px] text-muted-foreground">
+                  {statusLower === "accepted" || statusLower === "completed" ? "Admitted" : "Pending"}
+                </span>
+              </div>
+
+              <div className="flex flex-col items-center gap-1 text-center">
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full border ${
+                    statusLower === "completed" || referral.outcome
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "border-border bg-muted text-muted-foreground"
+                  }`}
+                >
+                  <FileCheck className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-[10px] font-semibold text-foreground">Closed Loop</span>
+                <span className="text-[9px] text-muted-foreground">
+                  {statusLower === "completed" || referral.outcome ? "Counter-Ref" : "Pending"}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2 border-b border-border p-4">
           <h3 className="text-xs font-semibold text-foreground">
             Preferred Hospital
@@ -355,6 +444,42 @@ export function ReferralSidepeek({
             )}
           </p>
         </div>
+
+        {(statusLower === "completed" || referral.outcome || referral.response_notes) && (
+          <div className="flex flex-col gap-2.5 border-b border-border bg-emerald-500/5 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Hospital Counter-Referral & Outcome Report</span>
+              </div>
+              {referral.date_responded && (
+                <span className="text-[10px] text-muted-foreground">
+                  {new Date(referral.date_responded).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+
+            {referral.outcome && (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-medium text-muted-foreground">Clinical Outcome:</span>
+                <span className="inline-flex items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                  {referral.outcome}
+                </span>
+              </div>
+            )}
+
+            {referral.response_notes && (
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Hospital Discharge & Feedback Notes
+                </span>
+                <p className="rounded-md border border-border bg-card p-2.5 text-xs leading-relaxed text-foreground">
+                  {referral.response_notes}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col gap-5 border-b border-border p-4">
           <h3 className="text-xs font-semibold text-foreground">Properties</h3>
@@ -632,15 +757,35 @@ export function ReferralSidepeek({
               Decline
             </Button>
           </div>
+        ) : statusLower === "accepted" ? (
+          <Button
+            onClick={() => setCloseModalOpen(true)}
+            className="h-9 w-full bg-emerald-600 text-xs font-medium text-white shadow-xs hover:bg-emerald-700 flex items-center justify-center gap-1.5"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Record Discharge & Counter-Referral
+          </Button>
         ) : null}
 
         <Button
           variant="outline"
-          className="h-9 w-full border-border bg-card text-xs font-medium text-foreground hover:bg-muted"
+          onClick={() => printClinicalReferralSlip(referral)}
+          className="h-9 w-full border-border bg-card text-xs font-medium text-foreground hover:bg-muted flex items-center justify-center gap-1.5"
         >
+          <Printer className="h-4 w-4 text-muted-foreground" />
           Print Transfer Form
         </Button>
       </div>
+
+      <CloseReferralModal
+        open={closeModalOpen}
+        onOpenChange={setCloseModalOpen}
+        referral={referral}
+        onSuccess={() => {
+          onUpdated?.()
+          onClose()
+        }}
+      />
     </div>
   )
 }

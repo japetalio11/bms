@@ -564,3 +564,27 @@ export function calculateOfflineTEWSRisk(input: ClinicalVitalsInput): {
     reasons,
   }
 }
+
+export function getClinicalProtocols(riskLevel?: string | null, reasons: string[] = []): string[] {
+  const variant = getRiskVariant(riskLevel)
+  const protocols: string[] = []
+  if (variant === "high") {
+    protocols.push("Immediate physician / obstetrician clinical evaluation")
+    protocols.push("Urgent Preeclampsia screen: Order urine protein dipstick and CBC with platelets")
+    protocols.push("Prepare referral ticket and transfer checklist for higher-level facility (CEmONC)")
+    protocols.push("Schedule close maternal-fetal re-evaluation within 24 to 48 hours")
+    if (reasons.some((r) => r.toLowerCase().includes("bleeding"))) {
+      protocols.push("Emergency Bleeding Protocol: Insert large-bore IV line & prepare crossmatched blood")
+    }
+  } else if (variant === "moderate") {
+    protocols.push("Shorten visit interval: Re-evaluate blood pressure and clinical vitals within 7 days")
+    protocols.push("Verify hemoglobin / hematocrit levels and rule out gestational anemia")
+    protocols.push("Counsel patient on emergency danger signs (severe headache, epigastric pain, blurring of vision)")
+    protocols.push("Reinforce adherence to prescribed Iron + Folic Acid and Calcium supplementation")
+  } else {
+    protocols.push("Continue routine antenatal care schedule (every 4 weeks until 28 weeks)")
+    protocols.push("Ensure daily Iron + Folic Acid supplementation adherence")
+    protocols.push("Counsel on balanced maternal nutrition and routine fetal movement tracking")
+  }
+  return protocols
+}
