@@ -819,7 +819,7 @@ export function AppointmentListPage() {
                                 Appointment Status
                               </span>
                               <Badge
-                                className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${appointment.status === "Confirmed" ? "bg-blue-500/10 text-blue-500" : appointment.status === "Cancelled" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"}`}
+                                className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${appointment.status === "Confirmed" ? "bg-blue-500/10 text-blue-500" : appointment.status === "Completed" ? "bg-green-500/10 text-green-500" : appointment.status === "Cancelled" || appointment.status === "Missed" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"}`}
                               >
                                 <CheckCircle2 className="h-3 w-3" />
                                 {appointment.status}
@@ -983,7 +983,7 @@ export function AppointmentListPage() {
                                 </TableCell>
                                 <TableCell>
                                   <Badge
-                                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${appointment.status === "Confirmed" ? "bg-blue-500/10 text-blue-500" : appointment.status === "Cancelled" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"}`}
+                                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${appointment.status === "Confirmed" ? "bg-blue-500/10 text-blue-500" : appointment.status === "Completed" ? "bg-green-500/10 text-green-500" : appointment.status === "Cancelled" || appointment.status === "Missed" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"}`}
                                   >
                                     <CheckCircle2 className="h-3 w-3" />
                                     {appointment.status}
