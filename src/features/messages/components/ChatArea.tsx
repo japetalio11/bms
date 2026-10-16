@@ -12,6 +12,7 @@ import {
   Download,
   ExternalLink,
   ArrowLeft,
+  ArrowDown,
   Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -244,10 +245,108 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
     }
   }
 
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
+  const isInitialLoadRef = React.useRef(true)
+  const prevChatIdRef = React.useRef(activeChatId)
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = React.useState(false)
+
   React.useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [chatMessages, isSending])
+    if (prevChatIdRef.current !== activeChatId) {
+      prevChatIdRef.current = activeChatId
+      isInitialLoadRef.current = true
+      setShowScrollBottomBtn(false)
+    }
+  }, [activeChatId])
+
+  const scrollToBottom = React.useCallback(
+    (behavior: ScrollBehavior = "auto") => {
+      const container = scrollContainerRef.current
+      if (container) {
+        if (behavior === "smooth") {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: "smooth",
+          })
+        } else {
+          container.scrollTop = container.scrollHeight
+        }
+      }
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({
+          behavior,
+          block: "end",
+        })
+      }
+    },
+    []
+  )
+
+  const handleScroll = React.useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight
+    setShowScrollBottomBtn(distanceFromBottom > 200)
+  }, [])
+
+  React.useEffect(() => {
+    if (!chatMessages || chatMessages.length === 0) return
+
+    if (isInitialLoadRef.current) {
+      scrollToBottom("auto")
+
+      const raf = requestAnimationFrame(() => scrollToBottom("auto"))
+      const t1 = setTimeout(() => scrollToBottom("auto"), 50)
+      const t2 = setTimeout(() => scrollToBottom("auto"), 150)
+      const t3 = setTimeout(() => {
+        scrollToBottom("auto")
+        isInitialLoadRef.current = false
+      }, 300)
+
+      return () => {
+        cancelAnimationFrame(raf)
+        clearTimeout(t1)
+        clearTimeout(t2)
+        clearTimeout(t3)
+      }
+    } else {
+      const container = scrollContainerRef.current
+      const isNearBottom = container
+        ? container.scrollHeight - container.scrollTop - container.clientHeight < 200
+        : true
+
+      if (isSending || isNearBottom) {
+        scrollToBottom("smooth")
+      }
+    }
+  }, [chatMessages, isSending, scrollToBottom])
+
+  React.useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container || typeof ResizeObserver === "undefined") return
+
+    let prevScrollHeight = container.scrollHeight
+
+    const observer = new ResizeObserver(() => {
+      if (!scrollContainerRef.current) return
+      const el = scrollContainerRef.current
+      if (el.scrollHeight !== prevScrollHeight) {
+        const wasNearBottom =
+          prevScrollHeight - el.scrollTop - el.clientHeight < 250
+
+        if (isInitialLoadRef.current || wasNearBottom) {
+          el.scrollTop = el.scrollHeight
+        }
+        prevScrollHeight = el.scrollHeight
+      }
+    })
+
+    observer.observe(container)
+    Array.from(container.children).forEach((child) => observer.observe(child))
+
+    return () => observer.disconnect()
+  }, [chatMessages.length])
 
   const formatTime = (dateStr: string) => {
     try {
@@ -314,7 +413,7 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
   }
 
   return (
-    <div className="flex h-full min-w-0 flex-1 flex-col border-r border-border bg-background">
+    <div className="relative flex h-full min-w-0 flex-1 flex-col border-r border-border bg-background">
       <input
         type="file"
         ref={fileInputRef}
@@ -378,7 +477,11 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
         </div>
       </div>
 
-      <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 space-y-6 overflow-y-auto px-6 py-6"
+      >
         {chatMessages.map((msg) => {
           const isSentByMe = msg.sender_id === currentUserId
           const isOutgoing = isSentByMe
@@ -419,6 +522,22 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
                     <img
                       src={resolveFileUrl(msg.message_content)}
                       alt="Shared Attachment"
+                      onLoad={() => {
+                        if (isInitialLoadRef.current) {
+                          scrollToBottom("auto")
+                        } else {
+                          const container = scrollContainerRef.current
+                          if (
+                            container &&
+                            container.scrollHeight -
+                              container.scrollTop -
+                              container.clientHeight <
+                              250
+                          ) {
+                            scrollToBottom("auto")
+                          }
+                        }
+                      }}
                       className="max-h-[280px] max-w-[280px] rounded-lg object-cover transition-opacity group-hover:opacity-95"
                     />
                   </button>
@@ -487,6 +606,17 @@ export function ChatArea({ activeChatId, onBack }: ChatAreaProps) {
 
         <div ref={messagesEndRef} />
       </div>
+
+      {showScrollBottomBtn && (
+        <button
+          type="button"
+          onClick={() => scrollToBottom("smooth")}
+          className="absolute bottom-24 right-8 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition-all hover:bg-accent hover:text-foreground hover:scale-105 active:scale-95 cursor-pointer"
+          title="Scroll to latest messages"
+        >
+          <ArrowDown className="h-4 w-4" />
+        </button>
+      )}
 
       <div className="flex shrink-0 flex-col gap-2 border-t border-transparent bg-background px-6 pt-4 pb-6">
         <div
