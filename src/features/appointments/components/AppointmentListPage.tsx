@@ -63,6 +63,8 @@ import {
   getRiskLabel,
   getRiskBadgeClasses,
 } from "@/lib/riskUtils"
+import { isSameDay } from "@/lib/utils"
+import { appointmentRepository } from "@/lib/repositories/appointmentRepository"
 
 export function AppointmentListPage() {
   const [activeTab, setActiveTab] = useState("all")
@@ -261,9 +263,21 @@ export function AppointmentListPage() {
       today.setHours(0, 0, 0, 0)
       const isPast = appDate ? appDate < today : false
 
+      const hasEncounterOnDate = matchedMother?.prenatalVisits?.some((v: any) => {
+        const vDate = v.visit_date || v.created_at
+        return vDate && item.appointment_date && isSameDay(vDate, item.appointment_date)
+      })
+
+      if (hasEncounterOnDate && (item.status || "").toLowerCase() !== "completed") {
+        const apptId = item.appointment_id || item.id
+        if (apptId) {
+          appointmentRepository.completeAppointment(apptId).catch(() => {})
+        }
+      }
+
       let status = item.status || "Pending"
       const lowerStatus = status.toLowerCase()
-      if (lowerStatus === "completed") {
+      if (lowerStatus === "completed" || hasEncounterOnDate) {
         status = "Completed"
       } else if (lowerStatus === "cancelled") {
         status = "Cancelled"

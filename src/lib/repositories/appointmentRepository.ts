@@ -2,6 +2,7 @@ import { db } from "@/lib/db/bmsDatabase"
 import type { LocalAppointment } from "@/lib/db/bmsDatabase"
 import { apiClient } from "@/lib/apiClient"
 import { syncEngine } from "@/lib/sync/syncEngine"
+import { isSameDay } from "@/lib/utils"
 
 const DEFAULT_APPOINTMENTS: LocalAppointment[] = [
   {
@@ -536,6 +537,69 @@ export const appointmentRepository = {
     })
 
     return { success: true }
+  },
+
+  async autoCompleteAppointmentsOnEncounter(
+    motherIdOrUserId: string,
+    encounterDate: string | Date | number,
+    pregnancyId?: string
+  ): Promise<string[]> {
+    if (!motherIdOrUserId && !pregnancyId) return []
+
+    const candidateIds = new Set<string>()
+    if (motherIdOrUserId) candidateIds.add(String(motherIdOrUserId))
+
+    try {
+      if (motherIdOrUserId) {
+        const mother =
+          (await db.mothers.get(motherIdOrUserId)) ||
+          (await db.mothers.where("mother_id").equals(motherIdOrUserId).first()) ||
+          (await db.mothers.where("user_id").equals(motherIdOrUserId).first())
+
+        if (mother) {
+          if (mother.id) candidateIds.add(String(mother.id))
+          if (mother.mother_id) candidateIds.add(String(mother.mother_id))
+          if (mother.user_id) candidateIds.add(String(mother.user_id))
+        }
+      }
+
+      if (pregnancyId) {
+        const preg =
+          (await db.pregnancies.get(pregnancyId)) ||
+          (await db.pregnancies.where("pregnancy_id").equals(pregnancyId).first())
+
+        if (preg) {
+          const mId = preg.mother_id || (preg as any).motherId
+          if (mId) candidateIds.add(String(mId))
+        }
+      }
+    } catch {}
+
+    const allAppts = await db.appointments.toArray()
+    const matchingAppts = allAppts.filter((a) => {
+      const belongsToMother =
+        (a.mother_id && candidateIds.has(String(a.mother_id))) ||
+        (a.user_id && candidateIds.has(String(a.user_id)))
+
+      if (!belongsToMother) return false
+
+      const apptDate = a.appointment_date || (a as any).appointmentDateTime || (a as any).date
+      if (!isSameDay(apptDate, encounterDate)) return false
+
+      const lower = (a.status || "").toLowerCase()
+      return lower !== "completed" && lower !== "cancelled" && lower !== "canceled" && lower !== "rejected"
+    })
+
+    const completedIds: string[] = []
+    for (const appt of matchingAppts) {
+      const apptId = appt.id || appt.appointment_id
+      if (apptId) {
+        await this.completeAppointment(apptId)
+        completedIds.push(apptId)
+      }
+    }
+
+    return completedIds
   },
 
   async deleteAppointment(appointmentId: string) {
