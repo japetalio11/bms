@@ -87,8 +87,23 @@ export function MessagesPage() {
       }, 600)
     })
 
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadAndSyncData()
+      }
+    }, 4000)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadAndSyncData()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
     return () => {
       window.removeEventListener("bms:message:new", handleNewMessage)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      clearInterval(pollInterval)
       if (debounceTimer) clearTimeout(debounceTimer)
       unsubscribe()
     }
