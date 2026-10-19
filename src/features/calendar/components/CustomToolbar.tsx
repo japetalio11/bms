@@ -15,6 +15,8 @@ import {
   RefreshCw,
   CalendarCheck,
   Filter,
+  CalendarDays,
+  CalendarRange,
 } from "lucide-react"
 import { format } from "date-fns"
 import { ExportCalendarModal } from "./ExportCalendarModal"
@@ -124,17 +126,19 @@ export function CustomToolbar(props: CustomToolbarProps) {
             onValueChange={(v) => handleViewChange(v)}
             className="w-full md:w-max"
           >
-            <TabsList className="h-9 w-full justify-start gap-1 rounded-md border border-border bg-muted p-1 *:flex-1 md:w-max md:*:flex-initial">
+            <TabsList className="inline-flex h-10 w-full justify-start gap-1 rounded-xl border border-border bg-muted/80 p-1 sm:w-max">
               <TabsTrigger
                 value="month"
-                className="h-full rounded-sm border border-transparent px-2 py-1 text-xs font-medium transition-all"
+                className="flex h-full flex-1 sm:flex-initial shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
               >
+                <CalendarDays className="h-3.5 w-3.5" />
                 Month Grid
               </TabsTrigger>
               <TabsTrigger
                 value="week"
-                className="h-full rounded-sm border border-transparent px-2 py-1 text-xs font-medium transition-all"
+                className="flex h-full flex-1 sm:flex-initial shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
               >
+                <CalendarRange className="h-3.5 w-3.5" />
                 Weekly Schedule
               </TabsTrigger>
             </TabsList>

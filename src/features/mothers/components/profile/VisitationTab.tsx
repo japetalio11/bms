@@ -183,9 +183,9 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
           onLogVitals={onNewRecord}
         />
 
-        <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
-          <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto">
-            <div className="relative w-[200px]">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <div className="relative w-full sm:w-[220px]">
               <Search className="absolute top-2.5 left-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 value={searchQuery}
@@ -195,7 +195,7 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
               />
             </div>
           </div>
-          <div className="flex w-full shrink-0 items-center gap-2 xl:w-auto">
+          <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
             <Button
               variant="outline"
               onClick={handleExportCSV}
@@ -222,30 +222,172 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-md border border-sidebar-border bg-background dark:bg-[#0a0a0a]">
+        <div className="flex flex-col gap-3 md:hidden">
+          {filteredList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-8 text-center">
+              <p className="text-xs text-muted-foreground">No encounters recorded</p>
+              <Button
+                onClick={onNewRecord}
+                size="sm"
+                className="mt-3 h-8 gap-1.5 text-xs bg-primary text-primary-foreground"
+              >
+                <PlusCircle className="h-3.5 w-3.5" /> New Visitation
+              </Button>
+            </div>
+          ) : (
+            paginatedList.map((visit: any, i: number) => {
+              const bpDisplay =
+                visit.bp_systolic && visit.bp_diastolic
+                  ? `${visit.bp_systolic}/${visit.bp_diastolic} mmHg`
+                  : visit.blood_pressure || "N/A"
+
+              const fetalHeart =
+                (visit.fetal_heart_tone_bpm ?? visit.fetal_heart_rate)
+                  ? `${visit.fetal_heart_tone_bpm ?? visit.fetal_heart_rate} bpm`
+                  : "N/A"
+
+              const fundicHeight =
+                (visit.fundic_height_cm ?? visit.fundal_height)
+                  ? `${visit.fundic_height_cm ?? visit.fundal_height} cm`
+                  : "N/A"
+
+              const weightDisplay =
+                (visit.weight_kg ?? visit.weight)
+                  ? `${visit.weight_kg ?? visit.weight} kg`
+                  : "N/A"
+
+              const trimesterDisplay = visit.trimester
+                ? `${visit.trimester}${visit.trimester === 1 ? "st" : visit.trimester === 2 ? "nd" : "rd"} Trimester`
+                : "N/A"
+
+              const hasDangerSigns = Boolean(
+                visit.has_vaginal_bleeding ||
+                visit.has_pallor ||
+                visit.has_edema ||
+                visit.has_fever ||
+                (visit.danger_signs_observed && visit.danger_signs_observed.trim())
+              )
+
+              return (
+                <div
+                  key={visit.visit_id || visit.id || i}
+                  className="flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/20"
+                  onClick={() => onViewRecord(visit)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground">
+                        {formatDate(visit.visit_date)}
+                      </h4>
+                      <span className="text-[11px] text-muted-foreground">
+                        {trimesterDisplay}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <RiskBadge
+                        risk={
+                          visit.risk_level_assessed ||
+                          visit.risk_level ||
+                          defaultRisk
+                        }
+                      />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-foreground">
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                          <DropdownMenuItem onClick={() => onViewRecord(visit)} className="cursor-pointer text-xs">View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onEditRecord ? onEditRecord(visit) : onViewRecord(visit)} className="cursor-pointer text-xs">Edit Record</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onDeleteRecord ? onDeleteRecord(visit) : onViewRecord(visit)} className="cursor-pointer text-xs text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-2">
+                      <span className="text-[10px] text-muted-foreground">Blood Pressure</span>
+                      <span className="font-semibold text-foreground">{bpDisplay}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-2">
+                      <span className="text-[10px] text-muted-foreground">FHT & Presentation</span>
+                      <span className="font-medium text-foreground">
+                        {fetalHeart} • {visit.fetal_presentation || "Cephalic"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-2">
+                      <span className="text-[10px] text-muted-foreground">Fundic Ht / Weight</span>
+                      <span className="font-medium text-foreground">
+                        {fundicHeight} / {weightDisplay}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-2">
+                      <span className="text-[10px] text-muted-foreground">Signs & Symptoms</span>
+                      {hasDangerSigns ? (
+                        <div className="flex flex-wrap items-center gap-1">
+                          {visit.has_vaginal_bleeding && (
+                            <span className="rounded-sm bg-red-500/10 px-1 py-0 text-[10px] font-medium text-red-600">
+                              Bleeding
+                            </span>
+                          )}
+                          {visit.has_pallor && (
+                            <span className="rounded-sm bg-amber-500/10 px-1 py-0 text-[10px] font-medium text-amber-600">
+                              Pallor
+                            </span>
+                          )}
+                          {visit.has_edema && (
+                            <span className="rounded-sm bg-amber-500/10 px-1 py-0 text-[10px] font-medium text-amber-600">
+                              Edema
+                            </span>
+                          )}
+                          {visit.has_fever && (
+                            <span className="rounded-sm bg-red-500/10 px-1 py-0 text-[10px] font-medium text-red-600">
+                              Fever
+                            </span>
+                          )}
+                          {visit.danger_signs_observed && (
+                            <span className="text-[10px] text-muted-foreground line-clamp-1">
+                              {visit.danger_signs_observed}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">None reported</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
           <div className="min-w-[900px]">
             <Table>
-              <TableHeader className="bg-card dark:bg-[#111]">
-                <TableRow className="border-sidebar-border hover:bg-transparent">
-                  <TableHead className="h-9 w-[15%] py-2 pl-4 text-xs font-medium text-foreground dark:text-white">
+              <TableHeader className="bg-muted/40">
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="h-9 w-[15%] py-2 pl-4 text-xs font-medium text-foreground">
                     Visit Date
                   </TableHead>
-                  <TableHead className="h-9 w-[10%] py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 w-[10%] py-2 text-xs font-medium text-foreground">
                     Trimester
                   </TableHead>
-                  <TableHead className="h-9 w-[15%] py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 w-[15%] py-2 text-xs font-medium text-foreground">
                     Blood Pressure
                   </TableHead>
-                  <TableHead className="h-9 w-[15%] py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 w-[15%] py-2 text-xs font-medium text-foreground">
                     FHT & Presentation
                   </TableHead>
-                  <TableHead className="h-9 w-[15%] py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 w-[15%] py-2 text-xs font-medium text-foreground">
                     Fundic Height
                   </TableHead>
-                  <TableHead className="h-9 w-[10%] py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 w-[10%] py-2 text-xs font-medium text-foreground">
                     Weight
                   </TableHead>
-                  <TableHead className="h-9 w-[15%] py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 w-[15%] py-2 text-xs font-medium text-foreground">
                     Risk & Symptoms
                   </TableHead>
                   <TableHead className="h-9 w-12 py-2"></TableHead>
@@ -298,7 +440,7 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
                     return (
                       <TableRow
                         key={visit.visit_id || visit.id || i}
-                        className="cursor-pointer border-sidebar-border transition-colors hover:bg-accent dark:hover:bg-white/5"
+                        className="group cursor-pointer border-border transition-colors hover:bg-accent/50"
                         onClick={() => onViewRecord(visit)}
                       >
                         <TableCell className="py-2 pl-4 text-xs font-medium text-foreground dark:text-white">
@@ -397,7 +539,7 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
         </div>
 
         {filteredList.length > pageSize && (
-          <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1 text-xs text-muted-foreground">
             <span>
               Showing {(currentPage - 1) * pageSize + 1} to{" "}
               {Math.min(currentPage * pageSize, filteredList.length)} of{" "}

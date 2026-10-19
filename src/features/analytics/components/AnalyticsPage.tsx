@@ -278,7 +278,7 @@ export function AnalyticsPage() {
             </div>
             <div className="w-full overflow-x-auto px-2">
               <Table>
-                <TableHeader className="bg-muted/50">
+                <TableHeader className="bg-muted/40">
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead className="w-[80px]">Rank</TableHead>
                     <TableHead>Location</TableHead>
@@ -317,7 +317,7 @@ export function AnalyticsPage() {
             </div>
             <div className="w-full overflow-x-auto px-2">
               <Table>
-                <TableHeader className="bg-muted/50">
+                <TableHeader className="bg-muted/40">
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead>Partner Name</TableHead>
                     <TableHead className="text-right">Link Clicks</TableHead>

@@ -20,7 +20,16 @@ import {
   Users,
   UserCheck,
   UserX,
+  Clock,
+  Baby,
 } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   extractRiskLevel,
   getRiskVariant,
@@ -256,39 +265,79 @@ export function MothersPage() {
     <div className="relative flex h-full w-full items-start overflow-hidden">
       <div className="relative flex h-full w-full min-w-0 flex-col overflow-y-auto text-foreground">
         <div className="sticky top-0 z-10 flex flex-col gap-4 border-b border-border bg-background p-4 pr-4 pb-4 pl-3 md:border-none">
-          <div className="-mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="w-full md:w-max"
-            >
-              <TabsList className="h-9 w-full justify-start gap-1 rounded-lg border border-border bg-muted p-1 *:flex-1 md:w-max md:*:flex-initial">
-                <TabsTrigger
-                  value="all"
-                  className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
-                >
-                  All Mothers
-                </TabsTrigger>
-                <TabsTrigger
-                  value="high-risk"
-                  className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
-                >
-                  High Risk Profiles
-                </TabsTrigger>
-                <TabsTrigger
-                  value="triage"
-                  className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
-                >
-                  Pending Triage
-                </TabsTrigger>
-                <TabsTrigger
-                  value="postpartum"
-                  className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
-                >
-                  Postpartum
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <div className="w-full shrink-0">
+            <div className="sm:hidden mb-2 w-full">
+              <Select value={activeTab} onValueChange={setActiveTab}>
+                <SelectTrigger className="w-full h-10 px-3 rounded-xl border border-border bg-card shadow-xs text-xs font-semibold text-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="w-[calc(100vw-1.5rem)] rounded-xl border-border shadow-lg">
+                  <SelectItem value="all">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <Users className="h-4 w-4 text-primary" />
+                      <span>All Mothers</span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="high-risk">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      <span>High Risk Profiles</span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="triage">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <Clock className="h-4 w-4 text-primary" />
+                      <span>Pending Triage</span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="postpartum">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <Baby className="h-4 w-4 text-primary" />
+                      <span>Postpartum</span>
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="-mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="w-full md:w-max"
+              >
+                <TabsList className="inline-flex h-10 w-max min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/80 p-1 md:min-w-0">
+                  <TabsTrigger
+                    value="all"
+                    className="h-full rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1.5"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    <span>All Mothers</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="high-risk"
+                    className="h-full rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1.5"
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                    <span>High Risk Profiles</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="triage"
+                    className="h-full rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1.5"
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>Pending Triage</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="postpartum"
+                    className="h-full rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1.5"
+                  >
+                    <Baby className="h-3.5 w-3.5" />
+                    <span>Postpartum</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </div>
 
           <div className="flex flex-col items-start justify-between gap-4 xl:flex-row xl:items-center">

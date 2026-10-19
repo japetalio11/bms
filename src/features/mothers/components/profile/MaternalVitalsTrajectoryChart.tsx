@@ -187,11 +187,11 @@ export const MaternalVitalsTrajectoryChart: React.FC<
           </div>
         </div>
 
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-0.5">
+        <div className="flex w-full sm:w-auto items-center overflow-x-auto [scrollbar-width:none] gap-1 rounded-lg border border-border bg-muted p-0.5">
           <button
             type="button"
             onClick={() => setMetricTab("bp")}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+            className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
               metricTab === "bp"
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
@@ -203,7 +203,7 @@ export const MaternalVitalsTrajectoryChart: React.FC<
           <button
             type="button"
             onClick={() => setMetricTab("weight")}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+            className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
               metricTab === "weight"
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
@@ -215,7 +215,7 @@ export const MaternalVitalsTrajectoryChart: React.FC<
           <button
             type="button"
             onClick={() => setMetricTab("fundic")}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+            className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
               metricTab === "fundic"
                 ? "bg-card text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"

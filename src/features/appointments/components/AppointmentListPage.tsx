@@ -19,8 +19,17 @@ import {
   ChevronsRight,
   Filter,
   CalendarDays,
+  Calendar,
+  XCircle,
   Loader2,
 } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -466,42 +475,88 @@ export function AppointmentListPage() {
         onTouchEnd={onTouchEndHandler}
       >
         <div className="sticky top-0 z-10 flex flex-col gap-4 border-b border-border bg-background p-4 pr-4 pb-4 pl-3 md:border-none">
-          <div className="-mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <Tabs
-              value={activeTab}
-              onValueChange={(val) => {
-                setActiveTab(val)
-                setCurrentPage(1)
-              }}
-              className="w-full md:w-max"
-            >
-              <TabsList className="h-9 w-full justify-start gap-1 rounded-lg border border-border bg-muted p-1 *:flex-1 md:w-max md:*:flex-initial">
-                <TabsTrigger
-                  value="all"
-                  className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
-                >
-                  All / Queue
-                </TabsTrigger>
-                <TabsTrigger
-                  value="upcoming"
-                  className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
-                >
-                  Upcoming
-                </TabsTrigger>
-                <TabsTrigger
-                  value="completed"
-                  className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
-                >
-                  Completed
-                </TabsTrigger>
-                <TabsTrigger
-                  value="cancelled"
-                  className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs"
-                >
-                  Cancelled
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <div className="w-full shrink-0">
+            <div className="sm:hidden mb-2 w-full">
+              <Select
+                value={activeTab}
+                onValueChange={(val) => {
+                  setActiveTab(val)
+                  setCurrentPage(1)
+                }}
+              >
+                <SelectTrigger className="w-full h-10 px-3 rounded-xl border border-border bg-card shadow-xs text-xs font-semibold text-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="w-[calc(100vw-1.5rem)] rounded-xl border-border shadow-lg">
+                  <SelectItem value="all">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <Calendar className="h-4 w-4 text-primary" />
+                      <span>All / Queue</span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="upcoming">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      <span>Upcoming</span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="completed">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <span>Completed</span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="cancelled">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <XCircle className="h-4 w-4 text-red-500" />
+                      <span>Cancelled</span>
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="-mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <Tabs
+                value={activeTab}
+                onValueChange={(val) => {
+                  setActiveTab(val)
+                  setCurrentPage(1)
+                }}
+                className="w-full md:w-max"
+              >
+                <TabsList className="inline-flex h-10 w-max min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/80 p-1 md:min-w-0">
+                  <TabsTrigger
+                    value="all"
+                    className="h-full rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1.5"
+                  >
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>All / Queue</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="upcoming"
+                    className="h-full rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1.5"
+                  >
+                    <Clock className="h-3.5 w-3.5 text-blue-500" />
+                    <span>Upcoming</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="completed"
+                    className="h-full rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1.5"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                    <span>Completed</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="cancelled"
+                    className="h-full rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs shrink-0 whitespace-nowrap flex items-center gap-1.5"
+                  >
+                    <XCircle className="h-3.5 w-3.5 text-red-500" />
+                    <span>Cancelled</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </div>
 
           <div className="flex flex-col items-start justify-between gap-4 xl:flex-row xl:items-center">

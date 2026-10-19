@@ -285,6 +285,31 @@ export function UploadDocumentModal({
             </div>
 
             <div className="flex min-w-0 flex-col gap-1.5">
+              <Label htmlFor="doc-security" className="text-xs font-medium">
+                Security Level
+              </Label>
+              <Select value={securityLevel} onValueChange={setSecurityLevel}>
+                <SelectTrigger
+                  id="doc-security"
+                  className="h-9 w-full min-w-0 text-xs"
+                >
+                  <SelectValue placeholder="Select Security Level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Confidential">
+                    Confidential
+                  </SelectItem>
+                  <SelectItem value="Public">
+                    Public
+                  </SelectItem>
+                  <SelectItem value="Restricted">
+                    Restricted
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex min-w-0 flex-col gap-1.5">
               <Label htmlFor="doc-patient" className="text-xs font-medium">
                 Associated Mother / Patient
               </Label>

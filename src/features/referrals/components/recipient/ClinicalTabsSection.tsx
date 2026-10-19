@@ -264,8 +264,8 @@ export function ClinicalTabsSection({
 
                   <div className="hidden sm:block overflow-x-auto">
                     <Table className="w-full">
-                      <TableHeader>
-                        <TableRow className="border-border bg-muted/20 hover:bg-transparent">
+                      <TableHeader className="bg-muted/40">
+                        <TableRow className="border-border hover:bg-transparent">
                           <TableHead className="w-[14%] min-w-[110px] pl-5 sm:pl-6 pr-4 py-3 text-xs font-bold">Date</TableHead>
                           <TableHead className="w-[10%] min-w-[80px] px-4 py-3 text-xs font-bold">Trimester</TableHead>
                           <TableHead className="w-[10%] min-w-[80px] px-4 py-3 text-xs font-bold">AOG</TableHead>
@@ -408,8 +408,8 @@ export function ClinicalTabsSection({
 
                   <div className="hidden sm:block overflow-x-auto">
                     <Table className="w-full">
-                      <TableHeader>
-                        <TableRow className="border-border bg-muted/20 hover:bg-transparent">
+                      <TableHeader className="bg-muted/40">
+                        <TableRow className="border-border hover:bg-transparent">
                           <TableHead className="w-[18%] min-w-[120px] pl-5 sm:pl-6 pr-4 py-3 text-xs font-bold">Date</TableHead>
                           <TableHead className="w-[26%] min-w-[160px] px-4 py-3 text-xs font-bold">Investigation Type</TableHead>
                           <TableHead className="w-[18%] min-w-[120px] px-4 py-3 text-xs font-bold">Result Finding</TableHead>
@@ -502,8 +502,8 @@ export function ClinicalTabsSection({
               ) : (
                 <div className="overflow-x-auto">
                   <Table className="w-full">
-                    <TableHeader>
-                      <TableRow className="border-border bg-muted/20 hover:bg-transparent">
+                    <TableHeader className="bg-muted/40">
+                      <TableRow className="border-border hover:bg-transparent">
                         <TableHead className="w-[20%] min-w-[130px] pl-5 sm:pl-6 pr-4 py-3 text-xs font-bold">Date Dispensed</TableHead>
                         <TableHead className="w-[32%] min-w-[180px] px-4 py-3 text-xs font-bold">Medication / Supplement</TableHead>
                         <TableHead className="w-[20%] min-w-[130px] px-4 py-3 text-xs font-bold">Dosage & Quantity</TableHead>

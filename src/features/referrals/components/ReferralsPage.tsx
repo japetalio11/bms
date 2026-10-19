@@ -22,10 +22,18 @@ import {
   ChevronsRight,
   Building2,
   FileCheck,
+  Truck,
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -331,7 +339,53 @@ export function ReferralsPage() {
         onTouchEnd={onTouchEndHandler}
       >
         <div className="sticky top-0 z-10 flex flex-col gap-4 border-b border-border bg-background p-4 pr-4 pb-4 pl-3 md:border-none">
-          <div className="-mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="sm:hidden">
+            <Select
+              value={activeTab}
+              onValueChange={(val) => {
+                setActiveTab(val)
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger className="h-10 w-full rounded-xl border-border bg-card text-xs font-semibold shadow-2xs">
+                <SelectValue placeholder="Select queue view" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>Today's Queue</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="accepted">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>Accepted</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="pending">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Pending</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="in-transit">
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-3.5 w-3.5 text-sky-500" />
+                    <span>In Transit</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="admitted">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-3.5 w-3.5 text-purple-500" />
+                    <span>Admitted</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="-mb-2 hidden w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] sm:block [&::-webkit-scrollbar]:hidden">
             <Tabs
               value={activeTab}
               onValueChange={(val) => {
@@ -340,35 +394,40 @@ export function ReferralsPage() {
               }}
               className="w-full md:w-max"
             >
-              <TabsList className="h-9 w-full justify-start gap-1 rounded-md border border-border bg-muted p-1 *:flex-1 md:w-max md:*:flex-initial">
+              <TabsList className="inline-flex h-10 w-max min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/80 p-1 md:min-w-0">
                 <TabsTrigger
                   value="today"
-                  className="h-full rounded-sm border border-transparent px-2 py-1 text-xs font-medium transition-all"
+                  className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
                 >
+                  <Clock className="h-3.5 w-3.5" />
                   Today's Queue
                 </TabsTrigger>
                 <TabsTrigger
                   value="accepted"
-                  className="h-full rounded-sm border border-transparent px-2 py-1 text-xs font-medium transition-all"
+                  className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
                 >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
                   Accepted
                 </TabsTrigger>
                 <TabsTrigger
                   value="pending"
-                  className="h-full rounded-sm border border-transparent px-2 py-1 text-xs font-medium transition-all"
+                  className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
                 >
+                  <AlertTriangle className="h-3.5 w-3.5" />
                   Pending
                 </TabsTrigger>
                 <TabsTrigger
                   value="in-transit"
-                  className="h-full rounded-sm border border-transparent px-2 py-1 text-xs font-medium transition-all"
+                  className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
                 >
+                  <Truck className="h-3.5 w-3.5" />
                   In Transit
                 </TabsTrigger>
                 <TabsTrigger
                   value="admitted"
-                  className="h-full rounded-sm border border-transparent px-2 py-1 text-xs font-medium transition-all"
+                  className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
                 >
+                  <Building2 className="h-3.5 w-3.5" />
                   Admitted
                 </TabsTrigger>
               </TabsList>
@@ -837,10 +896,10 @@ export function ReferralsPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
+                <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
                   <div className="min-w-[1100px]">
                     <Table>
-                      <TableHeader className="bg-muted/50">
+                      <TableHeader className="bg-muted/40">
                         <TableRow className="border-border hover:bg-transparent">
                           <TableHead className="w-12 pl-4 text-center">
                             <Checkbox
@@ -852,25 +911,25 @@ export function ReferralsPage() {
                               className="border-border"
                             />
                           </TableHead>
-                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                             Mother Name
                           </TableHead>
-                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                             Initiated At
                           </TableHead>
-                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                             Risk Flag
                           </TableHead>
-                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                             Status
                           </TableHead>
-                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                             Transfer Record Link
                           </TableHead>
-                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                             Transfer Code
                           </TableHead>
-                          <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                          <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                             Destination Facility
                           </TableHead>
                           <TableHead className="w-12"></TableHead>

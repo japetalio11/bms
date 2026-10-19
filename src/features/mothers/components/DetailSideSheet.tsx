@@ -199,7 +199,7 @@ export function DetailSideSheet({
             <h2 className="text-sm font-semibold text-foreground">
               {getHeaderTitle()}
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {type === "appointment" && (() => {
                 const apptDate =
                   data.appointment_date || data.appointmentDateTime || data.date

@@ -152,9 +152,9 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
 
     return (
       <div className="mt-2 flex flex-col gap-4">
-        <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
-          <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto">
-            <div className="relative w-[200px]">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <div className="relative w-full sm:w-[220px]">
               <Search className="absolute top-2.5 left-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 value={searchQuery}
@@ -164,7 +164,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
               />
             </div>
           </div>
-          <div className="flex w-full shrink-0 items-center gap-2 xl:w-auto">
+          <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
             <Button
               variant="outline"
               onClick={handleExportCSV}
@@ -191,21 +191,95 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-md border border-sidebar-border bg-background dark:bg-black">
+        <div className="flex flex-col gap-3 md:hidden">
+          {filteredList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 p-8 text-center">
+              <p className="text-xs text-muted-foreground">No appointments scheduled</p>
+              <Button
+                onClick={onNewRecord}
+                size="sm"
+                className="mt-3 h-8 gap-1.5 text-xs bg-primary text-primary-foreground"
+              >
+                <PlusCircle className="h-3.5 w-3.5" /> New Appointment
+              </Button>
+            </div>
+          ) : (
+            paginatedList.map((p: any, i: number) => {
+              const apptDate = p.appointment_date || p.appointmentDateTime || p.date
+              const hasEncounter = checkHasEncounter(apptDate)
+              const effectiveStatus = getEffectiveAppointmentStatus(
+                p.status || p.appointmentStatus,
+                apptDate,
+                hasEncounter
+              )
+
+              return (
+                <div
+                  key={p.appointment_id || p.id || i}
+                  className="flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/20"
+                  onClick={() => onViewRecord(p)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground">
+                        {p.appointment_date ? formatDate(p.appointment_date) : "N/A"}
+                      </h4>
+                      <span className="text-[11px] text-muted-foreground">
+                        {p.appointment_time || "Time not specified"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      {getStatusBadge(effectiveStatus)}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-foreground">
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                          <DropdownMenuItem onClick={() => onViewRecord(p)} className="cursor-pointer text-xs">View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onEditRecord ? onEditRecord(p) : onViewRecord(p)} className="cursor-pointer text-xs">Edit Record</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onDeleteRecord ? onDeleteRecord(p) : onViewRecord(p)} className="cursor-pointer text-xs text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-2">
+                      <span className="text-[10px] text-muted-foreground">Type</span>
+                      <span className="font-medium text-foreground">
+                        {p.appointment_type || p.type || "Prenatal Visit"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-2">
+                      <span className="text-[10px] text-muted-foreground">Reason / Clinical Notes</span>
+                      <span className="font-medium text-foreground line-clamp-1">
+                        {p.reason || "Standard Checkup"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
           <div className="min-w-[900px]">
             <Table>
-              <TableHeader className="bg-card dark:bg-[#111]">
-                <TableRow className="border-sidebar-border hover:bg-transparent">
-                  <TableHead className="h-9 py-2 pl-4 text-xs font-medium text-foreground dark:text-white">
+              <TableHeader className="bg-muted/40">
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="h-9 py-2 pl-4 text-xs font-medium text-foreground">
                     Date & Time
                   </TableHead>
-                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground">
                     Type
                   </TableHead>
-                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground">
                     Reason
                   </TableHead>
-                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground">
                     Status
                   </TableHead>
                   <TableHead className="h-9 w-12 py-2"></TableHead>
@@ -236,7 +310,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
                     return (
                       <TableRow
                         key={p.appointment_id || p._id || p.id || i}
-                        className="cursor-pointer border-sidebar-border transition-colors hover:bg-accent dark:hover:bg-white/5"
+                        className="group cursor-pointer border-border transition-colors hover:bg-accent/50"
                         onClick={() => onViewRecord(recordWithStatus)}
                       >
                         <TableCell className="py-2 pl-4 text-xs font-medium text-foreground dark:text-white">
@@ -312,7 +386,7 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
         </div>
 
         {filteredList.length > pageSize && (
-          <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1 text-xs text-muted-foreground">
             <span>
               Showing {(currentPage - 1) * pageSize + 1} to{" "}
               {Math.min(currentPage * pageSize, filteredList.length)} of{" "}

@@ -1,12 +1,31 @@
 import { useState, useEffect, useMemo } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ChevronLeft, Loader2, AlertTriangle, GitMerge } from "lucide-react"
+import {
+  ChevronLeft,
+  Loader2,
+  AlertTriangle,
+  GitMerge,
+  Baby,
+  Clock,
+  HeartPulse,
+  Calendar,
+  FlaskConical,
+  Pill,
+  TrendingUp,
+} from "lucide-react"
 import { useLiveQuery } from "dexie-react-hooks"
 import { db } from "@/lib/db/bmsDatabase"
 import { syncEngine } from "@/lib/sync/syncEngine"
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useMotherProfile } from "../hooks/useMotherProfile"
 import { ConflictResolutionModal } from "@/features/sync/components/ConflictResolutionModal"
 import { ProfileHeader } from "./profile/ProfileHeader"
@@ -242,7 +261,7 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
   }, [mother, pregnancies, prenatalVisits])
 
   const tabTriggerClass =
-    "text-xs font-medium data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground rounded-md px-3 py-1 h-full transition-all"
+    "text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 text-muted-foreground hover:text-foreground rounded-lg px-3 sm:px-3.5 py-1.5 h-full shrink-0 whitespace-nowrap transition-all flex items-center gap-1.5"
 
   if (isLoading) {
     return (
@@ -256,8 +275,8 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
   return (
     <div className="relative flex h-full w-full items-start overflow-hidden bg-background">
       <div className="relative flex h-full w-full min-w-0 flex-col overflow-y-auto text-foreground">
-        <div className="flex flex-col gap-4 p-4 pr-4 pb-24 pl-3 md:pb-4">
-          <div className="-mb-2 flex items-center justify-between">
+        <div className="flex flex-col gap-4 p-3 sm:p-4 pb-24 md:pb-4">
+          <div className="-mb-2 flex flex-wrap items-center justify-between gap-2">
             <Button
               variant="ghost"
               size="sm"
@@ -327,36 +346,145 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
             onOverrideRiskClick={() => setOverrideRiskModalOpen(true)}
           />
 
-          <div className="sticky top-0 z-10 -mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto bg-background pt-2 pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="w-full md:w-max"
-            >
-              <TabsList className="h-9 w-full justify-start gap-1 rounded-lg border border-border bg-muted p-1 *:flex-1 md:w-max md:*:flex-initial">
-                <TabsTrigger value="pregnancy" className={tabTriggerClass}>
-                  Pregnancy
-                </TabsTrigger>
-                <TabsTrigger value="encounters" className={tabTriggerClass}>
-                  Visitation
-                </TabsTrigger>
-                <TabsTrigger value="delivery" className={tabTriggerClass}>
-                  Delivery & Newborns
-                </TabsTrigger>
-                <TabsTrigger value="appointments" className={tabTriggerClass}>
-                  Appointments
-                </TabsTrigger>
-                <TabsTrigger value="laboratory" className={tabTriggerClass}>
-                  Laboratory Records
-                </TabsTrigger>
-                <TabsTrigger value="prescriptions" className={tabTriggerClass}>
-                  Prescriptions & Supplements
-                </TabsTrigger>
-                <TabsTrigger value="trends" className={tabTriggerClass}>
-                  Clinical Trends
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+          <div className="sticky top-0 z-20 -mb-2 w-full shrink-0 bg-background/95 backdrop-blur-md pt-2 pb-2">
+            <div className="sm:hidden mb-2 w-full">
+              <Select value={activeTab} onValueChange={setActiveTab}>
+                <SelectTrigger className="w-full h-10 px-3 rounded-xl border border-border bg-card shadow-xs text-xs font-semibold text-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="w-[calc(100vw-1.5rem)] rounded-xl border-border shadow-lg">
+                  <SelectItem value="pregnancy">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <Baby className="h-4 w-4 text-primary" />
+                      <span>Pregnancy History</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+                        ({pregnancies?.length ?? 0})
+                      </span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="encounters">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <Clock className="h-4 w-4 text-primary" />
+                      <span>Visitation Encounters</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+                        ({prenatalVisits?.length ?? 0})
+                      </span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="delivery">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <HeartPulse className="h-4 w-4 text-primary" />
+                      <span>Delivery & Newborns</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+                        ({deliveries?.length ?? 0})
+                      </span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="appointments">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <Calendar className="h-4 w-4 text-primary" />
+                      <span>Appointments</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+                        ({appointments?.length ?? 0})
+                      </span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="laboratory">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <FlaskConical className="h-4 w-4 text-primary" />
+                      <span>Laboratory Records</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+                        ({labRecords?.length ?? 0})
+                      </span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="prescriptions">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <Pill className="h-4 w-4 text-primary" />
+                      <span>Prescriptions & Supplements</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+                        ({supplements?.length ?? 0})
+                      </span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="trends">
+                    <span className="flex items-center gap-2 text-xs font-medium">
+                      <TrendingUp className="h-4 w-4 text-primary" />
+                      <span>Clinical Trends & Trajectories</span>
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-full shrink-0 [scrollbar-width:none] overflow-x-auto [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="w-full md:w-max"
+              >
+                <TabsList className="inline-flex h-10 w-max min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/80 p-1 md:min-w-0">
+                  <TabsTrigger value="pregnancy" className={tabTriggerClass}>
+                    <Baby className="h-3.5 w-3.5 text-primary/70" />
+                    <span>Pregnancy</span>
+                    {pregnancies?.length > 0 && (
+                      <span className="rounded-full bg-muted border border-border/60 px-1.5 py-0.2 text-[10px] font-semibold text-muted-foreground">
+                        {pregnancies.length}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="encounters" className={tabTriggerClass}>
+                    <Clock className="h-3.5 w-3.5 text-primary/70" />
+                    <span>Visitation</span>
+                    {prenatalVisits?.length > 0 && (
+                      <span className="rounded-full bg-muted border border-border/60 px-1.5 py-0.2 text-[10px] font-semibold text-muted-foreground">
+                        {prenatalVisits.length}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="delivery" className={tabTriggerClass}>
+                    <HeartPulse className="h-3.5 w-3.5 text-primary/70" />
+                    <span>Delivery & Newborns</span>
+                    {(deliveries?.length > 0 || newborns?.length > 0) && (
+                      <span className="rounded-full bg-muted border border-border/60 px-1.5 py-0.2 text-[10px] font-semibold text-muted-foreground">
+                        {(deliveries?.length || 0) + (newborns?.length || 0)}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="appointments" className={tabTriggerClass}>
+                    <Calendar className="h-3.5 w-3.5 text-primary/70" />
+                    <span>Appointments</span>
+                    {appointments?.length > 0 && (
+                      <span className="rounded-full bg-muted border border-border/60 px-1.5 py-0.2 text-[10px] font-semibold text-muted-foreground">
+                        {appointments.length}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="laboratory" className={tabTriggerClass}>
+                    <FlaskConical className="h-3.5 w-3.5 text-primary/70" />
+                    <span>Laboratory</span>
+                    {labRecords?.length > 0 && (
+                      <span className="rounded-full bg-muted border border-border/60 px-1.5 py-0.2 text-[10px] font-semibold text-muted-foreground">
+                        {labRecords.length}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="prescriptions" className={tabTriggerClass}>
+                    <Pill className="h-3.5 w-3.5 text-primary/70" />
+                    <span>Prescriptions</span>
+                    {supplements?.length > 0 && (
+                      <span className="rounded-full bg-muted border border-border/60 px-1.5 py-0.2 text-[10px] font-semibold text-muted-foreground">
+                        {supplements.length}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="trends" className={tabTriggerClass}>
+                    <TrendingUp className="h-3.5 w-3.5 text-primary/70" />
+                    <span>Clinical Trends</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </div>
 
           <div className="w-full">

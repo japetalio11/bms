@@ -1,6 +1,7 @@
 import * as React from "react"
 import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -43,7 +44,21 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Lock,
+  Globe,
+  ShieldAlert,
+  Files,
+  FlaskConical,
+  Baby,
+  ShieldCheck,
 } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { UploadDocumentModal } from "./UploadDocumentModal"
 import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
@@ -120,6 +135,32 @@ export function EhrPage() {
     } finally {
       setIsDeleting(false)
     }
+  }
+
+  const getSecurityBadge = (level?: string) => {
+    const normalized = (level || "Confidential").toLowerCase()
+    if (normalized === "public") {
+      return (
+        <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 shadow-none dark:text-emerald-400">
+          <Globe className="h-3 w-3" />
+          Public
+        </Badge>
+      )
+    }
+    if (normalized === "restricted") {
+      return (
+        <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-medium text-purple-600 shadow-none dark:text-purple-400">
+          <ShieldAlert className="h-3 w-3" />
+          Restricted
+        </Badge>
+      )
+    }
+    return (
+      <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 shadow-none dark:text-blue-400">
+        <Lock className="h-3 w-3" />
+        {level || "Confidential"}
+      </Badge>
+    )
   }
 
   const handleDownload = (doc: EhrDocument) => {
@@ -217,32 +258,100 @@ export function EhrPage() {
       <div className="relative flex h-full w-full min-w-0 flex-col overflow-y-auto text-foreground">
         <div className="sticky top-0 z-10 flex flex-col gap-4 border-b border-border bg-background p-4 pr-4 pb-4 pl-3 md:border-none">
           <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-            <Tabs
-              value={activeTab}
-              onValueChange={(val) => {
-                setActiveTab(val)
-                setCurrentPage(1)
-              }}
-              className="w-full md:w-auto"
-            >
-              <TabsList className="h-9 w-full justify-start gap-1 rounded-md border border-border bg-muted p-1 md:w-max">
-                <TabsTrigger value="all" className="px-2.5 py-1 text-xs">
-                  All Records
-                </TabsTrigger>
-                <TabsTrigger value="protocols" className="px-2.5 py-1 text-xs">
-                  Protocols
-                </TabsTrigger>
-                <TabsTrigger value="labs" className="px-2.5 py-1 text-xs">
-                  Lab Archives
-                </TabsTrigger>
-                <TabsTrigger value="maternal" className="px-2.5 py-1 text-xs">
-                  Maternal Files
-                </TabsTrigger>
-                <TabsTrigger value="audit" className="px-2.5 py-1 text-xs">
-                  Audit & Compliance
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="w-full sm:hidden">
+              <Select
+                value={activeTab}
+                onValueChange={(val) => {
+                  setActiveTab(val)
+                  setCurrentPage(1)
+                }}
+              >
+                <SelectTrigger className="h-10 w-full rounded-xl border-border bg-card text-xs font-semibold shadow-2xs">
+                  <SelectValue placeholder="Select document view" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      <Files className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>All Records ({documents.length})</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="protocols">
+                    <div className="flex items-center gap-2">
+                      <FileCheck className="h-3.5 w-3.5 text-blue-500" />
+                      <span>Protocols ({documents.filter((d) => d.category === "Clinical Protocols").length})</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="labs">
+                    <div className="flex items-center gap-2">
+                      <FlaskConical className="h-3.5 w-3.5 text-emerald-500" />
+                      <span>Lab Archives ({documents.filter((d) => d.category === "Lab & Diagnostics").length})</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="maternal">
+                    <div className="flex items-center gap-2">
+                      <Baby className="h-3.5 w-3.5 text-purple-500" />
+                      <span>Maternal Files ({documents.filter((d) => d.category === "Maternal Records").length})</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="audit">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-3.5 w-3.5 text-amber-500" />
+                      <span>Audit & Compliance ({documents.filter((d) => d.category === "Facility Audit & Accreditation").length})</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="-mb-2 hidden w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] sm:block md:w-auto [&::-webkit-scrollbar]:hidden">
+              <Tabs
+                value={activeTab}
+                onValueChange={(val) => {
+                  setActiveTab(val)
+                  setCurrentPage(1)
+                }}
+                className="w-full md:w-auto"
+              >
+                <TabsList className="inline-flex h-10 w-max min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/80 p-1 md:min-w-0">
+                  <TabsTrigger
+                    value="all"
+                    className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
+                  >
+                    <Files className="h-3.5 w-3.5" />
+                    All Records ({documents.length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="protocols"
+                    className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
+                  >
+                    <FileCheck className="h-3.5 w-3.5" />
+                    Protocols ({documents.filter((d) => d.category === "Clinical Protocols").length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="labs"
+                    className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
+                  >
+                    <FlaskConical className="h-3.5 w-3.5" />
+                    Lab Archives ({documents.filter((d) => d.category === "Lab & Diagnostics").length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="maternal"
+                    className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
+                  >
+                    <Baby className="h-3.5 w-3.5" />
+                    Maternal Files ({documents.filter((d) => d.category === "Maternal Records").length})
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="audit"
+                    className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Audit & Compliance ({documents.filter((d) => d.category === "Facility Audit & Accreditation").length})
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
 
             <div className="flex w-full items-center justify-end gap-2 md:w-auto">
               <div className="relative w-full sm:w-[200px]">
@@ -420,17 +529,7 @@ export function EhrPage() {
                           {doc.title}
                         </h3>
                       </div>
-                      <span
-                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                          doc.securityLevel === "Public"
-                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-                            : doc.securityLevel === "Confidential"
-                              ? "border-blue-500/20 bg-blue-500/10 text-blue-500"
-                              : "border-purple-500/20 bg-purple-500/10 text-purple-500"
-                        }`}
-                      >
-                        {doc.securityLevel}
-                      </span>
+                      {getSecurityBadge(doc.securityLevel)}
                     </div>
 
                     <div className="flex flex-col gap-1.5 text-xs">
@@ -515,10 +614,10 @@ export function EhrPage() {
             )}
 
             {filteredDocuments.length > 0 && (
-              <div className="hidden overflow-x-auto rounded-md border border-border bg-card md:block">
+              <div className="hidden overflow-x-auto rounded-xl border border-border bg-card shadow-xs md:block">
                 <div className="min-w-[900px]">
                   <Table>
-                    <TableHeader className="bg-muted/50">
+                    <TableHeader className="bg-muted/40">
                       <TableRow className="border-border hover:bg-transparent">
                         <TableHead className="w-12 pl-4 text-center">
                           <Checkbox
@@ -530,22 +629,22 @@ export function EhrPage() {
                             className="border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                           />
                         </TableHead>
-                        <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                        <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                           Document Title
                         </TableHead>
-                        <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                        <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                           Category
                         </TableHead>
-                        <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                        <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                           Scope / Patient
                         </TableHead>
-                        <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                        <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                           Security Level
                         </TableHead>
-                        <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                        <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                           Format & Size
                         </TableHead>
-                        <TableHead className="text-xs font-medium whitespace-nowrap text-muted-foreground">
+                        <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">
                           Date Uploaded
                         </TableHead>
                         <TableHead className="w-12"></TableHead>
@@ -623,17 +722,7 @@ export function EhrPage() {
                             {doc.patientName}
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
-                            <span
-                              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                                doc.securityLevel === "Public"
-                                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-                                  : doc.securityLevel === "Confidential"
-                                    ? "border-blue-500/20 bg-blue-500/10 text-blue-500"
-                                    : "border-purple-500/20 bg-purple-500/10 text-purple-500"
-                              }`}
-                            >
-                              {doc.securityLevel}
-                            </span>
+                            {getSecurityBadge(doc.securityLevel)}
                           </TableCell>
                           <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
                             {doc.format} • {doc.size}
@@ -794,6 +883,7 @@ export function EhrPage() {
                     <span className="shrink-0 rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 font-mono text-[10px] text-white/90">
                       {activeDoc.format}
                     </span>
+                    {getSecurityBadge(activeDoc.securityLevel)}
                   </div>
                 </div>
 
@@ -962,9 +1052,9 @@ export function EhrPage() {
                             <span className="text-[10px] font-semibold text-zinc-500 uppercase">
                               Security Classification
                             </span>
-                            <span className="font-medium text-amber-700">
-                              {activeDoc.securityLevel}
-                            </span>
+                            <div className="pt-0.5">
+                              {getSecurityBadge(activeDoc.securityLevel)}
+                            </div>
                           </div>
                           <div className="flex flex-col gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
                             <span className="text-[10px] font-semibold text-zinc-500 uppercase">

@@ -35,7 +35,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useTheme } from "@/components/theme-provider"
-import { useLocation } from "react-router-dom"
+import { useLocation, Link } from "react-router-dom"
+import { useLiveQuery } from "dexie-react-hooks"
+import { db } from "@/lib/db/bmsDatabase"
+import { motherRepository } from "@/lib/repositories/motherRepository"
+import { userRepository } from "@/lib/repositories/userRepository"
 import { OfflineSyncBadge } from "@/components/OfflineSyncBadge"
 import { NotificationPopover } from "./NotificationPopover"
 import { CreateAppointmentModal } from "@/features/appointments/components/CreateAppointmentModal"
@@ -50,16 +54,174 @@ export function AppHeader() {
     React.useState(false)
 
   const paths = location.pathname.split("/").filter(Boolean)
-  const getBreadcrumbName = (path: string) => {
+  const motherId = paths[1] === "mothers" && paths[2] ? paths[2] : null
+  const staffId = paths[1] === "team" && paths[2] ? paths[2] : null
+
+  const extractMotherName = (rec: any) => {
+    if (!rec) return null
+    const user = rec.user || {}
+    const fullName = [
+      user.first_name || rec.first_name,
+      user.middle_name || rec.middle_name,
+      user.last_name || rec.last_name,
+    ]
+      .filter(Boolean)
+      .join(" ")
+    return fullName || rec.name || rec.full_name || null
+  }
+
+  const motherRecord = useLiveQuery(
+    async () => {
+      if (!motherId) return null
+      let m: any = await db.mothers.get(motherId)
+      if (!m) {
+        m = await db.mothers.where("mother_id").equals(motherId).first()
+      }
+      if (!m) {
+        m = await db.mothers.where("user_id").equals(motherId).first()
+      }
+      if (!m) {
+        const allM = await db.mothers.toArray()
+        m =
+          allM.find(
+            (item: any) =>
+              item.id === motherId ||
+              item._id === motherId ||
+              item.mother_id === motherId ||
+              item.user_id === motherId ||
+              item.temp_id === motherId
+          ) || null
+      }
+      return m || null
+    },
+    [motherId]
+  )
+
+  const [fetchedMotherName, setFetchedMotherName] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (!motherId) {
+      setFetchedMotherName(null)
+      return
+    }
+
+    let isMounted = true
+    const resolveMother = async () => {
+      try {
+        const res = await motherRepository.getMotherProfile(motherId)
+        if (res && isMounted) {
+          const name = extractMotherName(res)
+          if (name) setFetchedMotherName(name)
+        }
+      } catch {
+        // Fallback gracefully if offline
+      }
+    }
+
+    resolveMother()
+    return () => {
+      isMounted = false
+    }
+  }, [motherId])
+
+  const resolvedMotherName = React.useMemo(() => {
+    if (motherRecord) {
+      const name = extractMotherName(motherRecord)
+      if (name) return name
+    }
+    return fetchedMotherName
+  }, [motherRecord, fetchedMotherName])
+
+  const staffRecord = useLiveQuery(
+    async () => {
+      if (!staffId) return null
+      const staffList = await userRepository.getLocalCachedStaff()
+      return (
+        staffList.find(
+          (item: any) =>
+            item.id === staffId ||
+            item.user_id === staffId ||
+            item._id === staffId
+        ) || null
+      )
+    },
+    [staffId]
+  )
+
+  const [fetchedStaffName, setFetchedStaffName] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (!staffId) {
+      setFetchedStaffName(null)
+      return
+    }
+
+    let isMounted = true
+    const resolveStaff = async () => {
+      try {
+        const staffList = await userRepository.getAllStaff()
+        if (isMounted && Array.isArray(staffList)) {
+          const s = staffList.find(
+            (item: any) =>
+              item.id === staffId ||
+              item.user_id === staffId ||
+              item._id === staffId
+          )
+          if (s) {
+            const name =
+              [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(" ") ||
+              s.name ||
+              null
+            if (name) setFetchedStaffName(name)
+          }
+        }
+      } catch {
+        // Fallback gracefully if offline
+      }
+    }
+
+    resolveStaff()
+    return () => {
+      isMounted = false
+    }
+  }, [staffId])
+
+  const resolvedStaffName = React.useMemo(() => {
+    if (staffRecord) {
+      const name =
+        [
+          staffRecord.first_name,
+          staffRecord.middle_name,
+          staffRecord.last_name,
+        ]
+          .filter(Boolean)
+          .join(" ") ||
+        staffRecord.name ||
+        null
+      if (name) return name
+    }
+    return fetchedStaffName
+  }, [staffRecord, fetchedStaffName])
+
+  const getBreadcrumbName = (path: string, index?: number) => {
+    if (index !== undefined && index > 0 && paths[index - 1] === "mothers") {
+      return resolvedMotherName || "Mother Profile"
+    }
+    if (index !== undefined && index > 0 && paths[index - 1] === "team") {
+      return resolvedStaffName || "Staff Profile"
+    }
+
     switch (path) {
       case "dashboard":
-        return "Core Operations"
+        return "Dashboard"
       case "appointments":
         return "Appointments"
       case "calendar":
         return "Calendar"
       case "mothers":
         return "Mothers"
+      case "ehr":
+        return "EHR Records"
       case "referrals":
         return "Referrals"
       case "messages":
@@ -73,7 +235,12 @@ export function AppHeader() {
       case "help":
       case "guide":
         return "Staff User Guide"
+      case "feedback":
+        return "Feedback"
       default:
+        if (/^[0-9a-f-]{10,}$/i.test(path)) {
+          return "Profile"
+        }
         return path.charAt(0).toUpperCase() + path.slice(1)
     }
   }
@@ -93,12 +260,14 @@ export function AppHeader() {
                 <React.Fragment key={path}>
                   <BreadcrumbItem>
                     {!isLast ? (
-                      <BreadcrumbLink href={href}>
-                        {getBreadcrumbName(path)}
+                      <BreadcrumbLink asChild>
+                        <Link to={href}>
+                          {getBreadcrumbName(path, index)}
+                        </Link>
                       </BreadcrumbLink>
                     ) : (
                       <BreadcrumbPage className="text-xs">
-                        {getBreadcrumbName(path)}
+                        {getBreadcrumbName(path, index)}
                       </BreadcrumbPage>
                     )}
                   </BreadcrumbItem>
@@ -185,7 +354,7 @@ export function AppHeader() {
             <BreadcrumbItem>
               <BreadcrumbPage className="text-xs font-normal">
                 {paths.length > 0
-                  ? getBreadcrumbName(paths[paths.length - 1])
+                  ? getBreadcrumbName(paths[paths.length - 1], paths.length - 1)
                   : "Dashboard"}
               </BreadcrumbPage>
             </BreadcrumbItem>

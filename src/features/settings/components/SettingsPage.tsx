@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/select"
 
 export function SettingsPage() {
+  const [activeTab, setActiveTab] = useState("account")
   const { settings, updateSettings } = useSettings()
   const { isOnline } = useNetworkStatus()
   const [pendingQueueCount, setPendingQueueCount] = useState<number>(0)
@@ -514,32 +515,70 @@ export function SettingsPage() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col overflow-y-auto p-4 pr-4 pb-24 pl-3 md:pb-4">
-        <Tabs defaultValue="account" className="flex w-full flex-col gap-6">
-          <div className="-mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <TabsList className="h-9 w-full justify-start gap-1 rounded-md border border-border bg-muted p-1 *:flex-1 md:w-max md:*:flex-initial">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex w-full flex-col gap-6">
+          <div className="sm:hidden">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="h-10 w-full rounded-xl border-border bg-card text-xs font-semibold shadow-2xs">
+                <SelectValue placeholder="Select settings section" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="account">
+                  <div className="flex items-center gap-2">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>My Account</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="facility">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>Facility Profile</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="sync">
+                  <div className="flex items-center gap-2">
+                    <WifiOff className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Offline & Sync</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="notifications">
+                  <div className="flex items-center gap-2">
+                    <BellRing className="h-3.5 w-3.5 text-blue-500" />
+                    <span>Notifications</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="-mb-2 hidden w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] sm:block [&::-webkit-scrollbar]:hidden">
+            <TabsList className="inline-flex h-10 w-max min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/80 p-1 md:min-w-0">
               <TabsTrigger
                 value="account"
-                className="flex h-full items-center gap-2 rounded-sm border border-transparent px-3 py-1 text-xs font-medium transition-all"
+                className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
               >
-                <User className="h-3.5 w-3.5" /> My Account
+                <User className="h-3.5 w-3.5" />
+                My Account
               </TabsTrigger>
               <TabsTrigger
                 value="facility"
-                className="flex h-full items-center gap-2 rounded-sm border border-transparent px-3 py-1 text-xs font-medium transition-all"
+                className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
               >
-                <Building2 className="h-3.5 w-3.5" /> Facility Profile
+                <Building2 className="h-3.5 w-3.5" />
+                Facility Profile
               </TabsTrigger>
               <TabsTrigger
                 value="sync"
-                className="flex h-full items-center gap-2 rounded-sm border border-transparent px-3 py-1 text-xs font-medium transition-all"
+                className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
               >
-                <WifiOff className="h-3.5 w-3.5" /> Offline & Sync
+                <WifiOff className="h-3.5 w-3.5" />
+                Offline & Sync
               </TabsTrigger>
               <TabsTrigger
                 value="notifications"
-                className="flex h-full items-center gap-2 rounded-sm border border-transparent px-3 py-1 text-xs font-medium transition-all"
+                className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
               >
-                <BellRing className="h-3.5 w-3.5" /> Notifications
+                <BellRing className="h-3.5 w-3.5" />
+                Notifications
               </TabsTrigger>
             </TabsList>
           </div>

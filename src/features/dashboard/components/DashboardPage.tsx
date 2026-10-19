@@ -28,6 +28,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Calendar, AlertCircle, XCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -43,6 +51,7 @@ import { extractRiskLevel } from "@/lib/riskUtils"
 import { CreateAppointmentModal } from "@/features/appointments/components/CreateAppointmentModal"
 
 export function DashboardPage() {
+  const [activeTab, setActiveTab] = useState("today")
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
   const isMobile = useIsMobile()
   const navigate = useNavigate()
@@ -681,34 +690,74 @@ export function DashboardPage() {
           Upcoming Appointments
         </h2>
 
-        <Tabs defaultValue="today" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <TabsList className="no-scrollbar h-9 w-full justify-start gap-1 overflow-x-auto rounded-lg border border-border bg-muted p-1 *:flex-1 md:w-auto md:*:flex-initial">
-              <TabsTrigger
-                value="today"
-                className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-xs"
-              >
-                Today's Queue ({todayAppointments.length})
-              </TabsTrigger>
-              <TabsTrigger
-                value="upcoming"
-                className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-xs"
-              >
-                Upcoming ({upcomingAppointments.length})
-              </TabsTrigger>
-              <TabsTrigger
-                value="completed"
-                className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-xs"
-              >
-                Completed
-              </TabsTrigger>
-              <TabsTrigger
-                value="cancelled"
-                className="h-full rounded-md px-3 py-1 text-xs font-medium text-muted-foreground transition-all hover:text-foreground data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-xs"
-              >
-                Cancelled
-              </TabsTrigger>
-            </TabsList>
+            <div className="w-full sm:hidden">
+              <Select value={activeTab} onValueChange={setActiveTab}>
+                <SelectTrigger className="h-10 w-full rounded-xl border-border bg-card text-xs font-semibold shadow-2xs">
+                  <SelectValue placeholder="Select appointment queue" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>Today's Queue ({todayAppointments.length})</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="upcoming">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-3.5 w-3.5 text-blue-500" />
+                      <span>Upcoming ({upcomingAppointments.length})</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="completed">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      <span>Completed ({completedAppointments.length})</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="cancelled">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-3.5 w-3.5 text-rose-500" />
+                      <span>Cancelled ({cancelledAppointments.length})</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="-mb-2 hidden w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] sm:block md:w-auto [&::-webkit-scrollbar]:hidden">
+              <TabsList className="inline-flex h-10 w-max min-w-full justify-start gap-1 rounded-xl border border-border bg-muted/80 p-1 md:min-w-0">
+                <TabsTrigger
+                  value="today"
+                  className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  Today's Queue ({todayAppointments.length})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="upcoming"
+                  className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                  Upcoming ({upcomingAppointments.length})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="completed"
+                  className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Completed ({completedAppointments.length})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="cancelled"
+                  className="flex h-full shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  Cancelled ({cancelledAppointments.length})
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <div className="flex w-full shrink-0 items-center gap-2 md:w-auto">
               <Button

@@ -325,7 +325,7 @@ export function printClinicalReferralSlip(referral: any): void {
   const dateResponded = referral.date_responded ? new Date(referral.date_responded).toLocaleString() : null
 
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; color: #111827; border: 2px solid #1e293b; padding: 24px;">
+    <div style="font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; color: #111827; border: 2px solid #1e293b; padding: 24px;">
       <div style="text-align: center; border-bottom: 2px solid #1e293b; padding-bottom: 12px; margin-bottom: 16px;">
         <h3 style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #475569; margin-bottom: 4px;">Republic of the Philippines • Department of Health</h3>
         <h1 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">MATERNAL & NEONATAL TWO-WAY REFERRAL SLIP</h1>

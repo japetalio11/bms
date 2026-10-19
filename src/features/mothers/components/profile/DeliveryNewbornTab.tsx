@@ -140,7 +140,7 @@ export const DeliveryNewbornTab: React.FC<DeliveryNewbornTabProps> = React.memo(
 
     return (
       <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-xs">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
             <Input
@@ -151,7 +151,7 @@ export const DeliveryNewbornTab: React.FC<DeliveryNewbornTabProps> = React.memo(
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
@@ -173,7 +173,7 @@ export const DeliveryNewbornTab: React.FC<DeliveryNewbornTabProps> = React.memo(
             </Button>
             <Button
               size="sm"
-              className="h-8 gap-1.5 text-xs font-medium"
+              className="h-8 gap-1.5 text-xs font-medium bg-primary text-primary-foreground"
               onClick={onNewRecord}
             >
               <PlusCircle className="h-3.5 w-3.5" />
@@ -207,16 +207,121 @@ export const DeliveryNewbornTab: React.FC<DeliveryNewbornTabProps> = React.memo(
           </div>
         ) : (
           <div className="flex flex-col gap-6">
-            <div className="overflow-hidden rounded-lg border border-border bg-card">
+            <div className="flex flex-col gap-3 md:hidden">
+              {paginatedDeliveries.map((d: any) => {
+                const linkedNewborns =
+                  Array.isArray(d.newbornRecords) && d.newbornRecords.length > 0
+                    ? d.newbornRecords
+                    : newbornList.filter(
+                        (nb: any) =>
+                          nb.delivery_id === d.delivery_id || nb.delivery_id === d.id
+                      )
+
+                return (
+                  <div
+                    key={d.id || d.delivery_id}
+                    className="flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/20 text-xs"
+                    onClick={() => onViewRecord(d)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="text-sm font-semibold text-foreground">
+                          {d.delivery_date ? formatDate(d.delivery_date) : "N/A"}
+                        </h4>
+                        <span className="text-[11px] text-muted-foreground">
+                          {d.mode_of_delivery || "Normal Spontaneous (NSVD)"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-foreground">
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                            <DropdownMenuItem onClick={() => onViewRecord(d)} className="cursor-pointer text-xs">View Details</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onEditRecord ? onEditRecord(d) : onViewRecord(d)} className="cursor-pointer text-xs">Edit Record</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onDeleteRecord ? onDeleteRecord(d) : onViewRecord(d)} className="cursor-pointer text-xs text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-2">
+                        <span className="text-[10px] text-muted-foreground">Place & Attendant</span>
+                        <span className="font-medium text-foreground">{d.place_of_delivery || "Health Unit"}</span>
+                        {d.birth_attendant && (
+                          <span className="text-[10px] text-muted-foreground">Attendant: {d.birth_attendant}</span>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-2">
+                        <span className="text-[10px] text-muted-foreground">Labor & Loss</span>
+                        <span className="font-medium text-foreground">
+                          {d.duration_of_labor_hours ? `${d.duration_of_labor_hours} hrs` : "N/A"} • {d.blood_loss_ml ? `${d.blood_loss_ml} mL` : "N/A"}
+                        </span>
+                        {d.immediate_breastfeeding && (
+                          <span className="text-[10px] font-medium text-emerald-600">Immediate Breastfeeding</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 rounded-lg border border-border/60 bg-muted/30 p-2">
+                      <span className="text-[10px] text-muted-foreground">Newborns Registered ({linkedNewborns.length})</span>
+                      <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        {linkedNewborns.length > 0 ? (
+                          linkedNewborns.map((nb: any, idx: number) => (
+                            <div
+                              key={nb.id || nb.newborn_id || idx}
+                              className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-0.5 text-[11px]"
+                            >
+                              <span className="font-medium text-foreground">
+                                {nb.sex} • {nb.birth_weight_kg} kg
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] px-1 py-0 font-medium ${getApgarBadgeStyle(Number(nb.apgar_score || 0))}`}
+                              >
+                                APGAR {nb.apgar_score}
+                              </Badge>
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-muted-foreground text-[11px]">No infant profiles logged</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {(d.delivery_complications || (d.maternal_outcome && d.maternal_outcome !== "Alive and Well")) && (
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                        {d.delivery_complications && (
+                          <span className="text-amber-600 dark:text-amber-400">
+                            Complication: {d.delivery_complications}
+                          </span>
+                        )}
+                        {d.maternal_outcome && d.maternal_outcome !== "Alive and Well" && (
+                          <Badge variant="outline" className="border-red-500/30 bg-red-500/10 text-[10px] text-red-600">
+                            {d.maternal_outcome}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
               <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/40 text-[11px] font-semibold text-muted-foreground">
-                    <TableHead className="w-[130px]">Delivery Date</TableHead>
-                    <TableHead>Mode & Facility</TableHead>
-                    <TableHead>Maternal Stats</TableHead>
-                    <TableHead>Newborn Details</TableHead>
-                    <TableHead>Complications</TableHead>
-                    <TableHead className="w-[50px] text-right" />
+                <TableHeader className="bg-muted/40">
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="w-[130px] text-xs font-medium whitespace-nowrap text-foreground">Delivery Date</TableHead>
+                    <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">Mode & Facility</TableHead>
+                    <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">Maternal Stats</TableHead>
+                    <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">Newborn Details</TableHead>
+                    <TableHead className="text-xs font-medium whitespace-nowrap text-foreground">Complications</TableHead>
+                    <TableHead className="w-[50px] text-right text-xs font-medium whitespace-nowrap text-foreground" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -232,7 +337,7 @@ export const DeliveryNewbornTab: React.FC<DeliveryNewbornTabProps> = React.memo(
                     return (
                       <TableRow
                         key={d.id || d.delivery_id}
-                        className="cursor-pointer text-xs hover:bg-muted/40 transition-colors"
+                        className="group cursor-pointer border-border transition-colors hover:bg-accent/50 text-xs"
                         onClick={() => onViewRecord(d)}
                       >
                         <TableCell className="font-medium text-foreground whitespace-nowrap">
@@ -341,7 +446,7 @@ export const DeliveryNewbornTab: React.FC<DeliveryNewbornTabProps> = React.memo(
             </div>
 
             {filteredList.length > pageSize && (
-              <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1 text-xs text-muted-foreground">
                 <span>
                   Showing {(currentPage - 1) * pageSize + 1} to{" "}
                   {Math.min(currentPage * pageSize, filteredList.length)} of{" "}

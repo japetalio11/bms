@@ -244,10 +244,10 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
     }, [motherData])
 
     return (
-      <div className="relative flex flex-col gap-6 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs">
+      <div className="relative flex flex-col gap-6 rounded-xl border border-border bg-card p-4 sm:p-5 text-card-foreground shadow-xs">
         <div className="flex w-full flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          <div className="flex items-center gap-4">
-            <div className="group relative">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-4 w-full md:w-auto">
+            <div className="group relative shrink-0">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-primary/10 shadow-xs">
                 {avatarUrl ? (
                   <img
@@ -279,12 +279,12 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
                 <Pencil className="h-2.5 w-2.5" />
               </button>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-3">
-                <h2 className="text-2xl leading-none font-bold text-foreground">
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <h2 className="text-xl sm:text-2xl leading-tight font-bold text-foreground break-words">
                   {name}
                 </h2>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {getRiskBadge(risk)}
                   {onOverrideRiskClick && (
                     <button
@@ -329,16 +329,16 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
             </div>
           </div>
 
-          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center md:flex-nowrap">
             {isAdmin && onAssignStaffClick && (
               <Button
                 onClick={onAssignStaffClick}
                 variant="outline"
                 size="sm"
-                className="h-9 flex-1 gap-1.5 border-primary/30 bg-primary/5 px-3 text-xs font-medium text-primary hover:bg-primary/10 md:flex-none"
+                className="h-9 gap-1.5 border-primary/30 bg-primary/5 px-2.5 text-xs font-medium text-primary hover:bg-primary/10 justify-center truncate sm:flex-none"
               >
-                <UserCheck className="h-3.5 w-3.5" />
-                {assignedStaff ? "Change Staff" : "Assign Staff"}
+                <UserCheck className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{assignedStaff ? "Change Staff" : "Assign Staff"}</span>
               </Button>
             )}
             {onExportChartClick && (
@@ -346,10 +346,10 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
                 onClick={onExportChartClick}
                 variant="outline"
                 size="sm"
-                className="h-9 flex-1 gap-1.5 border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted md:flex-none"
+                className="h-9 gap-1.5 border-border bg-card px-2.5 text-xs font-medium text-foreground hover:bg-muted justify-center truncate sm:flex-none"
               >
-                <Printer className="h-3.5 w-3.5 text-primary" />
-                <span>Export / Print Chart</span>
+                <Printer className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="truncate">Export / Print</span>
               </Button>
             )}
             {onOverrideRiskClick && (
@@ -357,24 +357,24 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
                 onClick={onOverrideRiskClick}
                 variant="outline"
                 size="sm"
-                className="h-9 flex-1 gap-1.5 border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted md:flex-none"
+                className="h-9 gap-1.5 border-border bg-card px-2.5 text-xs font-medium text-foreground hover:bg-muted justify-center truncate sm:flex-none"
               >
-                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
-                <span>Override Risk</span>
+                <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                <span className="truncate">Override Risk</span>
               </Button>
             )}
             <Button
               onClick={onEditClick}
               variant="outline"
               size="sm"
-              className="h-9 flex-1 border-border bg-card px-4 text-xs font-medium text-foreground hover:bg-muted md:flex-none"
+              className="h-9 border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted justify-center truncate sm:flex-none"
             >
               Edit Profile
             </Button>
             <Button
               size="sm"
               onClick={onLogVitalsClick}
-              className="h-9 flex-1 bg-primary px-4 text-xs font-medium text-primary-foreground shadow-xs hover:bg-primary/90 md:flex-none"
+              className="col-span-2 sm:col-span-1 h-9 bg-primary px-3 text-xs font-medium text-primary-foreground shadow-xs hover:bg-primary/90 justify-center truncate sm:flex-none"
             >
               Log Vitals
             </Button>
@@ -515,7 +515,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = React.memo(
                   <MapPin className="h-3 w-3 opacity-70" />
                   Address
                 </span>
-                <span className="truncate text-sm font-semibold text-foreground">
+                <span className="text-sm font-semibold text-foreground break-words line-clamp-2">
                   {motherData?.user?.address || motherData?.address || "N/A"}
                 </span>
               </div>

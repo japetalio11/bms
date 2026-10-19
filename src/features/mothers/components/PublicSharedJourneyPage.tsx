@@ -1121,7 +1121,7 @@ export function PublicSharedJourneyPage() {
                 ) : (
                   <div className="w-full overflow-x-auto scrollbar-thin">
                     <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-muted/40">
                       <TableRow className="border-border hover:bg-transparent">
                         <TableHead className="text-xs font-semibold">
                           Visit Date
@@ -1454,7 +1454,7 @@ export function PublicSharedJourneyPage() {
                 ) : (
                   <div className="w-full overflow-x-auto scrollbar-thin">
                     <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-muted/40">
                       <TableRow className="border-border hover:bg-transparent">
                         <TableHead className="text-xs font-semibold">
                           Supplement / Medication
@@ -1729,7 +1729,7 @@ export function PublicSharedJourneyPage() {
 
                             <div className="w-full overflow-x-auto scrollbar-thin">
                               <Table>
-                                <TableHeader>
+                                <TableHeader className="bg-muted/40">
                                   <TableRow className="border-border hover:bg-transparent">
                                     <TableHead className="text-xs font-semibold">
                                       Visit Date / Timing

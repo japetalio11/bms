@@ -135,9 +135,9 @@ export const LaboratoryTab: React.FC<LaboratoryTabProps> = React.memo(
 
     return (
       <div className="mt-2 flex flex-col gap-4">
-        <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
-          <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto">
-            <div className="relative w-[200px]">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <div className="relative w-full sm:w-[220px]">
               <Search className="absolute top-2.5 left-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 value={searchQuery}
@@ -147,7 +147,7 @@ export const LaboratoryTab: React.FC<LaboratoryTabProps> = React.memo(
               />
             </div>
           </div>
-          <div className="flex w-full shrink-0 items-center gap-2 xl:w-auto">
+          <div className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
             <Button
               variant="outline"
               onClick={handleExportCSV}
@@ -181,26 +181,89 @@ export const LaboratoryTab: React.FC<LaboratoryTabProps> = React.memo(
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-md border border-sidebar-border bg-background dark:bg-[#0a0a0a]">
+          <>
+            <div className="flex flex-col gap-3 md:hidden">
+              {paginatedList.map((lab: any, i: number) => (
+                <div
+                  key={lab.screening_id || lab.id || i}
+                  className="flex cursor-pointer flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/20"
+                  onClick={() => onViewRecord(lab)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-semibold text-foreground">
+                        {lab.screening_type || "Laboratory Test"}
+                      </h4>
+                      <span className="text-[11px] text-muted-foreground">
+                        {formatDate(lab.date_of_screening)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-foreground">
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px] rounded-xl border-border shadow-md">
+                          <DropdownMenuItem onClick={() => onViewRecord(lab)} className="cursor-pointer text-xs">View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onEditRecord ? onEditRecord(lab) : onViewRecord(lab)} className="cursor-pointer text-xs">Edit Record</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onDeleteRecord ? onDeleteRecord(lab) : onViewRecord(lab)} className="cursor-pointer text-xs text-red-500 focus:text-red-500">Delete Record</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="col-span-2 flex flex-col gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-2">
+                      <span className="text-[10px] text-muted-foreground">Result</span>
+                      <span className="font-semibold text-foreground">{lab.result || "N/A"}</span>
+                    </div>
+                    <div className="col-span-2 flex flex-col gap-0.5 rounded-lg border border-border/60 bg-muted/30 p-2">
+                      <span className="text-[10px] text-muted-foreground">Remarks</span>
+                      <span className="font-medium text-foreground line-clamp-2">
+                        {lab.remarks || "No clinical remarks recorded"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {lab.file_url && (
+                    <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1.5 text-xs font-medium text-primary"
+                        onClick={() => handleViewAttachment(lab.file_url)}
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        <span>View Attachment</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
             <Table>
-              <TableHeader className="bg-card dark:bg-[#111]">
-                <TableRow className="border-sidebar-border hover:bg-transparent">
-                  <TableHead className="h-9 py-2 pl-4 text-xs font-medium text-foreground dark:text-white">
+              <TableHeader className="bg-muted/40">
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="h-9 py-2 pl-4 text-xs font-medium text-foreground">
                     Date of Screening
                   </TableHead>
-                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground">
                     Screening Type
                   </TableHead>
-                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground">
                     Result
                   </TableHead>
-                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground">
                     Attachment
                   </TableHead>
-                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground">
                     Remarks
                   </TableHead>
-                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground dark:text-white">
+                  <TableHead className="h-9 py-2 text-xs font-medium text-foreground">
                     Sync Status
                   </TableHead>
                   <TableHead className="h-9 w-12 py-2"></TableHead>
@@ -210,7 +273,7 @@ export const LaboratoryTab: React.FC<LaboratoryTabProps> = React.memo(
                 {paginatedList.map((lab: any, i: number) => (
                   <TableRow
                     key={lab.screening_id || lab.id || i}
-                    className="cursor-pointer border-sidebar-border transition-colors hover:bg-accent dark:hover:bg-white/5"
+                    className="group cursor-pointer border-border transition-colors hover:bg-accent/50"
                     onClick={() => onViewRecord(lab)}
                   >
                     <TableCell className="py-2 pl-4 text-xs font-medium text-foreground dark:text-white">
@@ -299,11 +362,12 @@ export const LaboratoryTab: React.FC<LaboratoryTabProps> = React.memo(
                 ))}
               </TableBody>
             </Table>
-          </div>
+            </div>
+          </>
         )}
 
         {filteredList.length > pageSize && (
-          <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1 text-xs text-muted-foreground">
             <span>
               Showing {(currentPage - 1) * pageSize + 1} to{" "}
               {Math.min(currentPage * pageSize, filteredList.length)} of{" "}

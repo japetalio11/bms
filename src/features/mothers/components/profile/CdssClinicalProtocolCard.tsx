@@ -168,7 +168,7 @@ export const CdssClinicalProtocolCard: React.FC<CdssClinicalProtocolCardProps> =
               )}
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-xs font-semibold text-foreground">
                   Maternal Risk Assessment
                 </h3>

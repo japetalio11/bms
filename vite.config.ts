@@ -14,8 +14,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
       manifest: {
-        name: "Birth Monitoring System (BMS)",
-        short_name: "BMS App",
+        name: "Birth Monitoring System",
+        short_name: "BMS",
         description: "Offline-First Maternal & Birth Monitoring System",
         theme_color: "#ffffff",
         icons: [
