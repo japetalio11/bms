@@ -19,6 +19,7 @@ export interface ReferralSuccessData {
   formattedMessage?: string
 }
 
+
 export function ReferralSuccessModal({
   open,
   onOpenChange,
@@ -40,7 +41,7 @@ export function ReferralSuccessModal({
     formattedMessage = "",
   } = referralData
 
-  const fullShareText = `${formattedMessage}\n\n-----------------------------------\nSECURE LINK: ${link}\nPIN CODE: ${pinCode}`
+  const fullShareText = `${formattedMessage}\n\n------------------------------------\nSECURE LINK: ${link}\nPIN CODE: ${pinCode}`
 
   const handleCopy = (text: string, type: string) => {
     if (!text || text === "N/A") return
