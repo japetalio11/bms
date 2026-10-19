@@ -1,6 +1,5 @@
 import React from "react"
 import {
-  FileText,
   Activity,
   Microscope,
   Pill,
@@ -86,14 +85,6 @@ export function ClinicalTabsSection({
       <Tabs value={activeTab} onValueChange={onTabChange} className="space-y-4">
         <TabsList className="h-10 sm:h-11 w-full justify-start rounded-xl border border-border bg-muted/80 p-1 backdrop-blur-sm overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden flex-nowrap shrink-0">
           <TabsTrigger
-            value="narrative"
-            className="shrink-0 gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-3.5 py-1 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-border whitespace-nowrap"
-          >
-            <FileText className="h-3.5 w-3.5" />
-            <span>Handover Notes</span>
-          </TabsTrigger>
-
-          <TabsTrigger
             value="visits"
             className="shrink-0 gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-3.5 py-1 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-2xs data-[state=active]:border data-[state=active]:border-border whitespace-nowrap"
           >
@@ -139,53 +130,6 @@ export function ClinicalTabsSection({
             )}
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="narrative" className="space-y-4">
-          <Card className="border border-border/80 bg-card shadow-xs">
-            <CardHeader className="p-4 sm:p-6 pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs sm:text-sm font-bold uppercase text-foreground flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  Referring Provider Clinical Notes
-                </CardTitle>
-                <span className="text-[11px] text-muted-foreground">
-                  By {data.referring_facility.name}
-                </span>
-              </div>
-            </CardHeader>
-
-            <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                  Clinical Notes:
-                </span>
-                <div className="rounded-xl border border-border bg-muted/30 p-4 text-xs sm:text-sm leading-relaxed text-foreground whitespace-pre-wrap font-sans">
-                  {parsed.cleanNarrative}
-                </div>
-              </div>
-
-              {data.response_notes && (
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
-                    Receiving Facility Response:
-                  </span>
-                  <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-xs sm:text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                    {data.response_notes}
-                  </div>
-                </div>
-              )}
-
-              {data.outcome && (
-                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 sm:p-4 text-xs">
-                  <span className="font-bold text-emerald-700 dark:text-emerald-400 block mb-0.5">
-                    Outcome:
-                  </span>
-                  <p className="text-foreground font-semibold">{data.outcome}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="visits" className="space-y-4">
           <Card className="border border-border/80 bg-card shadow-xs">

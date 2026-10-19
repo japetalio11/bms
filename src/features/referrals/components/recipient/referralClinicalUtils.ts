@@ -130,8 +130,6 @@ export function parseReferralDetails(
   if (!clinicalConcern) {
     if (obstetric?.latest_vitals?.danger_signs) {
       clinicalConcern = `Danger Signs: ${obstetric.latest_vitals.danger_signs}`
-    } else if (extractedCC.toLowerCase().includes("high-risk")) {
-      clinicalConcern = "High-risk pregnancy protocol triage"
     } else {
       clinicalConcern = extractedCC
     }
@@ -347,11 +345,7 @@ export function getUnifiedClinicalData(
 
   // Clinical indications
   const chiefComplaint = parsed.chiefComplaint || "for prenatal check up; high-risk"
-  const dangerSigns =
-    latestVitals?.danger_signs ||
-    (parsed.clinicalConcern && !parsed.clinicalConcern.includes("Routine")
-      ? parsed.clinicalConcern
-      : undefined)
+  const dangerSigns = latestVitals?.danger_signs || undefined
 
   const previousDelivery = parsed.previousDelivery || obstetric?.previous_delivery_history || "None"
   const coMorbidities = parsed.coMorbidities || obstetric?.co_morbidities || "None"

@@ -13,7 +13,6 @@ import {
   Baby,
   Activity,
   AlertCircle,
-  ShieldAlert,
   Check,
   XCircle,
   MessageSquare,
@@ -145,20 +144,6 @@ export function UnifiedReferralHandoffCard({
       </div>
 
       <CardContent className="p-4 sm:p-6 space-y-5">
-        {/* ── DANGER / CRITICAL ALERT CALLOUT (IF PRESENT) ── */}
-        {unified.dangerSigns && (
-          <div className="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs sm:text-sm font-semibold text-red-700 dark:text-red-300">
-            <ShieldAlert className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
-            <div className="flex-1">
-              <span className="font-bold uppercase tracking-wider text-[11px] text-red-600 dark:text-red-400 mr-2">
-                Critical Danger Sign:
-              </span>
-              <span>{unified.dangerSigns}</span>
-            </div>
-          </div>
-        )}
-
-        {/* ── MAIN 3-COLUMN CLINICAL SLIP (MATCHING BMC MESSENGER FORMAT) ── */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           {/* ════════ COLUMN 1: PATIENT DEMOGRAPHICS (4 COLS) ════════ */}
           <div className="rounded-xl border border-border/70 bg-muted/20 p-4 space-y-3.5 lg:col-span-4 flex flex-col justify-between">
