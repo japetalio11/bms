@@ -114,7 +114,7 @@ export function AppHeader() {
           if (name) setFetchedMotherName(name)
         }
       } catch {
-        // Fallback gracefully if offline
+  
       }
     }
 
@@ -159,7 +159,7 @@ export function AppHeader() {
     let isMounted = true
     const resolveStaff = async () => {
       try {
-        const staffList = await userRepository.getAllStaff()
+        const staffList = await userRepository.getFacilityStaff()
         if (isMounted && Array.isArray(staffList)) {
           const s = staffList.find(
             (item: any) =>
