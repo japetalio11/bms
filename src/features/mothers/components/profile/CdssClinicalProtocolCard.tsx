@@ -81,10 +81,14 @@ export const CdssClinicalProtocolCard: React.FC<CdssClinicalProtocolCardProps> =
     }
 
     const calculated = calculateOfflineTEWSRisk(input)
-    const effectiveRisk =
-      latestVisit?.risk_level_assessed ||
-      latestVisit?.risk_level ||
-      calculated.risk_level
+    const isOverride = Boolean(
+      latestVisit?.override_reason ||
+      (latestVisit?.danger_signs_observed &&
+        latestVisit.danger_signs_observed.toLowerCase().includes("override"))
+    )
+    const effectiveRisk = isOverride
+      ? (latestVisit?.risk_level_assessed || latestVisit?.risk_level || calculated.risk_level)
+      : (calculated.risk_level || latestVisit?.risk_level_assessed || latestVisit?.risk_level)
 
     return {
       riskLevel: effectiveRisk,
