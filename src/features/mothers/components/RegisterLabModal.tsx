@@ -40,9 +40,7 @@ export function RegisterLabModal({
 }: RegisterLabModalProps) {
   const [pregnancyId, setPregnancyId] = React.useState<string>("")
   const [visitId, setVisitId] = React.useState<string>("")
-  const [screeningType, setScreeningType] = React.useState<string>(
-    "General Screening"
-  )
+  const [screeningType, setScreeningType] = React.useState<string>("")
   const [result, setResult] = React.useState<string>("")
   const [fileUrl, setFileUrl] = React.useState<string>("")
   const [uploading, setUploading] = React.useState(false)
@@ -51,6 +49,26 @@ export function RegisterLabModal({
 
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
+
+  const resetForm = React.useCallback(() => {
+    setScreeningType("")
+    setResult("")
+    setFileUrl("")
+    setScreeningDate(new Date())
+    setRemarks("")
+    setError(null)
+    setUploading(false)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (!open) {
+      resetForm()
+    }
+  }, [open, resetForm])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -175,6 +193,7 @@ export function RegisterLabModal({
       }
 
       await mothersApi.registerLabRecord(payload)
+      resetForm()
       onSuccess?.()
       onOpenChange(false)
     } catch (err: any) {
@@ -194,7 +213,7 @@ export function RegisterLabModal({
       onOpenChange={onOpenChange}
       title="Add Laboratory Record"
       description="Record laboratory screening test results for this mother."
-      className="sm:max-w-[500px]"
+      className="sm:max-w-[460px] md:max-w-[480px]"
     >
       <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-1 py-2">
         {error && (
@@ -358,6 +377,7 @@ export function RegisterLabModal({
           <div className="flex items-center gap-3 rounded-lg border border-dashed border-border bg-muted/40 p-3">
             <label className="flex-1 cursor-pointer">
               <input
+                ref={fileInputRef}
                 type="file"
                 accept="image/png,image/jpeg,image/jpg,application/pdf"
                 className="hidden"
