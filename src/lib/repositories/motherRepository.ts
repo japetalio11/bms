@@ -240,7 +240,7 @@ export const motherRepository = {
                 console.log(
                   `[motherRepository] Auto-reconciling pending temp mother ${pending.id} -> ${canonicalId}`
                 )
-                // If the remote record did not return a photo but local pending record has one, preserve it on matchedRemote
+
                 if (!matchedRemote.photo_url && (pending.photo_url || pending.profile_url || pending.user?.profile_url)) {
                   const localPhoto = pending.photo_url || pending.profile_url || pending.user?.profile_url || ""
                   matchedRemote.photo_url = localPhoto
@@ -252,7 +252,6 @@ export const motherRepository = {
 
                 await db.mothers.delete(pending.id).catch(() => {})
                 
-                // Only cancel the CREATE mutation if pending; rewrite any other pending mutations
                 const allQueue = await db.offlineQueue.toArray()
                 for (const q of allQueue) {
                   if (q.temp_id === pending.id && q.action === "CREATE" && q.id) {
@@ -346,7 +345,6 @@ export const motherRepository = {
 
     const currentUserId = currentUser?.user_id || currentUser?.id
 
-    // Auto-repair / backfill any local pending mothers in Dexie so existing offline records are always valid
     for (const m of localMothers) {
       const isTempOrPending =
         m.sync_status === "pending_create" ||

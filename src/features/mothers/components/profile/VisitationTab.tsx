@@ -287,11 +287,13 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
                       ? `${visit.trimester}${visit.trimester === 1 ? "st" : visit.trimester === 2 ? "nd" : "rd"} Trimester`
                       : "N/A"
 
-                    const hasDangerSigns =
+                    const hasDangerSigns = Boolean(
                       visit.has_vaginal_bleeding ||
                       visit.has_pallor ||
                       visit.has_edema ||
-                      visit.has_fever
+                      visit.has_fever ||
+                      (visit.danger_signs_observed && visit.danger_signs_observed.trim())
+                    )
 
                     return (
                       <TableRow

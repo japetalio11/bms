@@ -805,7 +805,14 @@ export function DetailSideSheet({
                   has_edema: data.has_edema,
                   has_fever: data.has_fever,
                 })
-                const effectiveRisk = data.risk_level_assessed || data.risk_level || analysis.risk_level
+                const isOverride = Boolean(
+                  data.override_reason ||
+                  (data.danger_signs_observed &&
+                    data.danger_signs_observed.toLowerCase().includes("override"))
+                )
+                const effectiveRisk = isOverride
+                  ? (data.risk_level_assessed || data.risk_level || analysis.risk_level)
+                  : (analysis.risk_level || data.risk_level_assessed || data.risk_level)
                 const badge = getRiskBadgeClasses(effectiveRisk)
 
                 return (

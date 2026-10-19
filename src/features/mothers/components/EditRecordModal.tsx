@@ -18,7 +18,24 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { Calendar as CalendarIcon, Upload, Check, Loader2 } from "lucide-react"
+import {
+  Calendar as CalendarIcon,
+  Upload,
+  Check,
+  Loader2,
+  Activity,
+  ShieldAlert,
+  AlertTriangle,
+  CheckCircle2,
+  Pencil,
+} from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import {
+  calculateOfflineTEWSRisk,
+  getRiskVariant,
+  getRiskLabel,
+  getRiskBadgeClasses,
+} from "@/lib/riskUtils"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import {
@@ -59,6 +76,10 @@ export function EditRecordModal({
   const [uploading, setUploading] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [contextData, setContextData] = React.useState<{ mother?: any; pregnancy?: any; baselineVisit?: any }>({})
+  const [isRiskOverridden, setIsRiskOverridden] = React.useState(false)
+  const [overriddenRisk, setOverriddenRisk] = React.useState<string>("Low Risk")
+  const [overrideReason, setOverrideReason] = React.useState<string>("")
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -89,8 +110,33 @@ export function EditRecordModal({
     if (type === "pregnancy") {
       if (data.lmp_date) setDateVal(new Date(data.lmp_date))
       if (data.edd_date) setEddDateVal(new Date(data.edd_date))
-    } else if (type === "visitation" && data.visit_date) {
-      setDateVal(new Date(data.visit_date))
+    } else if (type === "visitation") {
+      if (data.visit_date) setDateVal(new Date(data.visit_date))
+      const hasPriorOverride = Boolean(
+        data.override_reason ||
+        (data.danger_signs_observed && data.danger_signs_observed.toLowerCase().includes("override"))
+      )
+      setIsRiskOverridden(hasPriorOverride)
+      setOverriddenRisk(data.risk_level_assessed || "Low Risk")
+      setOverrideReason(data.override_reason || "")
+
+      import("@/lib/db/bmsDatabase").then(async ({ db }) => {
+        const motherId = data.mother_id || data.motherId || data.targetId
+        const pregnancyId = data.pregnancy_id || data.pregnancyId
+        let mother = null
+        let pregnancy = null
+        let baselineVisit = null
+
+        if (motherId) {
+          mother = (await db.mothers.where("id").equals(motherId).first()) || (await db.mothers.get(motherId))
+        }
+        if (pregnancyId) {
+          pregnancy = await db.pregnancies.get(pregnancyId)
+          const allVisits = await db.prenatalVisits.where("pregnancy_id").equals(pregnancyId).toArray()
+          baselineVisit = allVisits.find((v: any) => v.trimester === 1 || v.visit_number === 1)
+        }
+        setContextData({ mother, pregnancy, baselineVisit })
+      }).catch(() => {})
     } else if (type === "postpartum" && data.visit_date) {
       setDateVal(new Date(data.visit_date))
     } else if (type === "appointment" && data.appointment_date) {
@@ -103,6 +149,52 @@ export function EditRecordModal({
       setDateVal(new Date(data.delivery_date))
     }
   }, [data, type, open])
+
+  const calculatedAssessment = React.useMemo(() => {
+    if (type !== "visitation") return null
+    let motherAge: number | null = null
+    if (contextData.mother?.age) {
+      motherAge = Number(contextData.mother.age)
+    } else if (contextData.mother?.birth_date) {
+      motherAge = Math.floor(
+        (Date.now() - new Date(contextData.mother.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+      )
+    }
+
+    return calculateOfflineTEWSRisk({
+      bp_systolic: formData.bp_systolic != null && formData.bp_systolic !== "" ? Number(formData.bp_systolic) : null,
+      bp_diastolic: formData.bp_diastolic != null && formData.bp_diastolic !== "" ? Number(formData.bp_diastolic) : null,
+      pulse_rate_bpm: formData.pulse_rate_bpm != null && formData.pulse_rate_bpm !== "" ? Number(formData.pulse_rate_bpm) : null,
+      temperature_celsius: formData.temperature_celsius != null && formData.temperature_celsius !== "" ? Number(formData.temperature_celsius) : null,
+      danger_signs_observed: formData.danger_signs_observed || null,
+      has_vaginal_bleeding: Boolean(formData.has_vaginal_bleeding),
+      has_pallor: Boolean(formData.has_pallor),
+      has_edema: Boolean(formData.has_edema),
+      has_fever: Boolean(formData.has_fever),
+      fetal_presentation: formData.fetal_presentation || null,
+      mother_age: motherAge,
+      parity: contextData.pregnancy?.parity != null ? Number(contextData.pregnancy.parity) : null,
+      previous_delivery_history: contextData.pregnancy?.previous_delivery_history || null,
+      prev_caesarean: Boolean(contextData.pregnancy?.prev_caesarean),
+      consecutive_miscarriages: Boolean(contextData.pregnancy?.consecutive_miscarriages),
+      stillbirth_history: Boolean(contextData.pregnancy?.stillbirth_history),
+      pph_history: Boolean(contextData.pregnancy?.pph_history),
+      has_tb: Boolean(contextData.pregnancy?.has_tb),
+      has_heart_disease: Boolean(contextData.pregnancy?.has_heart_disease),
+      has_diabetes: Boolean(contextData.pregnancy?.has_diabetes),
+      has_asthma: Boolean(contextData.pregnancy?.has_asthma),
+      has_goiter: Boolean(contextData.pregnancy?.has_goiter),
+      height_cm: contextData.pregnancy?.height_cm != null ? Number(contextData.pregnancy.height_cm) : null,
+      baseline_bp_systolic: contextData.baselineVisit?.bp_systolic ? Number(contextData.baselineVisit.bp_systolic) : null,
+      baseline_bp_diastolic: contextData.baselineVisit?.bp_diastolic ? Number(contextData.baselineVisit.bp_diastolic) : null,
+    })
+  }, [formData, contextData, type])
+
+  const effectiveRiskLevel = React.useMemo(() => {
+    if (type !== "visitation") return formData.risk_level_assessed || "Low Risk"
+    if (isRiskOverridden) return overriddenRisk
+    return calculatedAssessment ? calculatedAssessment.risk_level : (formData.risk_level_assessed || "Low Risk")
+  }, [type, isRiskOverridden, overriddenRisk, calculatedAssessment, formData.risk_level_assessed])
 
   if (!data) return null
 
@@ -263,33 +355,52 @@ export function EditRecordModal({
         if (data.pregnancy_id && !payload.pregnancy_id) {
           payload.pregnancy_id = data.pregnancy_id
         }
+
+        const combinedDangerSigns = [
+          payload.danger_signs_observed,
+          isRiskOverridden && overrideReason ? `Clinical Risk Override (${effectiveRiskLevel}): ${overrideReason}` : null,
+        ].filter(Boolean).join(" | ")
+
+        payload.danger_signs_observed = combinedDangerSigns || undefined
+        payload.risk_level_assessed = effectiveRiskLevel
+        if (isRiskOverridden) {
+          payload.is_risk_overridden = true
+          payload.override_reason = overrideReason
+        } else {
+          payload.is_risk_overridden = false
+          payload.override_reason = undefined
+        }
+
         endpoint = `/api/v1/prenatal-visit/update/${visitId}`
         await db.prenatalVisits
-          .update(visitId, { ...payload, updated_at: Date.now() })
+          .update(visitId, {
+            ...payload,
+            danger_signs_observed: payload.danger_signs_observed,
+            risk_level_assessed: effectiveRiskLevel,
+            updated_at: Date.now(),
+          })
           .catch(() => {})
 
-        if (payload.risk_level_assessed) {
-          if (payload.pregnancy_id) {
-            await db.pregnancies
-              .update(payload.pregnancy_id, {
-                risk_flag: payload.risk_level_assessed,
-                risk_level: payload.risk_level_assessed,
-                updated_at: Date.now(),
-              })
-              .catch(() => {})
-          }
-          if (motherId) {
-            await db.mothers
-              .where("id")
-              .equals(motherId)
-              .modify({
-                risk_flag: payload.risk_level_assessed,
-                risk_level: payload.risk_level_assessed,
-                risk: payload.risk_level_assessed,
-                updated_at: Date.now(),
-              })
-              .catch(() => {})
-          }
+        if (payload.pregnancy_id) {
+          await db.pregnancies
+            .update(payload.pregnancy_id, {
+              risk_flag: effectiveRiskLevel,
+              risk_level: effectiveRiskLevel,
+              updated_at: Date.now(),
+            })
+            .catch(() => {})
+        }
+        if (motherId) {
+          await db.mothers
+            .where("id")
+            .equals(motherId)
+            .modify({
+              risk_flag: effectiveRiskLevel,
+              risk_level: effectiveRiskLevel,
+              risk: effectiveRiskLevel,
+              updated_at: Date.now(),
+            })
+            .catch(() => {})
         }
       } else if (type === "appointment") {
         let apptId = data.appointment_id || data._id || data.id
@@ -473,7 +584,35 @@ export function EditRecordModal({
       }
 
       if (endpoint) {
-        await mothersApi.updateRecord(endpoint, payload)
+        const updateRes = await mothersApi.updateRecord(endpoint, payload)
+        if (type === "visitation" && updateRes) {
+          const finalRisk = updateRes?.cdssAssessment?.risk_level || updateRes?.result?.risk_level_assessed
+          if (finalRisk) {
+            const normalized = getRiskLabel(finalRisk)
+            let visitId = data.visit_id || data.id || data._id
+            if (visitId) {
+              await db.prenatalVisits.update(visitId, {
+                risk_level_assessed: normalized,
+                updated_at: Date.now(),
+              }).catch(() => {})
+            }
+            if (payload.pregnancy_id) {
+              await db.pregnancies.update(payload.pregnancy_id, {
+                risk_flag: normalized,
+                risk_level: normalized,
+                updated_at: Date.now(),
+              }).catch(() => {})
+            }
+            if (motherId) {
+              await db.mothers.where("id").equals(motherId).modify({
+                risk_flag: normalized,
+                risk_level: normalized,
+                risk: normalized,
+                updated_at: Date.now(),
+              }).catch(() => {})
+            }
+          }
+        }
       }
       onSuccess?.()
       onOpenChange(false)
@@ -985,23 +1124,99 @@ export function EditRecordModal({
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground">
-                Assessed Risk Level
-              </Label>
-              <Select
-                value={formData.risk_level_assessed || "Low Risk"}
-                onValueChange={(v) => handleChange("risk_level_assessed", v)}
-              >
-                <SelectTrigger className="!h-9 border-border bg-card text-xs text-card-foreground">
-                  <SelectValue placeholder="Risk Level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="High Risk">High Risk (Critical Priority)</SelectItem>
-                  <SelectItem value="Moderate Risk">Moderate Risk (Close Monitoring)</SelectItem>
-                  <SelectItem value="Low Risk">Low Risk (Standard Monitoring)</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-muted/30 p-3.5">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+                  <Activity className="h-3.5 w-3.5 text-primary" />
+                  Clinical Risk Assessment (CDSS)
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[10px] text-muted-foreground">
+                    TEWS: {calculatedAssessment?.tews_score ?? 0}
+                  </span>
+                  <Badge
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded border-none px-2 py-0.5 text-[11px] font-semibold shadow-none",
+                      effectiveRiskLevel === "High Risk"
+                        ? "border-destructive/20 bg-destructive/15 text-destructive"
+                        : effectiveRiskLevel === "Moderate Risk"
+                          ? "border-amber-500/20 bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                          : "border-emerald-500/20 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    )}
+                  >
+                    {effectiveRiskLevel === "High Risk" ? (
+                      <ShieldAlert className="h-3 w-3" />
+                    ) : effectiveRiskLevel === "Moderate Risk" ? (
+                      <AlertTriangle className="h-3 w-3" />
+                    ) : (
+                      <CheckCircle2 className="h-3 w-3" />
+                    )}
+                    {effectiveRiskLevel}
+                  </Badge>
+                </div>
+              </div>
+
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                {calculatedAssessment && calculatedAssessment.reasons.length > 0 ? (
+                  <span>Triggered by: {calculatedAssessment.reasons.join(", ")}</span>
+                ) : (
+                  <span>All vital signs and physiological markers are within standard clinical limits.</span>
+                )}
+              </p>
+
+              <div className="flex items-center justify-between border-t border-border/50 pt-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !isRiskOverridden
+                    setIsRiskOverridden(next)
+                    if (next && !overriddenRisk) {
+                      setOverriddenRisk(calculatedAssessment?.risk_level === "High Risk" ? "Moderate Risk" : "High Risk")
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-medium text-primary hover:underline cursor-pointer"
+                >
+                  <Pencil className="h-3 w-3" />
+                  {isRiskOverridden ? "Revert to System Assessment" : "Override Risk Level"}
+                </button>
+                {isRiskOverridden && (
+                  <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                    Clinical Override Active
+                  </span>
+                )}
+              </div>
+
+              {isRiskOverridden && (
+                <div className="flex flex-col gap-2 rounded border border-amber-500/30 bg-amber-500/10 p-2.5">
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-[11px] font-semibold text-foreground">
+                      Staff Overridden Risk Level
+                    </Label>
+                    <Select value={overriddenRisk} onValueChange={setOverriddenRisk}>
+                      <SelectTrigger className="!h-8 border-border bg-card text-xs text-card-foreground">
+                        <SelectValue placeholder="Select Risk Level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="High Risk">High Risk (Critical Priority)</SelectItem>
+                        <SelectItem value="Moderate Risk">Moderate Risk (Close Monitoring)</SelectItem>
+                        <SelectItem value="Low Risk">Low Risk (Standard Monitoring)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="overrideReason" className="text-[11px] font-medium text-foreground">
+                      Reason for Clinical Override
+                    </Label>
+                    <Input
+                      id="overrideReason"
+                      placeholder="e.g. Clinical complication not captured in vitals"
+                      value={overrideReason}
+                      onChange={(e) => setOverrideReason(e.target.value)}
+                      className="!h-8 border-border bg-card text-xs text-card-foreground"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
