@@ -4,13 +4,40 @@ import { InboxSidebar } from "./InboxSidebar"
 import { ChatArea } from "./ChatArea"
 import { ChatDetailsSidepeek } from "./ChatDetailsSidepeek"
 import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { motherRepository } from "@/lib/repositories/motherRepository"
 import { messageRepository } from "@/lib/repositories/messageRepository"
 import { db } from "@/lib/db/bmsDatabase"
 import { syncEngine } from "@/lib/sync/syncEngine"
 
 export function MessagesPage() {
-  const [activeChatId, setActiveChatId] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const chatParam = searchParams.get("chat")
+  const [activeChatId, setActiveChatId] = useState<string | null>(
+    chatParam || null
+  )
+
+  useEffect(() => {
+    if (chatParam && chatParam !== activeChatId) {
+      setActiveChatId(chatParam)
+    }
+  }, [chatParam])
+
+  const handleSelectChat = (id: string | null) => {
+    setActiveChatId(id)
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        if (id) {
+          next.set("chat", id)
+        } else {
+          next.delete("chat")
+        }
+        return next
+      },
+      { replace: true }
+    )
+  }
 
   const loadAndSyncData = async () => {
     try {
@@ -60,8 +87,23 @@ export function MessagesPage() {
       }, 600)
     })
 
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadAndSyncData()
+      }
+    }, 4000)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadAndSyncData()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
     return () => {
       window.removeEventListener("bms:message:new", handleNewMessage)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      clearInterval(pollInterval)
       if (debounceTimer) clearTimeout(debounceTimer)
       unsubscribe()
     }
@@ -78,7 +120,7 @@ export function MessagesPage() {
         >
           <InboxSidebar
             activeChatId={activeChatId}
-            setActiveChatId={setActiveChatId}
+            setActiveChatId={handleSelectChat}
           />
         </div>
 
@@ -90,7 +132,7 @@ export function MessagesPage() {
         >
           <ChatArea
             activeChatId={activeChatId}
-            onBack={() => setActiveChatId(null)}
+            onBack={() => handleSelectChat(null)}
           />
         </div>
 

@@ -63,6 +63,8 @@ import {
   getRiskLabel,
   getRiskBadgeClasses,
 } from "@/lib/riskUtils"
+import { isSameDay } from "@/lib/utils"
+import { appointmentRepository } from "@/lib/repositories/appointmentRepository"
 
 export function AppointmentListPage() {
   const [activeTab, setActiveTab] = useState("all")
@@ -261,9 +263,21 @@ export function AppointmentListPage() {
       today.setHours(0, 0, 0, 0)
       const isPast = appDate ? appDate < today : false
 
+      const hasEncounterOnDate = matchedMother?.prenatalVisits?.some((v: any) => {
+        const vDate = v.visit_date || v.created_at
+        return vDate && item.appointment_date && isSameDay(vDate, item.appointment_date)
+      })
+
+      if (hasEncounterOnDate && (item.status || "").toLowerCase() !== "completed") {
+        const apptId = item.appointment_id || item.id
+        if (apptId) {
+          appointmentRepository.completeAppointment(apptId).catch(() => {})
+        }
+      }
+
       let status = item.status || "Pending"
       const lowerStatus = status.toLowerCase()
-      if (lowerStatus === "completed") {
+      if (lowerStatus === "completed" || hasEncounterOnDate) {
         status = "Completed"
       } else if (lowerStatus === "cancelled") {
         status = "Cancelled"
@@ -819,7 +833,7 @@ export function AppointmentListPage() {
                                 Appointment Status
                               </span>
                               <Badge
-                                className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${appointment.status === "Confirmed" ? "bg-blue-500/10 text-blue-500" : appointment.status === "Cancelled" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"}`}
+                                className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${appointment.status === "Confirmed" ? "bg-blue-500/10 text-blue-500" : appointment.status === "Completed" ? "bg-green-500/10 text-green-500" : appointment.status === "Cancelled" || appointment.status === "Missed" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"}`}
                               >
                                 <CheckCircle2 className="h-3 w-3" />
                                 {appointment.status}
@@ -983,7 +997,7 @@ export function AppointmentListPage() {
                                 </TableCell>
                                 <TableCell>
                                   <Badge
-                                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${appointment.status === "Confirmed" ? "bg-blue-500/10 text-blue-500" : appointment.status === "Cancelled" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"}`}
+                                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${appointment.status === "Confirmed" ? "bg-blue-500/10 text-blue-500" : appointment.status === "Completed" ? "bg-green-500/10 text-green-500" : appointment.status === "Cancelled" || appointment.status === "Missed" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"}`}
                                   >
                                     <CheckCircle2 className="h-3 w-3" />
                                     {appointment.status}

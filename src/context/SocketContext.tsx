@@ -40,7 +40,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const backendUrl = import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700"
+    const backendUrl = (import.meta.env.VITE_BACKEND_API_URL || "http://localhost:6700").trim().replace(/\/+$/, "")
 
     const newSocket = io(backendUrl, {
       auth: { token },

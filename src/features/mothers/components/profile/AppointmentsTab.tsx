@@ -23,10 +23,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { formatDate } from "@/lib/utils"
+import { formatDate, getEffectiveAppointmentStatus, isSameDay } from "@/lib/utils"
 
 interface AppointmentsTabProps {
   appointmentList: any[]
+  visitationList?: any[]
   onViewRecord: (record: any) => void
   onEditRecord?: (record: any) => void
   onDeleteRecord?: (record: any) => void
@@ -37,6 +38,7 @@ interface AppointmentsTabProps {
 export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
   ({
     appointmentList,
+    visitationList,
     onViewRecord,
     onEditRecord,
     onDeleteRecord,
@@ -47,13 +49,31 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
     const [currentPage, setCurrentPage] = useState(1)
     const pageSize = 5
 
+    const checkHasEncounter = React.useCallback(
+      (apptDate: any) => {
+        if (!visitationList || visitationList.length === 0 || !apptDate) return false
+        return visitationList.some((v: any) => {
+          const vDate = v.visit_date || v.created_at
+          return vDate && isSameDay(vDate, apptDate)
+        })
+      },
+      [visitationList]
+    )
+
     const filteredList = useMemo(() => {
       if (!searchQuery.trim()) return appointmentList
       const q = searchQuery.toLowerCase()
       return appointmentList.filter((p: any) => {
         const type = (p.appointment_type || p.type || "").toLowerCase()
         const reason = (p.reason || "").toLowerCase()
-        const status = (p.status || p.appointmentStatus || "").toLowerCase()
+        const apptDate =
+          p.appointment_date || p.appointmentDateTime || p.date
+        const hasEncounter = checkHasEncounter(apptDate)
+        const status = getEffectiveAppointmentStatus(
+          p.status || p.appointmentStatus,
+          apptDate,
+          hasEncounter
+        ).toLowerCase()
         const dateStr = p.appointment_date
           ? formatDate(p.appointment_date).toLowerCase()
           : ""
@@ -85,7 +105,16 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
         p.appointment_time || "N/A",
         p.appointment_type || p.type || "Prenatal Visit",
         `"${(p.reason || "N/A").replace(/"/g, '""')}"`,
-        p.status || p.appointmentStatus || "Scheduled",
+        (() => {
+          const apptDate =
+            p.appointment_date || p.appointmentDateTime || p.date
+          const hasEncounter = checkHasEncounter(apptDate)
+          return getEffectiveAppointmentStatus(
+            p.status || p.appointmentStatus,
+            apptDate,
+            hasEncounter
+          )
+        })(),
       ])
       const csvContent =
         "data:text/csv;charset=utf-8," +
@@ -193,75 +222,89 @@ export const AppointmentsTab: React.FC<AppointmentsTabProps> = React.memo(
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedList.map((p: any, i: number) => (
-                    <TableRow
-                      key={p.appointment_id || p._id || p.id || i}
-                      className="cursor-pointer border-sidebar-border transition-colors hover:bg-accent dark:hover:bg-white/5"
-                      onClick={() => onViewRecord(p)}
-                    >
-                      <TableCell className="py-2 pl-4 text-xs font-medium text-foreground dark:text-white">
-                        {p.appointment_date
-                          ? `${formatDate(p.appointment_date)} ${p.appointment_time || ""}`
-                          : p.appointmentDateTime
-                            ? formatDate(p.appointmentDateTime)
-                            : "N/A"}
-                      </TableCell>
-                      <TableCell className="py-2 text-xs text-foreground dark:text-white">
-                        {p.appointment_type || p.type || "Prenatal Visit"}
-                      </TableCell>
-                      <TableCell className="py-2 text-xs text-muted-foreground">
-                        {p.reason || "N/A"}
-                      </TableCell>
-                      <TableCell className="py-2 text-xs">
-                        {getStatusBadge(p.status || p.appointmentStatus)}
-                      </TableCell>
-                      <TableCell
-                        className="py-2 text-right"
-                        onClick={(e) => e.stopPropagation()}
+                  paginatedList.map((p: any, i: number) => {
+                    const apptDate =
+                      p.appointment_date || p.appointmentDateTime || p.date
+                    const hasEncounter = checkHasEncounter(apptDate)
+                    const effectiveStatus = getEffectiveAppointmentStatus(
+                      p.status || p.appointmentStatus,
+                      apptDate,
+                      hasEncounter
+                    )
+                    const recordWithStatus = { ...p, status: effectiveStatus }
+
+                    return (
+                      <TableRow
+                        key={p.appointment_id || p._id || p.id || i}
+                        className="cursor-pointer border-sidebar-border transition-colors hover:bg-accent dark:hover:bg-white/5"
+                        onClick={() => onViewRecord(recordWithStatus)}
                       >
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-foreground hover:text-foreground dark:text-white"
+                        <TableCell className="py-2 pl-4 text-xs font-medium text-foreground dark:text-white">
+                          {p.appointment_date
+                            ? `${formatDate(p.appointment_date)} ${p.appointment_time || ""}`
+                            : p.appointmentDateTime
+                              ? formatDate(p.appointmentDateTime)
+                              : "N/A"}
+                        </TableCell>
+                        <TableCell className="py-2 text-xs text-foreground dark:text-white">
+                          {p.appointment_type || p.type || "Prenatal Visit"}
+                        </TableCell>
+                        <TableCell className="py-2 text-xs text-muted-foreground">
+                          {p.reason || "N/A"}
+                        </TableCell>
+                        <TableCell className="py-2 text-xs">
+                          {getStatusBadge(effectiveStatus)}
+                        </TableCell>
+                        <TableCell
+                          className="py-2 text-right"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-foreground hover:text-foreground dark:text-white"
+                              >
+                                <MoreVertical className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-[160px] rounded-xl border-border shadow-md"
                             >
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="w-[160px] rounded-xl border-border shadow-md"
-                          >
-                            <DropdownMenuItem
-                              onClick={() => onViewRecord(p)}
-                              className="cursor-pointer rounded-md text-xs"
-                            >
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                onEditRecord ? onEditRecord(p) : onViewRecord(p)
-                              }
-                              className="cursor-pointer rounded-md text-xs"
-                            >
-                              Edit Record
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                onDeleteRecord
-                                  ? onDeleteRecord(p)
-                                  : onViewRecord(p)
-                              }
-                              className="cursor-pointer rounded-md text-xs text-red-500 focus:text-red-500"
-                            >
-                              Delete Record
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                              <DropdownMenuItem
+                                onClick={() => onViewRecord(recordWithStatus)}
+                                className="cursor-pointer rounded-md text-xs"
+                              >
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  onEditRecord
+                                    ? onEditRecord(recordWithStatus)
+                                    : onViewRecord(recordWithStatus)
+                                }
+                                className="cursor-pointer rounded-md text-xs"
+                              >
+                                Edit Record
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  onDeleteRecord
+                                    ? onDeleteRecord(recordWithStatus)
+                                    : onViewRecord(recordWithStatus)
+                                }
+                                className="cursor-pointer rounded-md text-xs text-red-500 focus:text-red-500"
+                              >
+                                Delete Record
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>

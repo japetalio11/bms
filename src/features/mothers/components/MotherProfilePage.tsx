@@ -16,6 +16,7 @@ import { AppointmentsTab } from "./profile/AppointmentsTab"
 import { LaboratoryTab } from "./profile/LaboratoryTab"
 import { PrescriptionsTab } from "./profile/PrescriptionsTab"
 import { DeliveryNewbornTab } from "./profile/DeliveryNewbornTab"
+import { MaternalVitalsTrajectoryChart } from "./profile/MaternalVitalsTrajectoryChart"
 
 import { EditMotherModal } from "./EditMotherModal"
 import { UploadAvatarModal } from "./UploadAvatarModal"
@@ -27,6 +28,8 @@ import { RegisterSupplementModal } from "./RegisterSupplementModal"
 import { RecordDeliveryModal } from "./RecordDeliveryModal"
 import { AssignStaffModal } from "./AssignStaffModal"
 import { ExportMotherClinicalRecordModal } from "./ExportMotherClinicalRecordModal"
+import { OverrideRiskModal } from "./OverrideRiskModal"
+import { CreateReferralModal } from "@/features/referrals/components/CreateReferralModal"
 import { DetailSideSheet } from "./DetailSideSheet"
 import { extractRiskLevel } from "@/lib/riskUtils"
 import { isDemoMode } from "@/lib/utils"
@@ -49,6 +52,8 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
   const [labModalOpen, setLabModalOpen] = useState(false)
   const [supplementModalOpen, setSupplementModalOpen] = useState(false)
   const [recordDeliveryModalOpen, setRecordDeliveryModalOpen] = useState(false)
+  const [overrideRiskModalOpen, setOverrideRiskModalOpen] = useState(false)
+  const [createReferralModalOpen, setCreateReferralModalOpen] = useState(false)
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false)
 
   const conflictRecord = useLiveQuery(
@@ -319,6 +324,7 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
             onAvatarClick={() => setAvatarModalOpen(true)}
             onAssignStaffClick={() => setAssignStaffModalOpen(true)}
             onExportChartClick={() => setExportClinicalModalOpen(true)}
+            onOverrideRiskClick={() => setOverrideRiskModalOpen(true)}
           />
 
           <div className="sticky top-0 z-10 -mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto bg-background pt-2 pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
@@ -346,6 +352,9 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
                 <TabsTrigger value="prescriptions" className={tabTriggerClass}>
                   Prescriptions & Supplements
                 </TabsTrigger>
+                <TabsTrigger value="trends" className={tabTriggerClass}>
+                  Clinical Trends
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -366,12 +375,25 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
               <VisitationTab
                 visitationList={prenatalVisits}
                 defaultRisk={defaultRisk}
+                pregnancy={pregnancies?.[0]}
+                mother={fullMotherData}
                 onViewRecord={(v) => openSideSheet("visitation", v)}
                 onEditRecord={(v) => openSideSheet("visitation", v)}
                 onDeleteRecord={(v) => openSideSheet("visitation", v)}
                 onNewRecord={() => setLogVitalsModalOpen(true)}
                 onRefresh={refresh}
+                onOverrideRiskClick={() => setOverrideRiskModalOpen(true)}
+                onInitiateReferral={() => setCreateReferralModalOpen(true)}
               />
+            )}
+
+            {activeTab === "trends" && (
+              <div className="mt-2">
+                <MaternalVitalsTrajectoryChart
+                  visitationList={prenatalVisits}
+                  pregnancy={pregnancies?.[0]}
+                />
+              </div>
             )}
 
             {activeTab === "delivery" && (
@@ -390,6 +412,7 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
             {activeTab === "appointments" && (
               <AppointmentsTab
                 appointmentList={appointments}
+                visitationList={prenatalVisits}
                 onViewRecord={(a) => openSideSheet("appointment", a)}
                 onEditRecord={(a) => openSideSheet("appointment", a)}
                 onDeleteRecord={(a) => openSideSheet("appointment", a)}
@@ -480,7 +503,9 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
         type={sideSheetType}
         data={selectedRecord}
         motherName={motherName}
+        visitationList={prenatalVisits}
         onSuccess={refresh}
+        onOverrideRiskClick={() => setOverrideRiskModalOpen(true)}
       />
       <AssignStaffModal
         open={assignStaffModalOpen}
@@ -515,6 +540,18 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
         deliveries={deliveries}
         newborns={newborns}
         postpartumVisits={postpartumVisits}
+      />
+      <OverrideRiskModal
+        open={overrideRiskModalOpen}
+        onOpenChange={setOverrideRiskModalOpen}
+        motherData={fullMotherData}
+        onSuccess={refresh}
+      />
+      <CreateReferralModal
+        open={createReferralModalOpen}
+        onOpenChange={setCreateReferralModalOpen}
+        initialMotherId={targetId}
+        onCreated={refresh}
       />
       <ConflictResolutionModal
         open={isConflictModalOpen}

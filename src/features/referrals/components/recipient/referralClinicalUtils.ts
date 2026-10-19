@@ -70,7 +70,7 @@ export function parseReferralDetails(
     const l = line.trim()
     if (!l) return false
     if (
-      l.startsWith("BMC ONLINE REFERRAL") ||
+      l.includes("ONLINE REFERRAL") ||
       l.startsWith("Good morning") ||
       l.startsWith("Good afternoon") ||
       l.startsWith("For online referral:") ||

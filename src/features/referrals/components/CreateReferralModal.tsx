@@ -32,6 +32,7 @@ import {
   FileText,
   Mail,
   CheckCircle2,
+  ExternalLink,
 } from "lucide-react"
 import { motherRepository } from "@/lib/repositories/motherRepository"
 import { referralRepository } from "@/lib/repositories/referralRepository"
@@ -46,6 +47,9 @@ interface Facility {
   facility_id: string
   facility_name: string
   type?: string
+  address?: string
+  contact_number?: string
+  email?: string
 }
 
 function calculateAge(birthDateStr?: string): string {
@@ -76,11 +80,13 @@ export function CreateReferralModal({
   onOpenChange,
   onCreated,
   onSuccessCreated,
+  initialMotherId,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated?: () => void
   onSuccessCreated?: (data: ReferralSuccessData) => void
+  initialMotherId?: string
 }) {
   const [localSuccessOpen, setLocalSuccessOpen] = useState<boolean>(false)
   const [localSuccessData, setLocalSuccessData] =
@@ -91,6 +97,12 @@ export function CreateReferralModal({
   const [selectedMotherId, setSelectedMotherId] = useState<string>("")
   const [selectedPregnancyId, setSelectedPregnancyId] = useState<string>("")
 
+  const [destinationType, setDestinationType] = useState<
+    "bmc" | "in_system" | "external"
+  >("bmc")
+  const [availableFacilities, setAvailableFacilities] = useState<Facility[]>([])
+  const [selectedFacilityId, setSelectedFacilityId] = useState<string>("")
+  const [customDestination, setCustomDestination] = useState<string>("")
   const [destinationFacility, setDestinationFacility] = useState<string>(
     "Bicol Medical Center"
   )
@@ -187,10 +199,97 @@ export function CreateReferralModal({
       } catch (err) {
         console.warn("Failed to load active mothers for referral modal:", err)
       }
+
+      try {
+        const res = await apiClient.get("/api/v1/facility/public-list")
+        const facList =
+          res.data?.result ||
+          res.data?.data ||
+          (Array.isArray(res.data) ? res.data : [])
+        if (Array.isArray(facList)) {
+          setAvailableFacilities(facList)
+        }
+      } catch (facErr) {
+        console.warn("Failed to load facilities for referral modal:", facErr)
+      }
     }
 
     loadModalData()
   }, [open, userFacilityId, isSysAdmin])
+
+  useEffect(() => {
+    if (open && initialMotherId) {
+      setSelectedMotherId(initialMotherId)
+    }
+  }, [open, initialMotherId])
+
+  const bmcFacility = useMemo(() => {
+    return (
+      availableFacilities.find(
+        (f) =>
+          f.facility_name.toLowerCase().includes("bicol medical center") ||
+          f.facility_name.toLowerCase() === "bmc"
+      ) || null
+    )
+  }, [availableFacilities])
+
+  const availableInSystemFacilities = useMemo(() => {
+    return availableFacilities.filter((f) => {
+      if (userFacilityId && f.facility_id === userFacilityId) return false
+      if (bmcFacility && f.facility_id === bmcFacility.facility_id) return false
+      return true
+    })
+  }, [availableFacilities, userFacilityId, bmcFacility])
+
+  const selectedInSystemFacility = useMemo(() => {
+    return (
+      availableFacilities.find((f) => f.facility_id === selectedFacilityId) ||
+      null
+    )
+  }, [availableFacilities, selectedFacilityId])
+
+  const handleDestinationTypeChange = (
+    type: "bmc" | "in_system" | "external"
+  ) => {
+    setDestinationType(type)
+    setErrorMsg("")
+
+    if (type === "bmc") {
+      setDestinationFacility("Bicol Medical Center")
+    } else if (type === "in_system") {
+      let targetFac = selectedInSystemFacility
+      if (!targetFac && availableInSystemFacilities.length > 0) {
+        targetFac = availableInSystemFacilities[0]
+        setSelectedFacilityId(targetFac.facility_id)
+      }
+      if (targetFac) {
+        setDestinationFacility(targetFac.facility_name)
+        if (targetFac.email && !recipientEmail) {
+          setRecipientEmail(targetFac.email)
+        }
+      } else {
+        setDestinationFacility("")
+      }
+    } else if (type === "external") {
+      setDestinationFacility(customDestination.trim())
+    }
+  }
+
+  const handleSelectInSystemFacility = (facilityId: string) => {
+    setSelectedFacilityId(facilityId)
+    const fac = availableFacilities.find((f) => f.facility_id === facilityId)
+    if (fac) {
+      setDestinationFacility(fac.facility_name)
+      if (fac.email && (!recipientEmail || recipientEmail === "bmc.referral@doh.gov.ph")) {
+        setRecipientEmail(fac.email)
+      }
+    }
+  }
+
+  const handleCustomDestinationChange = (value: string) => {
+    setCustomDestination(value)
+    setDestinationFacility(value)
+  }
 
   const selectedMother = useMemo(() => {
     return (
@@ -318,8 +417,12 @@ export function CreateReferralModal({
 
   const formattedReferralMessage = useMemo(() => {
     const destName = destinationFacility.trim() || "Destination Facility"
+    const headerTitle =
+      destinationType === "bmc"
+        ? "BMC ONLINE REFERRAL"
+        : `ONLINE REFERRAL (${destName.toUpperCase()})`
 
-    return `BMC ONLINE REFERRAL (${destName.toUpperCase()})
+    return `${headerTitle}
 
 Good morning/Good afternoon
 
@@ -351,6 +454,7 @@ Co-morbidities: ${comorbidities || "None"}
 
 Thank you. 💛`
   }, [
+    destinationType,
     destinationFacility,
     motherFullName,
     motherAge,
@@ -411,8 +515,24 @@ Thank you. 💛`
       }
     }
 
+    if (destinationType === "in_system" && !selectedFacilityId) {
+      setErrorMsg("Please select an in-system destination facility.")
+      return
+    }
+
     if (!destinationFacility.trim()) {
-      setErrorMsg("Please enter the destination facility.")
+      setErrorMsg("Please enter or select a destination facility.")
+      return
+    }
+
+    if (
+      destinationType === "in_system" &&
+      userFacilityId &&
+      selectedFacilityId === userFacilityId
+    ) {
+      setErrorMsg(
+        "Destination facility cannot be the same as your originating facility."
+      )
       return
     }
 
@@ -454,10 +574,18 @@ Thank you. 💛`
         }
       }
 
+      const resolvedToFacilityId =
+        destinationType === "bmc"
+          ? bmcFacility?.facility_id
+          : destinationType === "in_system"
+            ? selectedFacilityId
+            : undefined
+
       const createdReferral = await referralRepository.createReferral({
         pregnancy_id: pregIdToUse,
         mother_id: selectedMotherId,
         from_facility_id: currentFacilityId || "default",
+        to_facility_id: resolvedToFacilityId || undefined,
         external_facility_name: destinationFacility.trim(),
         reason: formattedReferralMessage,
         mother_name: motherFullName.trim() || undefined,
@@ -525,6 +653,10 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
 
       setSelectedMotherId("")
       setSelectedPregnancyId("")
+      setDestinationType("bmc")
+      setDestinationFacility("Bicol Medical Center")
+      setSelectedFacilityId("")
+      setCustomDestination("")
       setSendEmailNotification(false)
       setRecipientEmail("")
       setLmpDate(undefined)
@@ -613,16 +745,156 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
             </Select>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label className="text-xs font-medium text-foreground">
-              Destination Facility
-            </Label>
-            <Input
-              value={destinationFacility}
-              onChange={(e) => setDestinationFacility(e.target.value)}
-              className="h-8 border-border bg-card text-xs text-card-foreground"
-              placeholder="e.g. Bicol Medical Center / Naga City RHU..."
-            />
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium text-foreground">
+                Destination Facility
+              </Label>
+              <span className="text-[10px] text-muted-foreground">
+                Default: BMC
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 rounded-lg border border-border bg-muted/40 p-1">
+              <button
+                type="button"
+                onClick={() => handleDestinationTypeChange("bmc")}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
+                  destinationType === "bmc"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Building2 className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">BMC (Default)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDestinationTypeChange("in_system")}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
+                  destinationType === "in_system"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Activity className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">In-System</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDestinationTypeChange("external")}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-all",
+                  destinationType === "external"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">External</span>
+              </button>
+            </div>
+
+            {destinationType === "bmc" && (
+              <div className="flex flex-col gap-1.5 rounded-lg border border-primary/20 bg-primary/5 p-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-primary">
+                    Bicol Medical Center (BMC)
+                  </span>
+                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                    Tertiary Referral Center
+                  </span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Regional government hospital for emergency obstetrical triage, high-risk delivery management, and neonatal intensive care (Naga City).
+                </p>
+                {bmcFacility?.address && (
+                  <span className="text-[10px] text-muted-foreground">
+                    📍 {bmcFacility.address}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {destinationType === "in_system" && (
+              <div className="flex flex-col gap-2">
+                <Select
+                  value={selectedFacilityId}
+                  onValueChange={handleSelectInSystemFacility}
+                >
+                  <SelectTrigger className="h-8 border-border bg-card text-xs text-card-foreground">
+                    <SelectValue placeholder="Choose an in-system facility..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[220px]">
+                    {availableInSystemFacilities.length === 0 ? (
+                      <SelectItem value="_none" disabled>
+                        No other facilities registered in BMS
+                      </SelectItem>
+                    ) : (
+                      availableInSystemFacilities.map((fac) => (
+                        <SelectItem
+                          key={fac.facility_id}
+                          value={fac.facility_id}
+                          className="text-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {fac.facility_name}
+                            </span>
+                            {fac.type && (
+                              <span className="text-[10px] capitalize text-muted-foreground">
+                                ({fac.type})
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+
+                {selectedInSystemFacility && (
+                  <div className="flex flex-col gap-1 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2.5 text-[11px]">
+                    <div className="flex items-center justify-between font-medium text-emerald-700 dark:text-emerald-400">
+                      <span className="flex items-center gap-1 font-semibold">
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                        {selectedInSystemFacility.facility_name}
+                      </span>
+                      <span className="text-[10px] capitalize text-muted-foreground">
+                        {selectedInSystemFacility.type || "In-System"}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2 text-[10px] text-muted-foreground">
+                      {selectedInSystemFacility.address && (
+                        <span>📍 {selectedInSystemFacility.address}</span>
+                      )}
+                      {selectedInSystemFacility.contact_number && (
+                        <span>📞 {selectedInSystemFacility.contact_number}</span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-emerald-600 dark:text-emerald-400/90">
+                      ✓ Connected BMS facility: This referral will appear directly in their inbound e-referrals dashboard.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {destinationType === "external" && (
+              <div className="flex flex-col gap-1.5">
+                <Input
+                  value={customDestination}
+                  onChange={(e) => handleCustomDestinationChange(e.target.value)}
+                  className="h-8 border-border bg-card text-xs text-card-foreground"
+                  placeholder="Enter facility or hospital name (e.g. NICC Doctors, Mother Seton...)"
+                />
+                <span className="text-[10px] text-muted-foreground">
+                  Specify external clinics, diagnostic centers, or private hospitals outside the BMS network.
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -926,7 +1198,8 @@ Sent via Birth Monitoring System (BMS) Referral Network.`
              <Button variant="ghost" className="h-8 w-full text-xs sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
              <Button className="h-8 w-full bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto" onClick={() => {
                 if (!selectedMotherId) { setErrorMsg("Please select a patient / mother."); return; }
-                if (!destinationFacility.trim()) { setErrorMsg("Please enter the destination facility."); return; }
+                if (destinationType === "in_system" && !selectedFacilityId) { setErrorMsg("Please select an in-system destination facility."); return; }
+                if (!destinationFacility.trim()) { setErrorMsg("Please enter or select a destination facility."); return; }
                 setErrorMsg("");
                 setStep(2);
              }}>Next Step</Button>

@@ -39,6 +39,20 @@ export function RegisterAppointmentModal({
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
+  const resetForm = React.useCallback(() => {
+    setAppointmentDate(undefined)
+    setAppointmentTime("09:00 AM")
+    setAppointmentType("Prenatal Visit")
+    setReason("")
+    setError(null)
+  }, [])
+
+  React.useEffect(() => {
+    if (!open) {
+      resetForm()
+    }
+  }, [open, resetForm])
+
   const userId = motherData?.user?.user_id || motherData?.user_id || motherData?.mother_id || motherData?._id || motherData?.id
 
   const handleSubmit = async () => {
@@ -76,6 +90,7 @@ export function RegisterAppointmentModal({
       }
 
       await mothersApi.registerAppointment(payload)
+      resetForm()
       onSuccess?.()
       onOpenChange(false)
     } catch (err: any) {

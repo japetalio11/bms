@@ -280,6 +280,17 @@ export function InboxSidebar({
     )
   }, [messages, facilityMothers, currentUser, searchQuery])
 
+  React.useEffect(() => {
+    if (
+      !activeChatId &&
+      chatThreads.length > 0 &&
+      typeof window !== "undefined" &&
+      window.innerWidth >= 1024
+    ) {
+      setActiveChatId(chatThreads[0].id)
+    }
+  }, [activeChatId, chatThreads, setActiveChatId])
+
   const formatTime = (dateStr: string) => {
     if (!dateStr) return ""
     try {

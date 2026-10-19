@@ -2,7 +2,7 @@ import * as React from "react"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { formatDate } from "@/lib/utils"
+import { formatDate, getEffectiveAppointmentStatus, isSameDay } from "@/lib/utils"
 import {
   Calendar,
   Clock,
@@ -24,6 +24,7 @@ import {
   Trash2,
   Edit,
   ExternalLink,
+  Pencil,
 } from "lucide-react"
 import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal"
 import { toast } from "sonner"
@@ -32,6 +33,7 @@ import {
   getRiskVariant,
   getRiskLabel,
   getRiskBadgeClasses,
+  calculateOfflineTEWSRisk,
 } from "@/lib/riskUtils"
 import { mothersApi } from "../api"
 import { db } from "@/lib/db/bmsDatabase"
@@ -52,7 +54,9 @@ export interface DetailSideSheetProps {
     | null
   data: any
   motherName?: string
+  visitationList?: any[]
   onSuccess?: () => void
+  onOverrideRiskClick?: (record: any) => void
 }
 
 export function DetailSideSheet({
@@ -61,7 +65,9 @@ export function DetailSideSheet({
   type,
   data,
   motherName = "Mother",
+  visitationList = [],
   onSuccess,
+  onOverrideRiskClick,
 }: DetailSideSheetProps) {
   const [deleting, setDeleting] = React.useState(false)
   const [editModalOpen, setEditModalOpen] = React.useState(false)
@@ -194,12 +200,36 @@ export function DetailSideSheet({
               {getHeaderTitle()}
             </h2>
             <div className="flex items-center gap-2">
-              {type === "appointment" && (
-                <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-500 capitalize shadow-none">
-                  <CheckCircle2 className="h-3 w-3" />
-                  {data.status || "Scheduled"}
-                </Badge>
-              )}
+              {type === "appointment" && (() => {
+                const apptDate =
+                  data.appointment_date || data.appointmentDateTime || data.date
+                const hasEncounter = visitationList?.some((v: any) => {
+                  const vDate = v.visit_date || v.created_at
+                  return vDate && isSameDay(vDate, apptDate)
+                })
+                const effectiveStatus = getEffectiveAppointmentStatus(
+                  data.status || data.appointmentStatus,
+                  apptDate,
+                  hasEncounter
+                )
+                const lower = effectiveStatus.toLowerCase()
+                const badgeColor =
+                  lower.includes("completed") || lower.includes("done")
+                    ? "bg-green-500/10 text-green-500"
+                    : lower.includes("cancel") || lower.includes("missed")
+                      ? "bg-red-500/10 text-red-500"
+                      : lower.includes("pending")
+                        ? "bg-yellow-500/10 text-yellow-500"
+                        : "bg-blue-500/10 text-blue-500"
+                return (
+                  <Badge
+                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium capitalize shadow-none ${badgeColor}`}
+                  >
+                    <CheckCircle2 className="h-3 w-3" />
+                    {effectiveStatus}
+                  </Badge>
+                )
+              })()}
               {type === "visitation" && (
                 <Badge className="inline-flex items-center gap-1 rounded-sm border-none bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-500 shadow-none">
                   <Clock className="h-3 w-3" />
@@ -245,12 +275,24 @@ export function DetailSideSheet({
                 const label = getRiskLabel(currentRisk)
                 const classes = getRiskBadgeClasses(currentRisk)
                 return (
-                  <Badge
-                    className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${classes.badge}`}
-                  >
-                    <Activity className="h-3 w-3" />
-                    {label}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge
+                      className={`inline-flex items-center gap-1 rounded-sm border-none px-1.5 py-0.5 text-[10px] font-medium shadow-none ${classes.badge}`}
+                    >
+                      <Activity className="h-3 w-3" />
+                      {label}
+                    </Badge>
+                    {onOverrideRiskClick && (
+                      <button
+                        type="button"
+                        onClick={() => onOverrideRiskClick(data)}
+                        className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted/80 text-muted-foreground transition-all hover:bg-primary/20 hover:text-primary cursor-pointer"
+                        title="Override Risk Level"
+                      >
+                        <Pencil className="h-2.5 w-2.5" />
+                      </button>
+                    )}
+                  </div>
                 )
               })()}
             </div>
@@ -750,6 +792,65 @@ export function DetailSideSheet({
                   </div>
                 )}
               </div>
+
+              {(() => {
+                const analysis = calculateOfflineTEWSRisk({
+                  bp_systolic: data.bp_systolic,
+                  bp_diastolic: data.bp_diastolic,
+                  pulse_rate_bpm: data.pulse_rate_bpm,
+                  temperature_celsius: data.temperature_celsius,
+                  danger_signs_observed: data.danger_signs_observed,
+                  has_vaginal_bleeding: data.has_vaginal_bleeding,
+                  has_pallor: data.has_pallor,
+                  has_edema: data.has_edema,
+                  has_fever: data.has_fever,
+                })
+                const isOverride = Boolean(
+                  data.override_reason ||
+                  (data.danger_signs_observed &&
+                    data.danger_signs_observed.toLowerCase().includes("override"))
+                )
+                const effectiveRisk = isOverride
+                  ? (data.risk_level_assessed || data.risk_level || analysis.risk_level)
+                  : (analysis.risk_level || data.risk_level_assessed || data.risk_level)
+                const badge = getRiskBadgeClasses(effectiveRisk)
+
+                return (
+                  <div className="flex flex-col gap-3 border-b border-border p-4 bg-muted/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <ShieldAlert className="h-4 w-4 text-primary" />
+                        <h3 className="text-xs font-semibold text-foreground">
+                          CDSS Early Warning & Guidance
+                        </h3>
+                      </div>
+                      <span className={`inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-[11px] font-semibold ${badge.badge}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} />
+                        {getRiskLabel(effectiveRisk)}
+                      </span>
+                    </div>
+
+                    {analysis.reasons.length > 0 && (
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                          Identified Physiological Triggers
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {analysis.reasons.map((r, i) => (
+                            <Badge
+                              key={i}
+                              variant="outline"
+                              className="border-border bg-background text-[10px] font-normal text-foreground"
+                            >
+                              {r}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </>
           )}
 

@@ -85,3 +85,67 @@ export function isDemoMode(): boolean {
     envStatus.trim().toLowerCase().replace(/['"]/g, "") === "demo"
   )
 }
+
+export function isSameDay(
+  date1?: string | Date | number | null,
+  date2?: string | Date | number | null
+): boolean {
+  if (!date1 || !date2) return false
+  const d1 = new Date(date1)
+  const d2 = new Date(date2)
+  if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  )
+}
+
+export function getEffectiveAppointmentStatus(
+  status?: string | null,
+  dateInput?: string | Date | number | null,
+  hasEncounterOnDate?: boolean
+): string {
+  const rawStatus = (status || "").toString().trim()
+  const lowerStatus = rawStatus.toLowerCase()
+
+  if (lowerStatus === "completed" || lowerStatus === "done" || hasEncounterOnDate) {
+    return "Completed"
+  }
+  if (
+    lowerStatus === "cancelled" ||
+    lowerStatus === "canceled" ||
+    lowerStatus === "rejected"
+  ) {
+    return "Cancelled"
+  }
+  if (lowerStatus === "missed") {
+    return "Missed"
+  }
+
+  if (dateInput) {
+    const appDate = new Date(dateInput)
+    if (!isNaN(appDate.getTime())) {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (appDate < today) {
+        return "Missed"
+      }
+    }
+  }
+
+  if (
+    lowerStatus === "confirmed" ||
+    lowerStatus === "active" ||
+    lowerStatus === "scheduled"
+  ) {
+    return "Scheduled"
+  }
+
+  if (lowerStatus === "pending") {
+    return "Pending"
+  }
+
+  return rawStatus ? rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1) : "Scheduled"
+}
+

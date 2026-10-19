@@ -156,23 +156,22 @@ export function RegisterPregnancyModal({
       onOpenChange={onOpenChange}
       title="Add New Pregnancy Record"
       description="Register a new pregnancy for this mother."
-      className="sm:max-w-xl md:max-w-2xl"
+      className="sm:max-w-xl md:max-w-[700px]"
     >
-      <div className="flex max-h-[85vh] flex-col gap-4 overflow-y-auto px-1 py-2">
+      <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-1 py-2">
         {error && (
           <div className="rounded border border-destructive/50 bg-destructive/10 p-2.5 text-center text-xs font-medium text-destructive">
             {error}
           </div>
         )}
 
-        {/* Obstetric Baseline & Status */}
         <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-card/50 p-3.5">
           <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             Obstetric Baseline & Status
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground">
+              <Label className="h-4 flex items-center text-xs font-medium text-foreground">
                 LMP Date *
               </Label>
               <Popover>
@@ -204,8 +203,11 @@ export function RegisterPregnancyModal({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground">
-                Estimated Due Date (EDD)
+              <Label
+                className="h-4 flex items-center text-xs font-medium text-foreground truncate"
+                title="Estimated Due Date (EDD)"
+              >
+                Est. Due Date (EDD)
               </Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -235,7 +237,10 @@ export function RegisterPregnancyModal({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground">
+              <Label
+                className="h-4 flex items-center text-xs font-medium text-foreground truncate"
+                title="Maternal Height (cm)"
+              >
                 Maternal Height (cm)
               </Label>
               <Input
@@ -249,7 +254,7 @@ export function RegisterPregnancyModal({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground">
+              <Label className="h-4 flex items-center text-xs font-medium text-foreground">
                 Pregnancy Status *
               </Label>
               <Select
@@ -270,7 +275,7 @@ export function RegisterPregnancyModal({
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="gravida"
-                className="text-xs font-medium text-foreground"
+                className="h-4 flex items-center text-xs font-medium text-foreground"
               >
                 Gravida (G) *
               </Label>
@@ -287,7 +292,7 @@ export function RegisterPregnancyModal({
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="parity"
-                className="text-xs font-medium text-foreground"
+                className="h-4 flex items-center text-xs font-medium text-foreground"
               >
                 Parity (P) *
               </Label>
@@ -302,7 +307,7 @@ export function RegisterPregnancyModal({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs font-medium text-foreground">
+              <Label className="h-4 flex items-center text-xs font-medium text-foreground">
                 Age Group *
               </Label>
               <Select value={ageGroup} onValueChange={setAgeGroup}>
@@ -317,24 +322,23 @@ export function RegisterPregnancyModal({
               </Select>
             </div>
 
-            <div className="flex items-center gap-2 sm:pt-5">
-              <Checkbox
-                id="completed8Anc"
-                checked={completed8Anc}
-                onCheckedChange={(checked) => setCompleted8Anc(Boolean(checked))}
-              />
-              <Label htmlFor="completed8Anc" className="text-xs cursor-pointer text-foreground font-medium">
-                Completed 8 ANC Visits
-              </Label>
+            <div className="flex flex-col justify-end gap-1.5">
+              <div className="flex h-8 items-center gap-2">
+                <Checkbox
+                  id="completed8Anc"
+                  checked={completed8Anc}
+                  onCheckedChange={(checked) => setCompleted8Anc(Boolean(checked))}
+                />
+                <Label htmlFor="completed8Anc" className="text-xs cursor-pointer text-foreground font-medium">
+                  Completed 8 ANC Visits
+                </Label>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 2 Column Layout for Risk History/Conditions & Clinical Indicators */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Left Column: Risk & Pre-existing Conditions */}
           <div className="flex flex-col gap-4">
-            {/* Obstetric High-Risk History */}
             <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-card/50 p-3.5">
               <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Obstetric High-Risk History
@@ -386,7 +390,6 @@ export function RegisterPregnancyModal({
               </div>
             </div>
 
-            {/* Pre-existing & Chronic Conditions */}
             <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-card/50 p-3.5">
               <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Pre-existing & Chronic Conditions
@@ -450,7 +453,6 @@ export function RegisterPregnancyModal({
             </div>
           </div>
 
-          {/* Right Column: Clinical & Nutrition Indicators */}
           <div className="flex flex-col gap-2.5 rounded-lg border border-border/60 bg-card/50 p-3.5">
             <h4 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
               Clinical & Nutrition Indicators
@@ -521,7 +523,7 @@ export function RegisterPregnancyModal({
                 placeholder="Notes on previous deliveries..."
                 value={previousDeliveryHistory}
                 onChange={(e) => setPreviousDeliveryHistory(e.target.value)}
-                className="h-[76px] resize-none border-border bg-card text-xs text-card-foreground"
+                className="h-[74px] resize-none border-border bg-card text-xs text-card-foreground"
               />
             </div>
           </div>

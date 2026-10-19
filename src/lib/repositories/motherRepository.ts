@@ -8,6 +8,7 @@ import type {
 } from "@/lib/db/bmsDatabase"
 import { apiClient } from "@/lib/apiClient"
 import { syncEngine } from "@/lib/sync/syncEngine"
+import { appointmentRepository } from "./appointmentRepository"
 
 import { extractRiskLevel, calculateOfflineTEWSRisk } from "@/lib/riskUtils"
 import {
@@ -239,7 +240,7 @@ export const motherRepository = {
                 console.log(
                   `[motherRepository] Auto-reconciling pending temp mother ${pending.id} -> ${canonicalId}`
                 )
-                // If the remote record did not return a photo but local pending record has one, preserve it on matchedRemote
+
                 if (!matchedRemote.photo_url && (pending.photo_url || pending.profile_url || pending.user?.profile_url)) {
                   const localPhoto = pending.photo_url || pending.profile_url || pending.user?.profile_url || ""
                   matchedRemote.photo_url = localPhoto
@@ -251,7 +252,6 @@ export const motherRepository = {
 
                 await db.mothers.delete(pending.id).catch(() => {})
                 
-                // Only cancel the CREATE mutation if pending; rewrite any other pending mutations
                 const allQueue = await db.offlineQueue.toArray()
                 for (const q of allQueue) {
                   if (q.temp_id === pending.id && q.action === "CREATE" && q.id) {
@@ -345,7 +345,6 @@ export const motherRepository = {
 
     const currentUserId = currentUser?.user_id || currentUser?.id
 
-    // Auto-repair / backfill any local pending mothers in Dexie so existing offline records are always valid
     for (const m of localMothers) {
       const isTempOrPending =
         m.sync_status === "pending_create" ||
@@ -1585,6 +1584,14 @@ export const motherRepository = {
         }
         await db.prenatalVisits.put(syncedVisit)
 
+        try {
+          await appointmentRepository.autoCompleteAppointmentsOnEncounter(
+            motherId || syncedVisit.mother_id,
+            syncedVisit.visit_date || new Date().toISOString(),
+            payload.pregnancy_id
+          )
+        } catch {}
+
         if (finalRisk) {
           try {
             if (payload.pregnancy_id) {
@@ -1639,6 +1646,14 @@ export const motherRepository = {
     }
 
     await db.prenatalVisits.put(newVisit)
+
+    try {
+      await appointmentRepository.autoCompleteAppointmentsOnEncounter(
+        motherId || newVisit.mother_id,
+        newVisit.visit_date || new Date().toISOString(),
+        payload.pregnancy_id
+      )
+    } catch {}
 
     if (assessedRisk) {
       try {
@@ -2564,5 +2579,142 @@ export const motherRepository = {
       .catch(() => {})
 
     return { success: true, offline: true }
+  },
+
+  async overrideRiskLevel(params: {
+    motherId: string
+    pregnancyId?: string
+    visitId?: string
+    newRiskLevel: string
+    overrideReason?: string
+  }) {
+    const { motherId, pregnancyId, visitId, newRiskLevel, overrideReason } = params
+
+    const lower = String(newRiskLevel || "").toLowerCase()
+    let formattedRisk = "Low Risk"
+    let backendRisk = "LOW"
+    if (lower.includes("high") || lower.includes("critical")) {
+      formattedRisk = "High Risk"
+      backendRisk = "HIGH"
+    } else if (lower.includes("mod") || lower.includes("med")) {
+      formattedRisk = "Moderate Risk"
+      backendRisk = "MODERATE"
+    } else {
+      formattedRisk = "Low Risk"
+      backendRisk = "LOW"
+    }
+
+    const allVisits = await db.prenatalVisits.toArray()
+    let targetVisit: any = null
+
+    if (visitId) {
+      targetVisit = allVisits.find((v: any) => v.id === visitId || v.visit_id === visitId)
+    }
+
+    if (!targetVisit && pregnancyId) {
+      const pregVisits = allVisits.filter((v: any) => v.pregnancy_id === pregnancyId)
+      if (pregVisits.length > 0) {
+        pregVisits.sort((a: any, b: any) => {
+          const tA = new Date(a.visit_date || 0).getTime()
+          const tB = new Date(b.visit_date || 0).getTime()
+          return tB - tA
+        })
+        targetVisit = pregVisits[0]
+      }
+    }
+
+    if (!targetVisit && motherId) {
+      const motherVisits = allVisits.filter((v: any) => v.mother_id === motherId)
+      if (motherVisits.length > 0) {
+        motherVisits.sort((a: any, b: any) => {
+          const tA = new Date(a.visit_date || 0).getTime()
+          const tB = new Date(b.visit_date || 0).getTime()
+          return tB - tA
+        })
+        targetVisit = motherVisits[0]
+      }
+    }
+
+    if (targetVisit) {
+      const currentObs = targetVisit.danger_signs_observed || ""
+      const newObs = overrideReason
+        ? (currentObs ? `${currentObs} | Override: ${overrideReason}` : `Clinical Override: ${overrideReason}`)
+        : currentObs
+
+      await db.prenatalVisits.update(targetVisit.id, {
+        risk_level_assessed: formattedRisk,
+        danger_signs_observed: newObs,
+        updated_at: Date.now(),
+      }).catch(() => {})
+    }
+
+    const targetPregId = pregnancyId || targetVisit?.pregnancy_id
+    if (targetPregId) {
+      await db.pregnancies.update(targetPregId, {
+        risk_flag: formattedRisk,
+        risk_level: formattedRisk,
+        updated_at: Date.now(),
+      }).catch(() => {})
+    }
+
+    if (motherId) {
+      await db.mothers.where("id").equals(motherId).modify({
+        risk_flag: formattedRisk,
+        risk_level: formattedRisk,
+        risk: formattedRisk,
+        updated_at: Date.now(),
+      }).catch(() => {})
+    }
+
+    const effectiveVisitId = targetVisit?.visit_id || targetVisit?.id || visitId || ""
+
+    if (syncEngine.isNetworkOnline()) {
+      try {
+        const endpoint = effectiveVisitId
+          ? `/api/v1/prenatal-visit/override-risk/${effectiveVisitId}`
+          : `/api/v1/prenatal-visit/override-risk`
+
+        const response = await apiClient.put(endpoint, {
+          risk_level: backendRisk,
+          override_reason: overrideReason,
+          mother_id: motherId,
+          pregnancy_id: targetPregId,
+        })
+        await syncEngine.notify()
+        window.dispatchEvent(
+          new CustomEvent("bms:risk-updated", {
+            detail: { motherId, risk: formattedRisk },
+          })
+        )
+        return response.data
+      } catch (err) {
+        console.warn("[motherRepository] overrideRiskLevel online call failed, queuing offline:", err)
+      }
+    }
+
+    await syncEngine.enqueueMutation({
+      entity_type: "prenatal_visit",
+      action: "UPDATE",
+      endpoint: effectiveVisitId
+        ? `/api/v1/prenatal-visit/override-risk/${effectiveVisitId}`
+        : `/api/v1/prenatal-visit/override-risk`,
+      method: "PUT",
+      payload: {
+        risk_level: backendRisk,
+        override_reason: overrideReason,
+        mother_id: motherId,
+        pregnancy_id: targetPregId,
+      },
+      temp_id: effectiveVisitId.startsWith("temp-") ? effectiveVisitId : undefined,
+    })
+
+    await syncEngine.notify()
+    window.dispatchEvent(
+      new CustomEvent("bms:risk-updated", {
+        detail: { motherId, risk: formattedRisk },
+      })
+    )
+
+    return { success: true, offline: true, risk_level: formattedRisk }
   },
 }
