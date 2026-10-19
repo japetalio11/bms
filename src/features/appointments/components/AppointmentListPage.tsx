@@ -516,7 +516,7 @@ export function AppointmentListPage() {
               </Select>
             </div>
 
-            <div className="-mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="-mb-2 hidden w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] sm:block [&::-webkit-scrollbar]:hidden">
               <Tabs
                 value={activeTab}
                 onValueChange={(val) => {

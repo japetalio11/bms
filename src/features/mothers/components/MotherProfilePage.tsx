@@ -36,6 +36,7 @@ import { LaboratoryTab } from "./profile/LaboratoryTab"
 import { PrescriptionsTab } from "./profile/PrescriptionsTab"
 import { DeliveryNewbornTab } from "./profile/DeliveryNewbornTab"
 import { MaternalVitalsTrajectoryChart } from "./profile/MaternalVitalsTrajectoryChart"
+import { CdssClinicalProtocolCard } from "./profile/CdssClinicalProtocolCard"
 
 import { EditMotherModal } from "./EditMotherModal"
 import { UploadAvatarModal } from "./UploadAvatarModal"
@@ -260,6 +261,16 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
     return extractRiskLevel(mother, pregnancies, prenatalVisits)
   }, [mother, pregnancies, prenatalVisits])
 
+  const latestVisit = useMemo(() => {
+    if (!prenatalVisits || prenatalVisits.length === 0) return null
+    return [...prenatalVisits].sort((a, b) => {
+      const dateA = new Date(a.visit_date || 0).getTime()
+      const dateB = new Date(b.visit_date || 0).getTime()
+      if (dateA !== dateB) return dateB - dateA
+      return (Number(b.visit_number) || 0) - (Number(a.visit_number) || 0)
+    })[0]
+  }, [prenatalVisits])
+
   const tabTriggerClass =
     "text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-xs data-[state=active]:border data-[state=active]:border-border/60 text-muted-foreground hover:text-foreground rounded-lg px-3 sm:px-3.5 py-1.5 h-full shrink-0 whitespace-nowrap transition-all flex items-center gap-1.5"
 
@@ -346,6 +357,16 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
             onOverrideRiskClick={() => setOverrideRiskModalOpen(true)}
           />
 
+          <CdssClinicalProtocolCard
+            latestVisit={latestVisit}
+            pregnancy={pregnancies?.[0]}
+            mother={fullMotherData}
+            allVisits={prenatalVisits}
+            onInitiateReferral={() => setCreateReferralModalOpen(true)}
+            onOverrideRisk={() => setOverrideRiskModalOpen(true)}
+            onLogVitals={() => setLogVitalsModalOpen(true)}
+          />
+
           <div className="sticky top-0 z-20 -mb-2 w-full shrink-0 bg-background/95 backdrop-blur-md pt-2 pb-2">
             <div className="sm:hidden mb-2 w-full">
               <Select value={activeTab} onValueChange={setActiveTab}>
@@ -417,7 +438,7 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
               </Select>
             </div>
 
-            <div className="w-full shrink-0 [scrollbar-width:none] overflow-x-auto [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="-mb-2 hidden w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] sm:block [&::-webkit-scrollbar]:hidden">
               <Tabs
                 value={activeTab}
                 onValueChange={setActiveTab}

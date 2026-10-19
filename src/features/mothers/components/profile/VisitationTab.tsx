@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { formatDate } from "@/lib/utils"
 import { RiskBadge } from "./RiskBadge"
-import { CdssClinicalProtocolCard } from "./CdssClinicalProtocolCard"
 
 interface VisitationTabProps {
   visitationList: any[]
@@ -173,16 +172,6 @@ export const VisitationTab: React.FC<VisitationTabProps> = React.memo(
 
     return (
       <div className="mt-2 flex flex-col gap-4">
-        <CdssClinicalProtocolCard
-          latestVisit={latestVisit}
-          pregnancy={pregnancy}
-          mother={mother}
-          allVisits={visitationList}
-          onInitiateReferral={onInitiateReferral}
-          onOverrideRisk={onOverrideRiskClick}
-          onLogVitals={onNewRecord}
-        />
-
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <div className="relative w-full sm:w-[220px]">

@@ -264,7 +264,7 @@ export function MothersPage() {
   return (
     <div className="relative flex h-full w-full items-start overflow-hidden">
       <div className="relative flex h-full w-full min-w-0 flex-col overflow-y-auto text-foreground">
-        <div className="sticky top-0 z-10 flex flex-col gap-4 border-b border-border bg-background p-4 pr-4 pb-4 pl-3 md:border-none">
+        <div className="sticky top-0 z-10 flex flex-col gap-4 border-b border-border bg-background p-4 md:border-none">
           <div className="w-full shrink-0">
             <div className="sm:hidden mb-2 w-full">
               <Select value={activeTab} onValueChange={setActiveTab}>
@@ -300,7 +300,7 @@ export function MothersPage() {
               </Select>
             </div>
 
-            <div className="-mb-2 w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="-mb-2 hidden w-full shrink-0 [scrollbar-width:none] overflow-x-auto pb-2 [-ms-overflow-style:none] sm:block [&::-webkit-scrollbar]:hidden">
               <Tabs
                 value={activeTab}
                 onValueChange={setActiveTab}
@@ -497,7 +497,7 @@ export function MothersPage() {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="flex w-full items-center gap-2 xl:w-auto">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center xl:w-auto">
               <Button
                 onClick={() => setExportModalOpen(true)}
                 variant="outline"
@@ -519,17 +519,17 @@ export function MothersPage() {
               <Button
                 onClick={() => setConnectModalOpen(true)}
                 variant="outline"
-                className="h-8 w-full gap-2 border-border px-2 text-xs font-medium text-foreground hover:bg-muted md:w-auto"
+                className="h-8 w-full gap-2 border-border px-3 text-xs font-medium text-foreground hover:bg-muted sm:w-auto"
               >
-                <QrCode className="h-3.5 w-3.5" />
-                Connect Mother (QR/Code)
+                <QrCode className="h-3.5 w-3.5 shrink-0" />
+                <span>Connect Mother (QR/Code)</span>
               </Button>
               <Button
                 onClick={() => setRegisterModalOpen(true)}
-                className="h-8 w-full gap-2 bg-primary px-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 md:w-auto"
+                className="h-8 w-full gap-2 bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
               >
-                <PlusCircle className="h-3.5 w-3.5" />
-                Register Mother
+                <PlusCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>Register Mother</span>
               </Button>
             </div>
           </div>
@@ -569,7 +569,7 @@ export function MothersPage() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 p-4 pr-4 pb-24 pl-3 md:pt-0 md:pb-4">
+        <div className="flex flex-col gap-4 p-4 pb-24 md:pt-0 md:pb-4">
           <UnifiedTableLoader isLoading={loading} label="Loading mothers...">
             <div className="flex flex-col gap-4 md:hidden">
               {loading && displayedMothers.length === 0 ? (
