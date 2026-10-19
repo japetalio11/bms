@@ -89,10 +89,17 @@ export function ReferralSidepeek({
   const isHighRisk = riskLower.includes("high")
   const isMedRisk = riskLower.includes("med") || riskLower.includes("moderate")
 
-  const status = referral.status
-    ? referral.status.charAt(0).toUpperCase() + referral.status.slice(1)
-    : "Pending"
   const statusLower = (referral.status || "pending").toLowerCase()
+  const status =
+    statusLower === "in_progress"
+      ? "Patient Arrived"
+      : statusLower === "accepted"
+        ? "Accepted"
+        : statusLower === "completed"
+          ? "Completed"
+          : statusLower === "rejected"
+            ? "Declined"
+            : statusLower.charAt(0).toUpperCase() + statusLower.slice(1)
   const reasonText =
     referral.reason ||
     referral.summary ||
@@ -197,6 +204,60 @@ export function ReferralSidepeek({
     referral.delivery_outcomes ||
     []
 
+  const renderHospitalNotes = (notes: string) => {
+    if (!notes || !notes.trim()) return null
+    const entries = notes.split(/(?=\[\d{1,2}\/\d{1,2}\/\d{4})/g).filter((e) => e.trim().length > 0)
+    if (entries.length <= 1) {
+      const isSingleInquiry = notes.includes("INQUIRY")
+      return (
+        <div
+          className={`rounded-lg border p-3 text-xs leading-relaxed ${
+            isSingleInquiry
+              ? "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-200"
+              : "border-border bg-card text-foreground"
+          }`}
+        >
+          {isSingleInquiry && (
+            <div className="mb-1 flex items-center gap-1.5 font-semibold text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>Hospital Clinical Inquiry</span>
+            </div>
+          )}
+          <p className="whitespace-pre-wrap">{notes.trim()}</p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        {entries.map((entry, idx) => {
+          const isInquiry = entry.includes("INQUIRY")
+          const isStage = entry.includes("STAGE:")
+          return (
+            <div
+              key={idx}
+              className={`rounded-lg border p-2.5 text-xs leading-relaxed ${
+                isInquiry
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-200"
+                  : isStage
+                    ? "border-primary/20 bg-primary/5 text-foreground"
+                    : "border-border bg-card text-foreground"
+              }`}
+            >
+              {isInquiry && (
+                <div className="mb-1 flex items-center gap-1.5 font-semibold text-amber-600 dark:text-amber-400">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  <span>Hospital Clinical Inquiry</span>
+                </div>
+              )}
+              <p className="whitespace-pre-wrap">{entry.trim()}</p>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   const handleCopy = (text: string, label: string) => {
     if (!text || text === "N/A") return
     navigator.clipboard.writeText(text)
@@ -262,15 +323,19 @@ export function ReferralSidepeek({
               className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                 statusLower === "accepted" || statusLower === "completed"
                   ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : statusLower === "pending"
-                    ? "border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                    : statusLower === "rejected" || statusLower === "cancelled"
-                      ? "border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400"
-                      : "border border-primary/20 bg-primary/10 text-primary"
+                  : statusLower === "in_progress"
+                    ? "border border-purple-500/20 bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                    : statusLower === "pending"
+                      ? "border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                      : statusLower === "rejected" || statusLower === "cancelled"
+                        ? "border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400"
+                        : "border border-primary/20 bg-primary/10 text-primary"
               }`}
             >
               {statusLower === "accepted" || statusLower === "completed" ? (
                 <CheckCircle2 className="h-3 w-3" />
+              ) : statusLower === "in_progress" ? (
+                <Activity className="h-3 w-3" />
               ) : statusLower === "pending" ? (
                 <Clock className="h-3 w-3" />
               ) : (
@@ -310,10 +375,12 @@ export function ReferralSidepeek({
               </span>
               <span className="text-[10px] font-medium text-muted-foreground">
                 {statusLower === "completed"
-                  ? "Closed Loop"
-                  : statusLower === "accepted"
-                    ? "In Receiving Care"
-                    : "Awaiting Intake"}
+                  ? "Closed Loop (Completed)"
+                  : statusLower === "in_progress"
+                    ? "Patient Arrived & In Triage"
+                    : statusLower === "accepted"
+                      ? "In Receiving Care"
+                      : "Awaiting Intake"}
               </span>
             </div>
 
@@ -329,7 +396,7 @@ export function ReferralSidepeek({
               <div className="flex flex-col items-center gap-1 text-center">
                 <div
                   className={`flex h-7 w-7 items-center justify-center rounded-full border ${
-                    statusLower === "accepted" || statusLower === "completed"
+                    statusLower === "accepted" || statusLower === "in_progress" || statusLower === "completed"
                       ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                       : "border-primary/30 bg-primary/10 text-primary animate-pulse"
                   }`}
@@ -338,23 +405,35 @@ export function ReferralSidepeek({
                 </div>
                 <span className="text-[10px] font-semibold text-foreground">In Transit</span>
                 <span className="text-[9px] text-muted-foreground">
-                  {statusLower === "accepted" || statusLower === "completed" ? "Arrived" : "Dispatched"}
+                  {statusLower === "in_progress" || statusLower === "completed"
+                    ? "Arrived"
+                    : statusLower === "accepted"
+                      ? "Accepted"
+                      : "Dispatched"}
                 </span>
               </div>
 
               <div className="flex flex-col items-center gap-1 text-center">
                 <div
                   className={`flex h-7 w-7 items-center justify-center rounded-full border ${
-                    statusLower === "accepted" || statusLower === "completed"
+                    statusLower === "in_progress" || statusLower === "completed"
                       ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                      : "border-border bg-muted text-muted-foreground"
+                      : statusLower === "accepted"
+                        ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        : "border-border bg-muted text-muted-foreground"
                   }`}
                 >
                   <Building2 className="h-3.5 w-3.5" />
                 </div>
                 <span className="text-[10px] font-semibold text-foreground">Hospital Intake</span>
                 <span className="text-[9px] text-muted-foreground">
-                  {statusLower === "accepted" || statusLower === "completed" ? "Admitted" : "Pending"}
+                  {statusLower === "in_progress"
+                    ? "In Triage"
+                    : statusLower === "completed"
+                      ? "Admitted"
+                      : statusLower === "accepted"
+                        ? "Bed Reserved"
+                        : "Pending"}
                 </span>
               </div>
 
@@ -374,6 +453,60 @@ export function ReferralSidepeek({
                 </span>
               </div>
             </div>
+          </div>
+        )}
+
+        {referral.response_notes || referral.outcome || statusLower !== "pending" ? (
+          <div className="flex flex-col gap-3 border-b border-border bg-primary/5 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                <Building2 className="h-4 w-4" />
+                <span>Receiving Hospital Live Updates & Notes</span>
+              </div>
+              {referral.date_responded && (
+                <span className="text-[10px] text-muted-foreground">
+                  Updated: {new Date(referral.date_responded).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-medium text-muted-foreground">Current Stage:</span>
+              <span className="inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                {status}
+              </span>
+              {referral.outcome && (
+                <>
+                  <span className="text-[11px] font-medium text-muted-foreground">Outcome:</span>
+                  <span className="inline-flex items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    {referral.outcome}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {referral.response_notes ? (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Clinical Instructions & Communication Log
+                </span>
+                {renderHospitalNotes(referral.response_notes)}
+              </div>
+            ) : (
+              <p className="rounded-md border border-dashed border-border bg-card/60 p-2.5 text-xs text-muted-foreground">
+                Hospital marked status as <span className="font-semibold text-foreground">{status}</span> without accompanying written instructions.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1.5 border-b border-border bg-muted/20 p-4">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <Clock className="h-3.5 w-3.5 text-amber-500" />
+              <span>Awaiting Receiving Facility Feedback</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              The destination facility ({destination}) has not submitted triage or admission updates yet. As soon as hospital staff updates the stage or leaves clinical instructions, they will appear here in real time.
+            </p>
           </div>
         )}
 
@@ -444,42 +577,6 @@ export function ReferralSidepeek({
             )}
           </p>
         </div>
-
-        {(statusLower === "completed" || referral.outcome || referral.response_notes) && (
-          <div className="flex flex-col gap-2.5 border-b border-border bg-emerald-500/5 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>Hospital Counter-Referral & Outcome Report</span>
-              </div>
-              {referral.date_responded && (
-                <span className="text-[10px] text-muted-foreground">
-                  {new Date(referral.date_responded).toLocaleDateString()}
-                </span>
-              )}
-            </div>
-
-            {referral.outcome && (
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-medium text-muted-foreground">Clinical Outcome:</span>
-                <span className="inline-flex items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                  {referral.outcome}
-                </span>
-              </div>
-            )}
-
-            {referral.response_notes && (
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Hospital Discharge & Feedback Notes
-                </span>
-                <p className="rounded-md border border-border bg-card p-2.5 text-xs leading-relaxed text-foreground">
-                  {referral.response_notes}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
 
         <div className="flex flex-col gap-5 border-b border-border p-4">
           <h3 className="text-xs font-semibold text-foreground">Properties</h3>

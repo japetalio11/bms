@@ -183,6 +183,8 @@ export function PublicReferralPage() {
       setActionSuccessMsg(
         `Referral status updated to ${selectedAction.toUpperCase().replace("_", " ")}!`
       )
+      setResponseNotes("")
+      setOutcomeNotes("")
       setIsRespondModalOpen(false)
 
       await fetchReferral(enteredPin || pinFromUrl)

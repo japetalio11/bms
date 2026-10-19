@@ -340,9 +340,6 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
                 <TabsTrigger value="encounters" className={tabTriggerClass}>
                   Visitation
                 </TabsTrigger>
-                <TabsTrigger value="trends" className={tabTriggerClass}>
-                  Clinical Trends
-                </TabsTrigger>
                 <TabsTrigger value="delivery" className={tabTriggerClass}>
                   Delivery & Newborns
                 </TabsTrigger>
@@ -354,6 +351,9 @@ export function MotherProfilePage({ motherId }: { motherId?: string }) {
                 </TabsTrigger>
                 <TabsTrigger value="prescriptions" className={tabTriggerClass}>
                   Prescriptions & Supplements
+                </TabsTrigger>
+                <TabsTrigger value="trends" className={tabTriggerClass}>
+                  Clinical Trends
                 </TabsTrigger>
               </TabsList>
             </Tabs>
