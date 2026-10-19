@@ -274,11 +274,63 @@ export function extractRiskLevel(
     const pregRisk = String(
       activePreg.risk_flag || activePreg.risk_level || activePreg.risk || ""
     ).trim()
-    if (pregRisk && pregRisk.toUpperCase() !== "N/A") {
+    if (
+      pregRisk &&
+      pregRisk.toUpperCase() !== "N/A" &&
+      pregRisk.toLowerCase() !== "no risk assessed"
+    ) {
       const variant = getRiskVariant(pregRisk)
       if (variant === "high") return "High Risk"
       if (variant === "moderate") return "Medium Risk"
       if (variant === "low") return "Low Risk"
+    }
+
+    let motherAge: number | null = null
+    if (castItem.age != null && !isNaN(Number(castItem.age))) {
+      motherAge = Number(castItem.age)
+    } else if (
+      castItem.user &&
+      (castItem.user as any).age != null &&
+      !isNaN(Number((castItem.user as any).age))
+    ) {
+      motherAge = Number((castItem.user as any).age)
+    } else {
+      const bDate =
+        (castItem as any).birth_date ||
+        (castItem.user as any)?.birth_date ||
+        (castItem.patient as any)?.birth_date
+      if (bDate) {
+        const parsed = new Date(bDate).getTime()
+        if (!isNaN(parsed)) {
+          motherAge = Math.floor(
+            (Date.now() - parsed) / (365.25 * 24 * 60 * 60 * 1000)
+          )
+        }
+      }
+    }
+
+    const baselineTEWS = calculateOfflineTEWSRisk({
+      mother_age: motherAge,
+      parity: activePreg.parity != null ? Number(activePreg.parity) : null,
+      previous_delivery_history: activePreg.previous_delivery_history || null,
+      prev_caesarean: Boolean(activePreg.prev_caesarean),
+      consecutive_miscarriages: Boolean(activePreg.consecutive_miscarriages),
+      stillbirth_history: Boolean(activePreg.stillbirth_history),
+      pph_history: Boolean(activePreg.pph_history),
+      has_tb: Boolean(activePreg.has_tb),
+      has_heart_disease: Boolean(activePreg.has_heart_disease),
+      has_diabetes: Boolean(activePreg.has_diabetes),
+      has_asthma: Boolean(activePreg.has_asthma),
+      has_goiter: Boolean(activePreg.has_goiter),
+      height_cm:
+        activePreg.height_cm != null ? Number(activePreg.height_cm) : null,
+    })
+
+    if (baselineTEWS.risk_level === "High Risk") {
+      return "High Risk"
+    }
+    if (baselineTEWS.risk_level === "Moderate Risk") {
+      return "Medium Risk"
     }
   }
 

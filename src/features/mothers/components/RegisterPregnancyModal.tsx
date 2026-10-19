@@ -22,6 +22,7 @@ import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { validatePregnancyData } from "@/lib/clinicalValidation"
+import { calculateOfflineTEWSRisk } from "@/lib/riskUtils"
 import { mothersApi } from "../api"
 
 export interface RegisterPregnancyModalProps {
@@ -109,6 +110,31 @@ export function RegisterPregnancyModal({
     setLoading(true)
 
     try {
+      const motherAge =
+        motherData?.age ||
+        (motherData?.birth_date
+          ? Math.floor(
+              (Date.now() - new Date(motherData.birth_date).getTime()) /
+                (365.25 * 24 * 60 * 60 * 1000)
+            )
+          : null)
+
+      const calculatedRisk = calculateOfflineTEWSRisk({
+        mother_age: motherAge,
+        parity: Number(parity),
+        previous_delivery_history: previousDeliveryHistory || undefined,
+        height_cm: heightCm ? Number(heightCm) : undefined,
+        prev_caesarean: prevCaesarean,
+        consecutive_miscarriages: consecutiveMiscarriages,
+        stillbirth_history: stillbirthHistory,
+        pph_history: pphHistory,
+        has_tb: hasTb,
+        has_heart_disease: hasHeartDisease,
+        has_diabetes: hasDiabetes,
+        has_asthma: hasAsthma,
+        has_goiter: hasGoiter,
+      })
+
       const payload = {
         motherId,
         lmp_date: lmpDate.toISOString(),
@@ -134,6 +160,8 @@ export function RegisterPregnancyModal({
         has_diabetes: hasDiabetes,
         has_asthma: hasAsthma,
         has_goiter: hasGoiter,
+        risk_level: calculatedRisk.risk_level,
+        risk_flag: calculatedRisk.risk_level,
       }
 
       await mothersApi.registerPregnancy(payload)
