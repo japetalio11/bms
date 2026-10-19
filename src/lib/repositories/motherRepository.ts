@@ -2039,6 +2039,78 @@ export const motherRepository = {
       } catch (e) {}
     }
 
+    let motherAge: number | null = null
+    try {
+      const allM = await db.mothers.toArray()
+      const mRec = allM.find(
+        (m) =>
+          m.id === motherId ||
+          m.mother_id === motherId ||
+          m.user_id === motherId
+      )
+      if (mRec) {
+        if (mRec.age != null) motherAge = Number(mRec.age)
+        else if (mRec.birth_date) {
+          const parsed = new Date(mRec.birth_date).getTime()
+          if (!isNaN(parsed)) {
+            motherAge = Math.floor(
+              (Date.now() - parsed) / (365.25 * 24 * 60 * 60 * 1000)
+            )
+          }
+        }
+      }
+    } catch {}
+
+    const baselineTEWS = calculateOfflineTEWSRisk({
+      mother_age: motherAge,
+      parity: payload.parity != null ? Number(payload.parity) : null,
+      previous_delivery_history: payload.previous_delivery_history || null,
+      prev_caesarean: Boolean(payload.prev_caesarean),
+      consecutive_miscarriages: Boolean(payload.consecutive_miscarriages),
+      stillbirth_history: Boolean(payload.stillbirth_history),
+      pph_history: Boolean(payload.pph_history),
+      has_tb: Boolean(payload.has_tb),
+      has_heart_disease: Boolean(payload.has_heart_disease),
+      has_diabetes: Boolean(payload.has_diabetes),
+      has_asthma: Boolean(payload.has_asthma),
+      has_goiter: Boolean(payload.has_goiter),
+      height_cm: payload.height_cm != null ? Number(payload.height_cm) : null,
+    })
+
+    const initialRisk =
+      payload.risk_level || payload.risk_flag || baselineTEWS.risk_level
+
+    const updateMotherRisk = async () => {
+      if (!motherId) return
+      await db.mothers
+        .where("id")
+        .equals(motherId)
+        .modify({
+          risk_flag: initialRisk,
+          risk_level: initialRisk,
+          risk: initialRisk,
+          updated_at: Date.now(),
+        })
+        .catch(() => {})
+      await db.mothers
+        .where("mother_id")
+        .equals(motherId)
+        .modify({
+          risk_flag: initialRisk,
+          risk_level: initialRisk,
+          risk: initialRisk,
+          updated_at: Date.now(),
+        })
+        .catch(() => {})
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("bms:risk-updated", {
+            detail: { motherId, risk: initialRisk },
+          })
+        )
+      }
+    }
+
     if (syncEngine.isNetworkOnline()) {
       try {
         const response = await apiClient.post(
@@ -2057,10 +2129,13 @@ export const motherRepository = {
           mother_id: motherId,
           pregnancy_status:
             payload.pregnancy_status || p.pregnancy_status || "Active",
+          risk_flag: initialRisk,
+          risk_level: initialRisk,
           sync_status: "synced",
           updated_at: Date.now(),
         }
         await db.pregnancies.put(syncedPreg)
+        await updateMotherRisk()
         return syncedPreg
       } catch (err: any) {
         if (
@@ -2086,11 +2161,14 @@ export const motherRepository = {
       pregnancy_id: tempId,
       mother_id: motherId,
       pregnancy_status: payload.pregnancy_status || "Active",
+      risk_flag: initialRisk,
+      risk_level: initialRisk,
       sync_status: "pending_create",
       updated_at: Date.now(),
     }
 
     await db.pregnancies.put(newPregnancy)
+    await updateMotherRisk()
 
     await syncEngine.enqueueMutation({
       entity_type: "pregnancy",
