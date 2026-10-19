@@ -103,6 +103,18 @@ export function EditRecordModal({
   }
 
   React.useEffect(() => {
+    if (!open) {
+      setFormData({})
+      setDateVal(undefined)
+      setEddDateVal(undefined)
+      setError(null)
+      setUploading(false)
+      setIsRiskOverridden(false)
+      setOverrideReason("")
+      setContextData({})
+      return
+    }
+
     if (!data) return
     setError(null)
     setFormData({ ...data })
@@ -616,6 +628,14 @@ export function EditRecordModal({
       }
       onSuccess?.()
       onOpenChange(false)
+      setFormData({})
+      setDateVal(undefined)
+      setEddDateVal(undefined)
+      setError(null)
+      setUploading(false)
+      setIsRiskOverridden(false)
+      setOverrideReason("")
+      setContextData({})
     } catch (err: any) {
       setError(
         err.response?.data?.error || err.message || "Failed to update record"
@@ -653,8 +673,11 @@ export function EditRecordModal({
       title={getTitle()}
       description="Update record details and click save to apply changes."
       className={cn(
-        "sm:max-w-xl md:max-w-[630px]",
-        (type === "visitation" || type === "delivery") && "md:max-w-[700px]"
+        type === "visitation" || type === "delivery"
+          ? "sm:max-w-xl md:max-w-[700px]"
+          : type === "pregnancy" || type === "postpartum"
+          ? "sm:max-w-xl md:max-w-[600px]"
+          : "sm:max-w-[460px] md:max-w-[480px]"
       )}
     >
       <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto px-1 py-2">
@@ -1301,6 +1324,45 @@ export function EditRecordModal({
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <Label className="text-xs font-medium text-foreground">
+                Screening Type
+              </Label>
+              <Input
+                type="text"
+                value={formData.screening_type || ""}
+                onChange={(e) => handleChange("screening_type", e.target.value)}
+                className="!h-9 border-border bg-card text-xs text-card-foreground"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-foreground">
+                Date of Screening
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "!h-9 w-full justify-start border-border bg-card text-left text-xs font-normal",
+                      !dateVal && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    {dateVal ? format(dateVal, "PPP") : <span>Pick Date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateVal}
+                    onSelect={setDateVal}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-foreground">
                 Screening Result
               </Label>
               <Input
@@ -1371,6 +1433,48 @@ export function EditRecordModal({
 
         {type === "prescription" && (
           <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-foreground">
+                Supplement / Prescription Name
+              </Label>
+              <Input
+                type="text"
+                value={formData.supplement_type || formData.supplement_name || ""}
+                onChange={(e) => {
+                  handleChange("supplement_type", e.target.value)
+                  handleChange("supplement_name", e.target.value)
+                }}
+                className="!h-9 border-border bg-card text-xs text-card-foreground"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label className="text-xs font-medium text-foreground">
+                Date Given
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "!h-9 w-full justify-start border-border bg-card text-left text-xs font-normal",
+                      !dateVal && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    {dateVal ? format(dateVal, "PPP") : <span>Pick Date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateVal}
+                    onSelect={setDateVal}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <Label className="text-xs font-medium text-foreground">
                 Tablets Given Count

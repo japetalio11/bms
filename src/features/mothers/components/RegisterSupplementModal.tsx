@@ -42,6 +42,19 @@ export function RegisterSupplementModal({
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
+  const resetForm = React.useCallback(() => {
+    setSupplementName("Iron + Folic Acid")
+    setTabletsCount(30)
+    setDateGiven(new Date())
+    setError(null)
+  }, [])
+
+  React.useEffect(() => {
+    if (!open) {
+      resetForm()
+    }
+  }, [open, resetForm])
+
   const pregnancies = motherData?.pregnancies || []
   const allVisits = visitationList.length > 0 ? visitationList : (motherData?.prenatalVisits || [])
 
@@ -109,6 +122,7 @@ export function RegisterSupplementModal({
       }
 
       await mothersApi.registerSupplement(payload)
+      resetForm()
       onOpenChange(false)
       onSuccess?.()
     } catch (err: any) {
@@ -125,7 +139,7 @@ export function RegisterSupplementModal({
       onOpenChange={onOpenChange}
       title="Add Prescription & Supplement"
       description="Record iron, calcium, or medication supplementation for this mother."
-      className="sm:max-w-[480px]"
+      className="sm:max-w-[460px] md:max-w-[480px]"
     >
       <div className="flex flex-col gap-4 py-2 overflow-y-auto max-h-[80vh] px-1">
         {error && (

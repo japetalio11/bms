@@ -92,6 +92,33 @@ export function RecordDeliveryModal({
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
+  const resetForm = React.useCallback(() => {
+    setDeliveryDate(new Date())
+    setPlaceOfDelivery("Rural Health Unit / Birthing Clinic")
+    setModeOfDelivery("Normal Spontaneous Vaginal Delivery (NSVD)")
+    setDurationOfLabor("")
+    setBloodLossMl("")
+    setDeliveryComplications("")
+    setBirthAttendant("MD")
+    setMaternalOutcome("Alive")
+    setImmediateBreastfeeding(true)
+    setNewborns([
+      {
+        sex: "Female",
+        birth_weight_kg: "3.2",
+        status_at_birth: "Alive",
+        apgar_score: 9,
+      },
+    ])
+    setError(null)
+  }, [])
+
+  React.useEffect(() => {
+    if (!open) {
+      resetForm()
+    }
+  }, [open, resetForm])
+
   React.useEffect(() => {
     if (activePreg) {
       setSelectedPregnancyId(activePreg.pregnancy_id || activePreg.id || "")
@@ -210,6 +237,7 @@ export function RecordDeliveryModal({
       }
 
       await mothersApi.registerDeliveryOutcome(payload)
+      resetForm()
       onOpenChange(false)
       onSuccess?.()
     } catch (err: any) {

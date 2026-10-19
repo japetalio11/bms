@@ -69,6 +69,34 @@ export function LogVitalsModal({
   const [error, setError] = React.useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({})
 
+  const resetForm = React.useCallback(() => {
+    setWeightKg("")
+    setTemperatureCelsius("36.5")
+    setPulseRateBpm("")
+    setBpSystolic("")
+    setBpDiastolic("")
+    setFundicHeightCm("")
+    setFetalHeartToneBpm("")
+    setFetalPresentation("Cephalic")
+    setHasVaginalBleeding(false)
+    setHasPallor(false)
+    setHasEdema(false)
+    setHasFever(false)
+    setChiefComplaint("")
+    setDangerSigns("")
+    setIsRiskOverridden(false)
+    setOverriddenRisk("High Risk")
+    setOverrideReason("")
+    setError(null)
+    setFieldErrors({})
+  }, [])
+
+  React.useEffect(() => {
+    if (!open) {
+      resetForm()
+    }
+  }, [open, resetForm])
+
   const pregnancies = motherData?.pregnancies || []
 
   const calculatedAssessment = React.useMemo(() => {
@@ -290,6 +318,7 @@ export function LogVitalsModal({
           ? `Prenatal visit recorded. Clinical risk override: ${effectiveRiskLevel}`
           : `Prenatal visit recorded. System assessed: ${calculatedAssessment.risk_level}`
       )
+      resetForm()
       onSuccess?.()
       onOpenChange(false)
     } catch (err: any) {
