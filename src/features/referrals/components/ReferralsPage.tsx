@@ -20,6 +20,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Building2,
+  FileCheck,
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -168,6 +170,7 @@ export function ReferralsPage() {
       if (
         activeTab === "accepted" &&
         statusLower !== "accepted" &&
+        statusLower !== "in_progress" &&
         statusLower !== "completed"
       ) {
         return false
@@ -179,13 +182,15 @@ export function ReferralsPage() {
         activeTab === "in-transit" &&
         statusLower !== "in_transit" &&
         statusLower !== "in-transit" &&
-        statusLower !== "transferred"
+        statusLower !== "transferred" &&
+        statusLower !== "in_progress"
       ) {
         return false
       }
       if (
         activeTab === "admitted" &&
         statusLower !== "admitted" &&
+        statusLower !== "in_progress" &&
         statusLower !== "completed"
       ) {
         return false
@@ -583,10 +588,19 @@ export function ReferralsPage() {
                   const isMedRisk =
                     riskLower.includes("med") || riskLower.includes("moderate")
 
-                  const status = ref.status
-                    ? ref.status.charAt(0).toUpperCase() + ref.status.slice(1)
-                    : "Pending"
                   const statusLower = (ref.status || "pending").toLowerCase()
+                  const status =
+                    statusLower === "in_progress"
+                      ? "Patient Arrived"
+                      : statusLower === "accepted"
+                        ? "Accepted"
+                        : statusLower === "completed"
+                          ? "Completed"
+                          : statusLower === "rejected"
+                            ? "Declined"
+                            : ref.status
+                              ? ref.status.charAt(0).toUpperCase() + ref.status.slice(1)
+                              : "Pending"
                   const transferCode = ref.shared_pin || ref.transferCode || "N/A"
                   const destination =
                     ref.toFacility?.facility_name ||
@@ -656,17 +670,21 @@ export function ReferralsPage() {
                               statusLower === "accepted" ||
                               statusLower === "completed"
                                 ? "bg-green-500/10 text-green-500"
-                                : statusLower === "pending"
-                                  ? "bg-amber-500/10 text-amber-500"
-                                  : statusLower === "rejected" ||
-                                      statusLower === "cancelled"
-                                    ? "bg-red-500/10 text-red-500"
-                                    : "bg-blue-500/10 text-blue-500"
+                                : statusLower === "in_progress"
+                                  ? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                                  : statusLower === "pending"
+                                    ? "bg-amber-500/10 text-amber-500"
+                                    : statusLower === "rejected" ||
+                                        statusLower === "cancelled"
+                                      ? "bg-red-500/10 text-red-500"
+                                      : "bg-blue-500/10 text-blue-500"
                             }`}
                           >
                             {statusLower === "accepted" ||
                             statusLower === "completed" ? (
                               <CheckCircle2 className="h-3 w-3" />
+                            ) : statusLower === "in_progress" ? (
+                              <Activity className="h-3 w-3" />
                             ) : statusLower === "pending" ? (
                               <Clock className="h-3 w-3" />
                             ) : (
@@ -708,6 +726,27 @@ export function ReferralsPage() {
                           </div>
                         </div>
                       </div>
+
+                      {(ref.response_notes || ref.outcome) && (
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-xs">
+                          <div className="flex items-center justify-between font-semibold text-primary mb-1">
+                            <span className="flex items-center gap-1 text-[11px]">
+                              <Building2 className="h-3.5 w-3.5" />
+                              Hospital Notes
+                            </span>
+                            {ref.outcome && (
+                              <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                {ref.outcome}
+                              </span>
+                            )}
+                          </div>
+                          {ref.response_notes && (
+                            <p className="line-clamp-2 text-[11px] text-muted-foreground whitespace-pre-wrap">
+                              {ref.response_notes}
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       <div
                         className="flex items-center justify-end border-t border-border pt-3"
@@ -891,13 +930,22 @@ export function ReferralsPage() {
                               riskLower.includes("med") ||
                               riskLower.includes("moderate")
 
-                            const status = ref.status
-                              ? ref.status.charAt(0).toUpperCase() +
-                                ref.status.slice(1)
-                              : "Pending"
                             const statusLower = (
                               ref.status || "pending"
                             ).toLowerCase()
+                            const status =
+                              statusLower === "in_progress"
+                                ? "Patient Arrived"
+                                : statusLower === "accepted"
+                                  ? "Accepted"
+                                  : statusLower === "completed"
+                                    ? "Completed"
+                                    : statusLower === "rejected"
+                                      ? "Declined"
+                                      : ref.status
+                                        ? ref.status.charAt(0).toUpperCase() +
+                                          ref.status.slice(1)
+                                        : "Pending"
                             const recordLink =
                               ref.secure_link || ref.recordLink || "N/A"
                             const transferCode =
@@ -980,17 +1028,21 @@ export function ReferralsPage() {
                                         statusLower === "accepted" ||
                                         statusLower === "completed"
                                           ? "bg-green-500/10 text-green-500"
-                                          : statusLower === "pending"
-                                            ? "bg-amber-500/10 text-amber-500"
-                                            : statusLower === "rejected" ||
-                                                statusLower === "cancelled"
-                                              ? "bg-red-500/10 text-red-500"
-                                              : "bg-blue-500/10 text-blue-500"
+                                          : statusLower === "in_progress"
+                                            ? "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+                                            : statusLower === "pending"
+                                              ? "bg-amber-500/10 text-amber-500"
+                                              : statusLower === "rejected" ||
+                                                  statusLower === "cancelled"
+                                                ? "bg-red-500/10 text-red-500"
+                                                : "bg-blue-500/10 text-blue-500"
                                       }`}
                                     >
                                       {statusLower === "accepted" ||
                                       statusLower === "completed" ? (
                                         <CheckCircle2 className="h-3 w-3" />
+                                      ) : statusLower === "in_progress" ? (
+                                        <Activity className="h-3 w-3" />
                                       ) : statusLower === "pending" ? (
                                         <Clock className="h-3 w-3" />
                                       ) : (
