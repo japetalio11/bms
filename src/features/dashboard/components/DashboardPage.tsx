@@ -6,7 +6,6 @@ import {
   RefreshCw,
   MoreVertical,
   Plus,
-  Download,
   Activity,
   CheckCircle2,
 } from "lucide-react"
@@ -260,42 +259,7 @@ export function DashboardPage() {
     }
   }
 
-  const handleExportCSV = () => {
-    if (enrichedAppointments.length === 0) {
-      toast.info("No appointments to export")
-      return
-    }
-    const headers = [
-      "Mother Name",
-      "Status",
-      "Type",
-      "Date & Time",
-      "Facility ID",
-    ]
-    const rows = enrichedAppointments.map((app) => [
-      `"${app.motherName || ""}"`,
-      `"${app.status || "Scheduled"}"`,
-      `"${app.type || (app as any).appointment_type || "Prenatal"}"`,
-      `"${formatDateTime(app.appointment_date, app.time_slot)}"`,
-      `"${app.facility_id || ""}"`,
-    ])
-    const csvString = [headers.join(","), ...rows.map((e) => e.join(","))].join(
-      "\n"
-    )
-    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.setAttribute("href", url)
-    link.setAttribute(
-      "download",
-      `Appointments_Export_${new Date().toISOString().split("T")[0]}.csv`
-    )
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    toast.success("Appointments exported to CSV")
-  }
+
 
   const handleCancelAppointment = async (
     appId: string,
@@ -760,24 +724,8 @@ export function DashboardPage() {
             </div>
 
             <div className="flex w-full shrink-0 items-center gap-2 md:w-auto">
-              <Button
-                onClick={handleExportCSV}
-                variant="outline"
-                className="hidden h-8 gap-2 border-border bg-card px-2 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground md:flex"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Export
-              </Button>
-              <Button
-                onClick={handleRefresh}
-                variant="outline"
-                className="hidden h-8 gap-2 border-border bg-card px-2 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground md:flex"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Refresh
-              </Button>
               <CreateAppointmentModal onSuccess={handleRefresh}>
-                <Button className="h-8 w-full gap-2 bg-primary px-2 text-xs font-medium text-primary-foreground shadow-sm shadow-primary/25 hover:bg-primary/90 md:w-auto">
+                <Button className="h-8 w-full gap-2 bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm shadow-primary/25 hover:bg-primary/90 md:w-auto">
                   <Plus className="h-3.5 w-3.5" />
                   New Appointment
                 </Button>
