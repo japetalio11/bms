@@ -18,6 +18,7 @@ class SyncEngine {
   private listeners: Set<SyncListener> = new Set()
   private lastSyncedAt: number | null = null
   private lastError: string | null = null
+  private tempIdMap: Map<string, string> = new Map()
   private isOnlineState: boolean =
     typeof navigator !== "undefined" ? navigator.onLine : true
 
@@ -187,6 +188,30 @@ class SyncEngine {
     return cancelled
   }
 
+  private getEntityTier(item: OfflineQueueItem): number {
+    const type = item.entity_type
+    const action = item.action
+    let baseTier = 50
+    if (type === "user") baseTier = 10
+    else if (type === "mother") baseTier = 20
+    else if (type === "pregnancy") baseTier = 30
+    else if (
+      type === "prenatal_visit" ||
+      type === "appointment" ||
+      type === "lab_record" ||
+      type === "supplement" ||
+      type === "referral" ||
+      type === "ehr_doc"
+    ) baseTier = 40
+    else if (type === "delivery_outcome") baseTier = 50
+    else if (type === "newborn_record" || type === "postpartum_visit") baseTier = 60
+    else if (type === "message" || type === "notification") baseTier = 70
+    else if (type === "custom_request") baseTier = 80
+
+    const actionModifier = action === "CREATE" ? 0 : action === "UPDATE" ? 1 : 2
+    return baseTier * 10 + actionModifier
+  }
+
   public async processQueue() {
     if (this.isSyncing) return
     if (!this.isNetworkOnline()) {
@@ -197,8 +222,8 @@ class SyncEngine {
 
     await this.resyncUnsyncedRecords()
 
-    const queueItems = await db.offlineQueue.orderBy("created_at").toArray()
-    if (queueItems.length === 0) {
+    const initialQueue = await db.offlineQueue.toArray()
+    if (initialQueue.length === 0) {
       this.notify()
       return
     }
@@ -208,24 +233,49 @@ class SyncEngine {
     this.notify()
 
     console.log(
-      `[SyncEngine] Starting processing ${queueItems.length} queued offline mutations...`
+      `[SyncEngine] Starting processing ${initialQueue.length} queued offline mutations...`
     )
 
-    for (const item of queueItems) {
-      if (!this.isNetworkOnline()) {
-        console.log(
-          "[SyncEngine] Lost connectivity during sync processing. Pausing."
-        )
-        break
-      }
+    const maxPasses = 5
+    let currentPass = 0
 
-      try {
-        await this.processItem(item)
-        if (item.id) {
-          await db.offlineQueue.delete(item.id)
+    while (currentPass < maxPasses && this.isNetworkOnline()) {
+      currentPass++
+      const queueItems = await db.offlineQueue.toArray()
+      if (queueItems.length === 0) break
+
+      const sortedQueue = queueItems.sort((a, b) => {
+        const tierA = this.getEntityTier(a)
+        const tierB = this.getEntityTier(b)
+        if (tierA !== tierB) return tierA - tierB
+        return (a.created_at || 0) - (b.created_at || 0)
+      })
+
+      let progressMade = false
+
+      for (const queueItem of sortedQueue) {
+        if (!this.isNetworkOnline()) {
+          console.log(
+            "[SyncEngine] Lost connectivity during sync processing. Pausing."
+          )
+          break
         }
-        this.lastSyncedAt = Date.now()
-      } catch (err: any) {
+
+        const item = queueItem.id
+          ? (await db.offlineQueue.get(queueItem.id)) || queueItem
+          : queueItem
+
+        if (item.status === "conflict") continue
+        if ((item.retry_count || 0) >= 5) continue
+
+        try {
+          await this.processItem(item)
+          if (item.id) {
+            await db.offlineQueue.delete(item.id)
+          }
+          this.lastSyncedAt = Date.now()
+          progressMade = true
+        } catch (err: any) {
         console.error(
           `[SyncEngine] Error processing queue item #${item.id} (${item.entity_type}):`,
           err
@@ -420,6 +470,11 @@ class SyncEngine {
       }
     }
 
+    if (!progressMade) {
+      break
+    }
+  }
+
     const remainingQueue = await db.offlineQueue.toArray()
     const errorItems = remainingQueue.filter((q) => q.last_error || (q.retry_count || 0) >= 5)
     if (remainingQueue.length === 0) {
@@ -500,66 +555,89 @@ class SyncEngine {
     if (!payload || typeof payload !== "object") return payload
     const resolved = { ...payload }
 
-    // 1. Resolve mother_id
-    if (resolved.mother_id && String(resolved.mother_id).startsWith("temp-")) {
-      try {
-        const m = await db.mothers.get(resolved.mother_id)
-        if (m && m.mother_id && !String(m.mother_id).startsWith("temp-")) {
-          resolved.mother_id = m.mother_id
-          if (resolved.motherId) resolved.motherId = m.mother_id
-        }
-      } catch {}
+    if (resolved.mother_id) {
+      const mIdStr = String(resolved.mother_id)
+      if (this.tempIdMap.has(mIdStr)) {
+        resolved.mother_id = this.tempIdMap.get(mIdStr)
+        if (resolved.motherId) resolved.motherId = resolved.mother_id
+      } else if (mIdStr.startsWith("temp-")) {
+        try {
+          const m = await db.mothers.get(mIdStr)
+          if (m && m.mother_id && !String(m.mother_id).startsWith("temp-")) {
+            resolved.mother_id = m.mother_id
+            if (resolved.motherId) resolved.motherId = m.mother_id
+            this.tempIdMap.set(mIdStr, m.mother_id)
+          }
+        } catch {}
+      }
     }
 
-    // 2. Resolve pregnancy_id
     if (resolved.pregnancy_id) {
       const pIdStr = String(resolved.pregnancy_id)
-      if (pIdStr.startsWith("temp-") || pIdStr.startsWith("preg-")) {
+      if (this.tempIdMap.has(pIdStr)) {
+        resolved.pregnancy_id = this.tempIdMap.get(pIdStr)
+        if (resolved.pregnancyId) resolved.pregnancyId = resolved.pregnancy_id
+      } else if (pIdStr.startsWith("temp-") || pIdStr.startsWith("preg-")) {
         try {
-          const p = await db.pregnancies.get(resolved.pregnancy_id)
+          const p = await db.pregnancies.get(pIdStr)
           if (p && p.pregnancy_id && !String(p.pregnancy_id).startsWith("temp-") && !String(p.pregnancy_id).startsWith("preg-")) {
             resolved.pregnancy_id = p.pregnancy_id
+            this.tempIdMap.set(pIdStr, p.pregnancy_id)
           } else if (resolved.mother_id) {
             const mIdStr = String(resolved.mother_id)
+            const canonicalMotherId = this.tempIdMap.get(mIdStr) || mIdStr
             const allPregs = await db.pregnancies.toArray()
             const matchingPreg = allPregs.find((preg) => {
               const pMid = preg.mother_id || (preg as any).motherId
+              const canonicalPMid = this.tempIdMap.get(pMid) || pMid
               const pregId = preg.pregnancy_id || preg.id
+              const isMatchMother =
+                pMid === mIdStr ||
+                canonicalPMid === canonicalMotherId ||
+                (pMid && mIdStr && (pMid.includes(mIdStr) || mIdStr.includes(pMid)))
               return (
-                (pMid === mIdStr || (pMid && mIdStr && (pMid.includes(mIdStr) || mIdStr.includes(pMid)))) &&
+                isMatchMother &&
                 pregId &&
                 !String(pregId).startsWith("temp-") &&
                 !String(pregId).startsWith("preg-")
               )
             })
             if (matchingPreg && (matchingPreg.pregnancy_id || matchingPreg.id)) {
-              resolved.pregnancy_id = matchingPreg.pregnancy_id || matchingPreg.id
+              const foundPregId = matchingPreg.pregnancy_id || matchingPreg.id
+              resolved.pregnancy_id = foundPregId
+              this.tempIdMap.set(pIdStr, foundPregId)
             }
           }
         } catch {}
       }
     }
 
-    // 3. Resolve visit_id
-    if (resolved.visit_id && String(resolved.visit_id).startsWith("temp-")) {
-      try {
-        const v = await db.prenatalVisits.get(resolved.visit_id)
-        if (v && v.visit_id && !String(v.visit_id).startsWith("temp-")) {
-          resolved.visit_id = v.visit_id
-        } else if (resolved.pregnancy_id && !String(resolved.pregnancy_id).startsWith("temp-")) {
-          const matchingVisit = await db.prenatalVisits
-            .where("pregnancy_id")
-            .equals(resolved.pregnancy_id)
-            .first()
-          if (matchingVisit && matchingVisit.visit_id && !String(matchingVisit.visit_id).startsWith("temp-")) {
-            resolved.visit_id = matchingVisit.visit_id
+    if (resolved.visit_id) {
+      const vIdStr = String(resolved.visit_id)
+      if (this.tempIdMap.has(vIdStr)) {
+        resolved.visit_id = this.tempIdMap.get(vIdStr)
+      } else if (vIdStr.startsWith("temp-")) {
+        try {
+          const v = await db.prenatalVisits.get(vIdStr)
+          if (v && v.visit_id && !String(v.visit_id).startsWith("temp-")) {
+            resolved.visit_id = v.visit_id
+            this.tempIdMap.set(vIdStr, v.visit_id)
+          } else if (resolved.pregnancy_id && !String(resolved.pregnancy_id).startsWith("temp-")) {
+            const matchingVisit = await db.prenatalVisits
+              .where("pregnancy_id")
+              .equals(resolved.pregnancy_id)
+              .first()
+            if (matchingVisit && matchingVisit.visit_id && !String(matchingVisit.visit_id).startsWith("temp-")) {
+              resolved.visit_id = matchingVisit.visit_id
+              this.tempIdMap.set(vIdStr, matchingVisit.visit_id)
+            } else {
+              delete resolved.visit_id
+            }
           } else {
             delete resolved.visit_id
           }
-        } else {
-          delete resolved.visit_id
-        }
-      } catch {}
+        } catch {}
+      }
     }
 
     return resolved
@@ -603,14 +681,28 @@ class SyncEngine {
       }
     }
 
+    let endpoint = item.endpoint
+    for (const [tempId, canonicalId] of this.tempIdMap.entries()) {
+      if (endpoint && endpoint.includes(tempId)) {
+        endpoint = endpoint.replaceAll(tempId, canonicalId)
+      }
+      if (payload && typeof payload === "object") {
+        if (payload.mother_id === tempId) payload.mother_id = canonicalId
+        if (payload.motherId === tempId) payload.motherId = canonicalId
+        if (payload.pregnancy_id === tempId) payload.pregnancy_id = canonicalId
+        if (payload.pregnancyId === tempId) payload.pregnancyId = canonicalId
+        if (payload.visit_id === tempId) payload.visit_id = canonicalId
+      }
+    }
+
     let response: any
     try {
       if (item.method === "POST") {
-        response = await apiClient.post(item.endpoint, payload)
+        response = await apiClient.post(endpoint, payload)
       } else if (item.method === "PUT") {
-        response = await apiClient.put(item.endpoint, payload)
+        response = await apiClient.put(endpoint, payload)
       } else if (item.method === "DELETE") {
-        response = await apiClient.delete(item.endpoint)
+        response = await apiClient.delete(endpoint)
       }
     } catch (err: any) {
       if (
@@ -894,6 +986,7 @@ class SyncEngine {
     console.log(
       `[SyncEngine] Reconciling temp ID ${tempId} -> canonical ID ${canonicalId}`
     )
+    this.tempIdMap.set(tempId, canonicalId)
 
     await db.transaction(
       "rw",
@@ -1418,12 +1511,19 @@ class SyncEngine {
           String(visit.id).startsWith("temp-") ||
           visit.sync_status === "pending_create"
         if (isTemp && !queuedTempIds.has(visit.id)) {
+          const resolvedMotherId =
+            (visit.mother_id ? this.tempIdMap.get(visit.mother_id) : undefined) ||
+            (visit.mother_id && !String(visit.mother_id).startsWith("temp-")
+              ? visit.mother_id
+              : (visit.mother_id ? (await db.mothers.get(visit.mother_id))?.mother_id : undefined) || visit.mother_id)
+
           const resolvedPregId =
-            visit.pregnancy_id && !visit.pregnancy_id.startsWith("temp-")
+            (visit.pregnancy_id ? this.tempIdMap.get(visit.pregnancy_id) : undefined) ||
+            (visit.pregnancy_id && !String(visit.pregnancy_id).startsWith("temp-")
               ? visit.pregnancy_id
-              : visit.mother_id
-                ? pregMap.get(visit.mother_id) || visit.pregnancy_id
-                : visit.pregnancy_id
+              : resolvedMotherId
+                ? pregMap.get(resolvedMotherId) || visit.pregnancy_id
+                : visit.pregnancy_id)
 
           console.log(
             `[SyncEngine] Auto-recovering offline prenatal visit ${visit.id} to outbox queue...`
@@ -1435,7 +1535,7 @@ class SyncEngine {
             endpoint: "/api/v1/prenatal-visit/register",
             method: "POST",
             payload: {
-              mother_id: visit.mother_id,
+              mother_id: resolvedMotherId,
               pregnancy_id: resolvedPregId,
               health_worker_id: visit.health_worker_id || "system",
               trimester: Number(visit.trimester) || 1,
@@ -1504,6 +1604,23 @@ class SyncEngine {
           String(lab.id).startsWith("temp-") ||
           lab.sync_status === "pending_create"
         if (isTemp && !queuedTempIds.has(lab.id)) {
+          const resolvedMotherId =
+            (lab.mother_id ? this.tempIdMap.get(lab.mother_id) : undefined) ||
+            (lab.mother_id && !String(lab.mother_id).startsWith("temp-")
+              ? lab.mother_id
+              : (lab.mother_id ? (await db.mothers.get(lab.mother_id))?.mother_id : undefined) || lab.mother_id)
+
+          const resolvedPregId =
+            (lab.pregnancy_id ? this.tempIdMap.get(lab.pregnancy_id) : undefined) ||
+            (lab.pregnancy_id && !String(lab.pregnancy_id).startsWith("temp-")
+              ? lab.pregnancy_id
+              : resolvedMotherId
+                ? pregMap.get(resolvedMotherId) || lab.pregnancy_id
+                : lab.pregnancy_id)
+
+          const resolvedVisitId =
+            (lab.visit_id ? this.tempIdMap.get(lab.visit_id) : undefined) || lab.visit_id
+
           console.log(
             `[SyncEngine] Auto-recovering offline lab record ${lab.id} to outbox queue...`
           )
@@ -1514,9 +1631,9 @@ class SyncEngine {
             endpoint: "/api/v1/lab-screening/register",
             method: "POST",
             payload: {
-              mother_id: lab.mother_id,
-              pregnancy_id: lab.pregnancy_id,
-              visit_id: lab.visit_id,
+              mother_id: resolvedMotherId,
+              pregnancy_id: resolvedPregId,
+              visit_id: resolvedVisitId,
               screening_type: lab.screening_type,
               result: lab.result,
               file_url: lab.file_url || undefined,
@@ -1538,6 +1655,23 @@ class SyncEngine {
           String(supp.id).startsWith("temp-") ||
           supp.sync_status === "pending_create"
         if (isTemp && !queuedTempIds.has(supp.id)) {
+          const resolvedMotherId =
+            (supp.mother_id ? this.tempIdMap.get(supp.mother_id) : undefined) ||
+            (supp.mother_id && !String(supp.mother_id).startsWith("temp-")
+              ? supp.mother_id
+              : (supp.mother_id ? (await db.mothers.get(supp.mother_id))?.mother_id : undefined) || supp.mother_id)
+
+          const resolvedPregId =
+            (supp.pregnancy_id ? this.tempIdMap.get(supp.pregnancy_id) : undefined) ||
+            (supp.pregnancy_id && !String(supp.pregnancy_id).startsWith("temp-")
+              ? supp.pregnancy_id
+              : resolvedMotherId
+                ? pregMap.get(resolvedMotherId) || supp.pregnancy_id
+                : supp.pregnancy_id)
+
+          const resolvedVisitId =
+            (supp.visit_id ? this.tempIdMap.get(supp.visit_id) : undefined) || supp.visit_id
+
           console.log(
             `[SyncEngine] Auto-recovering offline supplement ${supp.id} to outbox queue...`
           )
@@ -1548,9 +1682,9 @@ class SyncEngine {
             endpoint: "/api/v1/supplement/register",
             method: "POST",
             payload: {
-              mother_id: supp.mother_id,
-              pregnancy_id: supp.pregnancy_id,
-              visit_id: supp.visit_id,
+              mother_id: resolvedMotherId,
+              pregnancy_id: resolvedPregId,
+              visit_id: resolvedVisitId,
               supplement_type: supp.supplement_type,
               tablets_given_count: Number(supp.tablets_given_count) || 1,
               date_given: supp.date_given || new Date().toISOString(),
